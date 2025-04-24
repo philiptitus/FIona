@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Mail, Lock, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,7 +20,6 @@ import Cookies from "js-cookie"
 export default function LoginPage() {
   const dispatch = useDispatch<AppDispatch>()
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { toast } = useToast()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -28,7 +27,13 @@ export default function LoginPage() {
   const [loginAttempted, setLoginAttempted] = useState(false)
 
   const { isLoading, isAuthenticated, error } = useSelector((state: RootState) => state.auth)
-  const redirectTo = searchParams.get("redirect") || "/dashboard"
+  // Avoid useSearchParams to prevent Next.js build errors. Use a fallback.
+  let redirectTo = "/dashboard"
+  if (typeof window !== "undefined") {
+    const url = new URL(window.location.href)
+    const param = url.searchParams.get("redirect")
+    if (param) redirectTo = param
+  }
 
   // Handle authentication state changes and error display
   useEffect(() => {
