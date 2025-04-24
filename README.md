@@ -1,6 +1,6 @@
 # Fiona Campaign Manager Frontend
 
-![Fiona Logo](public/placeholder-logo.svg)
+![Fiona Logo](public/favicon.ico)
 
 A modern, AI-powered campaign and content management system built with Next.js, TypeScript, and Redux Toolkit.
 
