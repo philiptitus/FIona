@@ -102,9 +102,13 @@ export const requestPasswordReset = createAsyncThunk<void, string>(
 )
 
 // Action creators
-export const handleLogin =
-  (credentials: { email: string; password: string }) =>
-  async (dispatch: AppDispatch): Promise<boolean> => {
+export const handleLogin = createAsyncThunk<
+  boolean,
+  { email: string; password: string },
+  { dispatch: AppDispatch }
+>(
+  "auth/handleLogin",
+  async (credentials, { dispatch }) => {
     dispatch(loginStart())
     try {
       const resultAction = await dispatch(loginUser({ username: credentials.email, password: credentials.password }))
@@ -122,10 +126,15 @@ export const handleLogin =
       return false
     }
   }
+)
 
-export const handleRegister =
-  (credentials: RegisterCredentials) =>
-  async (dispatch: AppDispatch): Promise<boolean> => {
+export const handleRegister = createAsyncThunk<
+  boolean,
+  RegisterCredentials,
+  { dispatch: AppDispatch }
+>(
+  "auth/handleRegister",
+  async (credentials, { dispatch }) => {
     dispatch(registerStart())
     try {
       await dispatch(registerUser(credentials))
@@ -136,6 +145,7 @@ export const handleRegister =
       return false
     }
   }
+)
 
 export const handleLogout = () => (dispatch: AppDispatch) => {
   removeAuthCookies()
@@ -143,9 +153,13 @@ export const handleLogout = () => (dispatch: AppDispatch) => {
   dispatch(logout())
 }
 
-export const handleUpdateProfile =
-  (data: UpdateProfileData) =>
-  async (dispatch: AppDispatch): Promise<boolean> => {
+export const handleUpdateProfile = createAsyncThunk<
+  boolean,
+  UpdateProfileData,
+  { dispatch: AppDispatch }
+>(
+  "auth/handleUpdateProfile",
+  async (data, { dispatch }) => {
     dispatch(updateProfileStart())
     try {
       const resultAction = await dispatch(updateProfile(data))
@@ -160,10 +174,15 @@ export const handleUpdateProfile =
       return false
     }
   }
+)
 
-export const handlePasswordReset =
-  (email: string) =>
-  async (dispatch: AppDispatch): Promise<boolean> => {
+export const handlePasswordReset = createAsyncThunk<
+  boolean,
+  string,
+  { dispatch: AppDispatch }
+>(
+  "auth/handlePasswordReset",
+  async (email, { dispatch }) => {
     dispatch(passwordResetStart())
     try {
       await dispatch(requestPasswordReset(email))
@@ -174,6 +193,7 @@ export const handlePasswordReset =
       return false
     }
   }
+)
 
 export const deleteUserAccount =
   () =>

@@ -14,6 +14,8 @@ import { format } from "date-fns"
 import type { RootState, AppDispatch } from "@/store/store"
 import { handleFetchDispatches, handleCreateDispatch, handleSendDispatch, handleVerifyDispatch } from "@/store/actions/dispatchActions"
 import { safeValue } from "./safeValue"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { handleFetchMailboxes } from "@/store/actions/mailboxActions"
 
 interface DispatchForm {
   campaign: number | null
@@ -41,10 +43,16 @@ export default function DispatchesPage() {
   const { campaigns } = useSelector((state: RootState) => state.campaigns)
   const { templates } = useSelector((state: RootState) => state.template)
   const { contents } = useSelector((state: RootState) => state.content)
+  const { mailboxes, isLoading: isMailboxesLoading } = useSelector((state: RootState) => state.mailbox)
   const [searchQuery, setSearchQuery] = useState("")
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<DispatchForm>({ campaign: null })
   const [filtered, setFiltered] = useState(dispatches)
+  const [sendModalOpen, setSendModalOpen] = useState(false)
+  const [sendDispatchId, setSendDispatchId] = useState<number | null>(null)
+  const [selectedMailbox, setSelectedMailbox] = useState<number | null>(null)
+  const [selectedType, setSelectedType] = useState<"content" | "template" | "">("")
+  const [sendError, setSendError] = useState("")
 
   useEffect(() => {
     dispatch(handleFetchDispatches())
@@ -57,6 +65,12 @@ export default function DispatchesPage() {
       )
     )
   }, [dispatches, searchQuery])
+
+  useEffect(() => {
+    if (sendModalOpen) {
+      dispatch(handleFetchMailboxes())
+    }
+  }, [sendModalOpen, dispatch])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -72,9 +86,35 @@ export default function DispatchesPage() {
     }
   }
 
-  const handleSend = async (id: number) => {
-    await dispatch(handleSendDispatch(id))
-    dispatch(handleFetchDispatches())
+  const openSendModal = (id: number) => {
+    setSendDispatchId(id)
+    setSendModalOpen(true)
+    setSelectedMailbox(null)
+    setSelectedType("")
+    setSendError("")
+  }
+
+  const closeSendModal = () => {
+    setSendModalOpen(false)
+    setSendDispatchId(null)
+    setSelectedMailbox(null)
+    setSelectedType("")
+    setSendError("")
+  }
+
+  const handleSendModal = async () => {
+    if (!sendDispatchId || !selectedMailbox || !selectedType) {
+      setSendError("Please select a mailbox and type.")
+      return
+    }
+    setSendError("")
+    const result = await dispatch(handleSendDispatch(sendDispatchId, selectedMailbox, selectedType) as any)
+    if (result && result.success >= 0) {
+      closeSendModal()
+      dispatch(handleFetchDispatches())
+    } else {
+      setSendError(result?.error || "Failed to send dispatch.")
+    }
   }
 
   const handleVerify = async (id: number) => {
@@ -144,9 +184,16 @@ export default function DispatchesPage() {
             )}
             <div className="divide-y">
               {paginatedDispatches.map((item: any) => {
-                const campaign = campaigns.find((c: any) => c.id === item.campaign)
-                const template = templates.find((t: any) => t.id === item.template)
-                const content = contents.find((c: any) => c.id === item.content)
+                // Support both object and ID for campaign, template, content
+                const campaignObj = item.campaign && typeof item.campaign === "object" ? item.campaign : null;
+                const templateObj = item.template && typeof item.template === "object" ? item.template : null;
+                const contentObj = item.content && typeof item.content === "object" ? item.content : null;
+                const campaignId = campaignObj ? campaignObj.id : item.campaign;
+                const templateId = templateObj ? templateObj.id : item.template;
+                const contentId = contentObj ? contentObj.id : item.content;
+                const campaign = campaignObj || campaigns.find((c: any) => c.id === campaignId);
+                const template = templateObj || templates.find((t: any) => t.id === templateId);
+                const content = contentObj || contents.find((c: any) => c.id === contentId);
                 return (
                   <Card key={item.id} className="rounded-lg border bg-card shadow-sm hover:scale-102 transition-all">
                     <CardHeader className="flex flex-row items-center justify-between">
@@ -166,7 +213,7 @@ export default function DispatchesPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleSend(item.id)}>
+                          <DropdownMenuItem onClick={() => openSendModal(item.id)}>
                             <Send className="mr-2 h-4 w-4" /> Send
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleVerify(item.id)}>
@@ -180,8 +227,8 @@ export default function DispatchesPage() {
                         <div>
                           <span className="font-medium">Template:</span>{' '}
                           {template ? (
-                            <Link href={`/templates/${safeValue(template.id)}`} className="text-primary underline hover:text-primary/80">
-                              {safeValue(template, `Template #${safeValue(item.template)}`)}
+                            <Link href={`/templates/${template.id}`} className="text-primary underline hover:text-primary/80">
+                              {template.name || `Template #${template.id}`}
                             </Link>
                           ) : (
                             <span className="text-muted-foreground">N/A</span>
@@ -190,8 +237,8 @@ export default function DispatchesPage() {
                         <div>
                           <span className="font-medium">Content:</span>{' '}
                           {content ? (
-                            <Link href={`/content/${safeValue(content.id)}`} className="text-primary underline hover:text-primary/80">
-                              {safeValue(content, `Content #${safeValue(item.content)}`)}
+                            <Link href={`/content/${content.id}`} className="text-primary underline hover:text-primary/80">
+                              {content.name || `Content #${content.id}`}
                             </Link>
                           ) : (
                             <span className="text-muted-foreground">N/A</span>
@@ -222,6 +269,50 @@ export default function DispatchesPage() {
                 <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages || totalPages === 0}>Next</Button>
               </div>
             </div>
+            {/* Modal for sending dispatch */}
+            <Dialog open={sendModalOpen} onOpenChange={setSendModalOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Send Dispatch</DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <label className="block mb-1 font-medium">Select Mailbox</label>
+                    {isMailboxesLoading ? (
+                      <div>Loading mailboxes...</div>
+                    ) : (
+                      <select
+                        className="w-full border rounded px-3 py-2"
+                        value={selectedMailbox || ""}
+                        onChange={e => setSelectedMailbox(Number(e.target.value))}
+                      >
+                        <option value="">Select mailbox...</option>
+                        {mailboxes.map((mb: any) => (
+                          <option key={mb.id} value={mb.id}>{mb.email} ({mb.provider})</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block mb-1 font-medium">Type</label>
+                    <select
+                      className="w-full border rounded px-3 py-2"
+                      value={selectedType}
+                      onChange={e => setSelectedType(e.target.value as "content" | "template")}
+                    >
+                      <option value="">Select type...</option>
+                      <option value="content">Content (plain text)</option>
+                      <option value="template">Template (HTML)</option>
+                    </select>
+                  </div>
+                  {sendError && <div className="text-red-600 text-sm">{sendError}</div>}
+                </div>
+                <DialogFooter>
+                  <Button onClick={handleSendModal}>Send</Button>
+                  <Button variant="outline" onClick={closeSendModal}>Cancel</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
         </Tabs>
       </div>

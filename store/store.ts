@@ -17,6 +17,7 @@ import metricsReducer from "./slices/metricsSlice"
 import notificationsReducer from "./slices/notificationsSlice"
 import tasksReducer from "./slices/tasksSlice"
 import { authMiddleware } from "./middleware/authMiddleware"
+import mailboxReducer from "./slices/mailboxSlice"
 
 const rootReducer = {
   auth: authReducer,
@@ -29,6 +30,7 @@ const rootReducer = {
   metrics: metricsReducer,
   notifications: notificationsReducer,
   tasks: tasksReducer,
+  mailbox: mailboxReducer,
 } as const
 
 type StoreMiddleware = Middleware<{}, ReturnType<typeof store.getState>>

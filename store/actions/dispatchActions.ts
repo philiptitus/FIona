@@ -63,14 +63,23 @@ export const verifyDispatch = createAsyncThunk("dispatches/verify", async (dispa
 })
 
 // Send a dispatch
-export const sendDispatch = createAsyncThunk("dispatches/send", async (dispatchId: number, { rejectWithValue }) => {
+export const sendDispatch = createAsyncThunk(
+  "dispatches/send",
+  async (
+    { dispatchId, mailboxId, type }: { dispatchId: number; mailboxId: number; type: "content" | "template" },
+    { rejectWithValue }
+  ) => {
   try {
-    const response = await api.post(`/mail/dispatches/${dispatchId}/send/`)
+      const response = await api.post(`/mail/dispatches/${dispatchId}/send/`, {
+        mailbox_id: mailboxId,
+        type,
+      })
     return response.data
   } catch (error: any) {
     return rejectWithValue(error.response?.data?.error || "Failed to send dispatch")
   }
-})
+  }
+)
 
 // Auto send next pending dispatch
 export const autoSendNextDispatch = createAsyncThunk("dispatches/autoSend", async (_, { rejectWithValue }) => {
@@ -151,19 +160,21 @@ export const handleVerifyDispatch = (dispatchId: number) => async (dispatch: App
   }
 }
 
-export const handleSendDispatch = (dispatchId: number) => async (dispatch: AppDispatch) => {
+export const handleSendDispatch =
+  (dispatchId: number, mailboxId: number, type: "content" | "template") =>
+  async (dispatch: AppDispatch) => {
   dispatch(sendDispatchStart())
   try {
-    const resultAction = await dispatch(sendDispatch(dispatchId))
+      const resultAction = await dispatch(sendDispatch({ dispatchId, mailboxId, type }))
     if (sendDispatch.fulfilled.match(resultAction)) {
       dispatch(sendDispatchSuccess())
       return resultAction.payload
     } else {
       dispatch(sendDispatchFailure(resultAction.payload as string))
-      return false
+        return { error: resultAction.payload }
     }
   } catch (error: any) {
     dispatch(sendDispatchFailure(error.message || "Failed to send dispatch"))
-    return false
+      return { error: error.message || "Failed to send dispatch" }
   }
 }

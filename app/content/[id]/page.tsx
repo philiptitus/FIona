@@ -53,6 +53,9 @@ export default function ContentDetailPage() {
                 await dispatch(handleDeleteContent(contentId))
                 router.push("/content")
               }}>Delete</Button>
+              <Button variant="default" onClick={() => router.push(`/email-sending?type=content&id=${contentId}`)}>
+                Send as Email
+              </Button>
             </div>
           </CardContent>
         </Card>

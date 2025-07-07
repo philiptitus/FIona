@@ -22,6 +22,9 @@ import {
   bulkDeleteEmailsStart,
   bulkDeleteEmailsSuccess,
   bulkDeleteEmailsFailure,
+  smartCreateEmailsStart,
+  smartCreateEmailsSuccess,
+  smartCreateEmailsFailure,
 } from "../slices/emailSlice"
 import type { AppDispatch } from "../store"
 
@@ -109,7 +112,7 @@ export const updateEmail = createAsyncThunk(
       emailData,
     }: {
       id: number
-      emailData: { campaign?: number; organization_name?: string; email?: string; context?: string; is_sent?: boolean }
+      emailData: Partial<import("../slices/emailSlice").EmailListEntry>
     },
     { rejectWithValue },
   ) => {
@@ -147,6 +150,37 @@ export const bulkDeleteEmails = createAsyncThunk(
     }
   },
 )
+
+// Create email entries via smart campaign (AI)
+export const createSmartCampaignEmails = createAsyncThunk(
+  "emails/smartCreate",
+  async (smartCampaignData: any, { rejectWithValue }) => {
+    try {
+      // Corrected endpoint for smart campaign
+      const response = await api.post("/mail/campaigns/smart/", smartCampaignData)
+      return response.data.created_emails || response.data.emails || response.data // adapt to backend response
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error || "Failed to create emails via smart campaign")
+    }
+  },
+)
+
+export const handleSmartCreateEmails = (smartCampaignData: any) => async (dispatch: AppDispatch) => {
+  dispatch(smartCreateEmailsStart())
+  try {
+    const resultAction = await dispatch(createSmartCampaignEmails(smartCampaignData))
+    if (createSmartCampaignEmails.fulfilled.match(resultAction)) {
+      dispatch(smartCreateEmailsSuccess(resultAction.payload))
+      return resultAction.payload
+    } else {
+      dispatch(smartCreateEmailsFailure(resultAction.payload as string))
+      return false
+    }
+  } catch (error: any) {
+    dispatch(smartCreateEmailsFailure(error.message || "Failed to create emails via smart campaign"))
+    return false
+  }
+}
 
 // Thunk action creators for dispatching regular actions
 export const handleFetchEmails = (campaignId?: number) => async (dispatch: AppDispatch) => {
@@ -232,7 +266,7 @@ export const handleUpdateEmail =
     emailData,
   }: {
     id: number
-    emailData: { campaign?: number; organization_name?: string; email?: string; context?: string; is_sent?: boolean }
+    emailData: Partial<import("../slices/emailSlice").EmailListEntry>
   }) =>
   async (dispatch: AppDispatch) => {
     dispatch(updateEmailStart())

@@ -22,6 +22,8 @@ import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
 import type { RootState, AppDispatch } from "@/store/store"
 import Fuse from "fuse.js"
+import { useAuth } from "react-oidc-context"
+import Cookies from "js-cookie"
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -33,6 +35,7 @@ export default function Header() {
   const router = useRouter()
   const { toast } = useToast()
   const inputRef = useRef<HTMLInputElement>(null)
+  const auth = useAuth();
 
   // Redux state for dynamic entities
   const { user } = useSelector((state: RootState) => state.auth)
@@ -95,12 +98,18 @@ export default function Header() {
 
   // Rename to avoid recursion
   const handleLogoutClick = () => {
+    // First, clear local state and cookies
     dispatch(handleLogout())
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out.",
-    })
-    router.push("/auth/login")
+    Cookies.remove('token')
+    Cookies.remove('refreshToken')
+    localStorage.removeItem('user')
+    
+    // Then redirect to Cognito logout
+    const clientId = "3cv6n93ibe6f3sfltfjrtf8j17";
+    const logoutUri = "http://localhost:3000/";
+    // Use the AWS Cognito region domain
+    const cognitoDomain = "https://auth.mrphilip.cv";
+    window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri)}`;
   }
 
   return (

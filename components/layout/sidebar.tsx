@@ -38,9 +38,14 @@ export default function Sidebar({ isMobile, onNavClick }: SidebarProps) {
       dataTour: "sidebar-templates",
     },
     {
-      name: "Emails",
-      href: "/emails",
+      name: "Send Email",
+      href: "/email-sending",
       icon: Mail,
+    },
+    {
+      name: "Contacts",
+      href: "/emails",
+      icon: Users,
     },
     {
       name: "Content",
@@ -101,12 +106,6 @@ export default function Sidebar({ isMobile, onNavClick }: SidebarProps) {
             </Button>
           ))}
         </nav>
-      </div>
-      <div className="sticky bottom-0 border-t bg-background p-4">
-        <Button className="w-full" onClick={onNavClick}>
-          <MailPlus className="mr-2 h-4 w-4" />
-          New Campaign
-        </Button>
       </div>
     </div>
   )

@@ -3,7 +3,7 @@
 import MainLayout from "@/components/layout/main-layout"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useDispatch, useSelector } from "react-redux"
 import { Mail, User, Lock, Eye, EyeOff, Shield, Download, Trash2, Edit2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -32,6 +32,12 @@ import { useToast } from "@/components/ui/use-toast"
 import { handleUpdateProfile, deleteUserAccount } from "@/store/actions/authActions"
 import type { RootState, AppDispatch } from "@/store/store"
 import { validatePassword, validateEmail } from "@/lib/utils/validation"
+import { fetchMailboxes, startGmailOAuth, finishGmailOAuth, deleteMailbox } from '@/store/actions/mailboxActions'
+import MailLoader from '@/components/MailLoader'
+import { Dialog, DialogTrigger, DialogContent, DialogHeader as DialogHeaderUI, DialogTitle as DialogTitleUI, DialogDescription as DialogDescriptionUI, DialogFooter as DialogFooterUI, DialogClose } from '@/components/ui/dialog'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import Cookies from 'js-cookie'
 
 // Helper for avatar
 function getInitials(name: string, email: string) {
@@ -60,14 +66,88 @@ export default function ProfilePage() {
   const [activity, setActivity] = useState<string[]>([])
   const [preferences, setPreferences] = useState<any>({})
 
+  const mailboxState = useSelector((state: any) => state.mailbox) || {}
+  const { mailboxes = [], loading, error, gmailAuthUrl } = mailboxState
+  const [mailboxFinishSuccess, setMailboxFinishSuccess] = useState(false)
+  const [mailboxFinishError, setMailboxFinishError] = useState("")
+
+  const [redirecting, setRedirecting] = useState(false)
+  const [connectSuccess, setConnectSuccess] = useState(false)
+  const [connectError, setConnectError] = useState("")
+  const searchParams = useSearchParams()
+
+  const [selectedMailbox, setSelectedMailbox] = useState<any>(null)
+  const [showMailboxModal, setShowMailboxModal] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState("")
+  const [deleteSuccess, setDeleteSuccess] = useState(false)
+
+  // Add state for localStorage user info
+  const [localUser, setLocalUser] = useState<any>(null)
+
   useEffect(() => {
     // Could fetch activity/preferences here if backend supports
     setActivity(["Logged in", "Updated profile", "Changed password"])
     setPreferences({ theme: "system", notifications: true })
   }, [])
 
+  useEffect(() => {
+    dispatch(fetchMailboxes())
+  }, [dispatch])
+
+  useEffect(() => {
+    // Check for OAuth callback (e.g., ?mailbox_connected=1 or ?mailbox_error=msg)
+    const connected = searchParams.get("mailbox_connected")
+    const error = searchParams.get("mailbox_error")
+    if (connected) {
+      setConnectSuccess(true)
+      dispatch(fetchMailboxes())
+    } else if (error) {
+      setConnectError(error)
+    }
+  }, [searchParams, dispatch])
+
+  useEffect(() => {
+    if (gmailAuthUrl) {
+      setRedirecting(true)
+      window.location.href = gmailAuthUrl
+    }
+  }, [gmailAuthUrl])
+
+  useEffect(() => {
+    const mailboxCode = searchParams.get("mailbox_code")
+    if (mailboxCode) {
+      dispatch(finishGmailOAuth(mailboxCode) as any)
+        .unwrap()
+        .then(() => {
+          setMailboxFinishSuccess(true)
+          setMailboxFinishError("")
+          dispatch(fetchMailboxes())
+        })
+        .catch((err: any) => {
+          setMailboxFinishError(err || "Failed to add mailbox.")
+          setMailboxFinishSuccess(false)
+        })
+    }
+  }, [searchParams, dispatch])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const userStr = localStorage.getItem('user')
+      if (userStr) {
+        try {
+          setLocalUser(JSON.parse(userStr))
+        } catch {}
+      }
+    }
+  }, [])
+
+  if (searchParams.get("mailbox_code") && loading) {
+    return <MailLoader />
+  }
+
   if (!user) {
-    return <div className="p-8 text-center">Loading user info...</div>
+    return <MailLoader />
   }
 
   // Role logic
@@ -106,13 +186,11 @@ export default function ProfilePage() {
                     }
                   }
                   try {
-                    const success = await dispatch(
-                      handleUpdateProfile({
-                        name: name !== user?.first_name ? name : undefined,
-                        email: email !== user?.email ? email : undefined,
-                        password: password || undefined,
-                      })
-                    )
+                    const success = await handleUpdateProfile({
+                      name: name !== user?.first_name ? name : undefined,
+                      email: email !== user?.email ? email : undefined,
+                      password: password || undefined,
+                    })(dispatch)
                     if (success) {
                       toast({
                         title: "Profile updated",
@@ -128,15 +206,23 @@ export default function ProfilePage() {
               >
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-2xl font-bold">
-                    {getInitials(name, email)}
+                    <User className="h-8 w-8 text-primary" />
                   </div>
                   <div>
                     <div className="font-semibold text-lg">{name}</div>
                     <div className="text-muted-foreground">{email}</div>
-                    <div className="text-xs mt-1">Role: <span className="font-medium">{role}</span></div>
-                    <div className="text-xs">Joined: <span className="font-medium">{joinDate}</span></div>
                   </div>
                 </div>
+                {/* Show user info from localStorage below the profile icon */}
+                {localUser && (
+                  <div className="mt-2 mb-4 p-4 rounded bg-muted/40 text-sm">
+                    <div><span className="font-semibold">ID:</span> {localUser.id}</div>
+                    <div><span className="font-semibold">Username:</span> {localUser.username}</div>
+                    <div><span className="font-semibold">Email:</span> {localUser.email}</div>
+                    <div><span className="font-semibold">First Name:</span> {localUser.first_name}</div>
+                    <div><span className="font-semibold">Last Name:</span> {localUser.last_name || <span className="italic text-muted-foreground">(none)</span>}</div>
+                  </div>
+                )}
                 <div className="grid md:grid-cols-2 gap-4 mt-4">
                   <div>
                     <Label htmlFor="name">Name</Label>
@@ -166,60 +252,121 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
         )
-      case "security":
+      case "mailboxes":
         return (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Security</CardTitle>
-              <CardDescription>Change your password or manage security settings</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-4">
-                <Button variant="outline" className="flex items-center gap-2" onClick={() => setActiveSection("personalInfo") /* Focus password field */}>
-                  <Lock size={16} /> Change Password
-                </Button>
-                <div className="text-muted-foreground text-sm">Two-factor authentication coming soon.</div>
-              </div>
-            </CardContent>
-          </Card>
-        )
-      case "preferences":
-        return (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Preferences</CardTitle>
-              <CardDescription>Manage your application preferences</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-2">
-                <div>Theme: <span className="font-semibold">{preferences.theme}</span></div>
-                <div>Notifications: <span className="font-semibold">{preferences.notifications ? "On" : "Off"}</span></div>
-                <div className="text-muted-foreground text-sm">More preferences coming soon.</div>
-              </div>
-            </CardContent>
-          </Card>
-        )
-      case "activity":
-        return (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Activity</CardTitle>
-              <CardDescription>Recent account activity</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="list-disc pl-6">
-                {activity.length === 0 ? (
-                  <li className="text-muted-foreground">No recent activity.</li>
-                ) : (
-                  activity.map((act, idx) => <li key={idx}>{act}</li>)
-                )}
-              </ul>
-            </CardContent>
-          </Card>
+          <div className="mt-8">
+            <h3 className="text-lg font-semibold mb-2">Connected Mailboxes</h3>
+            {mailboxFinishSuccess && (
+              <div className="mb-2 px-3 py-2 rounded bg-green-100 text-green-800 border border-green-300 text-sm w-fit">Gmail mailbox added successfully!</div>
+            )}
+            {mailboxFinishError && (
+              <div className="mb-2 px-3 py-2 rounded bg-red-100 text-red-800 border border-red-300 text-sm w-fit">{mailboxFinishError}</div>
+            )}
+            {redirecting && <p className="text-blue-500">Redirecting to Google for authentication...</p>}
+            {connectSuccess && <p className="text-green-600">Mailbox connected successfully!</p>}
+            {connectError && <p className="text-red-500">{connectError}</p>}
+            {loading && <p>Loading mailboxes...</p>}
+            {error && <p className="text-red-500">{error}</p>}
+            <div className="mb-4">
+              {mailboxes && mailboxes.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Provider</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Updated</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {mailboxes.map((mb: any) => (
+                      <TableRow key={mb.id}>
+                        <TableCell className="font-medium">{mb.email}</TableCell>
+                        <TableCell><Badge variant="secondary">{mb.provider}</Badge></TableCell>
+                        <TableCell>{mb.created_at ? new Date(mb.created_at).toLocaleString() : '-'}</TableCell>
+                        <TableCell>{mb.updated_at ? new Date(mb.updated_at).toLocaleString() : '-'}</TableCell>
+                        <TableCell>
+                          <Dialog open={showMailboxModal && selectedMailbox?.id === mb.id} onOpenChange={(open) => { setShowMailboxModal(open); if (!open) setSelectedMailbox(null) }}>
+                            <DialogTrigger asChild>
+                              <Button size="sm" variant="outline" onClick={() => { setSelectedMailbox(mb); setShowMailboxModal(true) }}>View</Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeaderUI>
+                                <DialogTitleUI>Mailbox Details</DialogTitleUI>
+                                <DialogDescriptionUI>View all mailbox information and manage this connection.</DialogDescriptionUI>
+                              </DialogHeaderUI>
+                              <div className="space-y-2 text-sm">
+                                <div><span className="font-semibold">Email:</span> {mb.email}</div>
+                                <div><span className="font-semibold">Provider:</span> {mb.provider}</div>
+                                <div><span className="font-semibold">Access Token:</span> <span className="break-all">{mb.access_token ? mb.access_token.slice(0, 8) + '...' : '-'}</span></div>
+                                <div><span className="font-semibold">Refresh Token:</span> <span className="break-all">{mb.refresh_token ? mb.refresh_token.slice(0, 8) + '...' : '-'}</span></div>
+                                <div><span className="font-semibold">Token Expiry:</span> {mb.token_expiry ? new Date(mb.token_expiry).toLocaleString() : '-'}</div>
+                                <div><span className="font-semibold">Created At:</span> {mb.created_at ? new Date(mb.created_at).toLocaleString() : '-'}</div>
+                                <div><span className="font-semibold">Updated At:</span> {mb.updated_at ? new Date(mb.updated_at).toLocaleString() : '-'}</div>
+                              </div>
+                              {deleteError && <div className="mt-2 px-3 py-2 rounded bg-red-100 text-red-800 border border-red-300 text-sm w-fit">{deleteError}</div>}
+                              {deleteSuccess && <div className="mt-2 px-3 py-2 rounded bg-green-100 text-green-800 border border-green-300 text-sm w-fit">Mailbox deleted successfully!</div>}
+                              {deleteLoading && <MailLoader />}
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="destructive" className="mt-4 w-full">Delete Mailbox</Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Mailbox</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete this mailbox? This action cannot be undone and will revoke Google access.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={async () => {
+                                      setDeleteLoading(true)
+                                      setDeleteError("")
+                                      setDeleteSuccess(false)
+                                      try {
+                                        await dispatch(deleteMailbox(mb.id) as any).unwrap()
+                                        setDeleteSuccess(true)
+                                        setTimeout(() => {
+                                          setShowMailboxModal(false)
+                                          setSelectedMailbox(null)
+                                          setDeleteSuccess(false)
+                                        }, 1200)
+                                      } catch (err: any) {
+                                        setDeleteError(err || "Failed to delete mailbox.")
+                                      } finally {
+                                        setDeleteLoading(false)
+                                      }
+                                    }}>Delete</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </DialogContent>
+                          </Dialog>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-muted-foreground">No mailboxes connected.</div>
+              )}
+            </div>
+            <Button onClick={handleConnectGmail} disabled={redirecting}>
+              {redirecting ? "Redirecting..." : "Connect Gmail"}
+            </Button>
+          </div>
         )
       default:
         return null
     }
+  }
+
+  const handleConnectGmail = () => {
+    setConnectError("")
+    setConnectSuccess(false)
+    dispatch(startGmailOAuth())
   }
 
   return (
@@ -230,13 +377,12 @@ export default function ProfilePage() {
           {/* Sidebar navigation */}
           <nav className="md:w-1/4 flex flex-row md:flex-col gap-2 md:gap-4 mb-4 md:mb-0">
             <Button variant={activeSection === "personalInfo" ? "default" : "outline"} onClick={() => setActiveSection("personalInfo")}>Personal Info</Button>
-            <Button variant={activeSection === "security" ? "default" : "outline"} onClick={() => setActiveSection("security")}>Security</Button>
-            <Button variant={activeSection === "preferences" ? "default" : "outline"} onClick={() => setActiveSection("preferences")}>Preferences</Button>
-            <Button variant={activeSection === "activity" ? "default" : "outline"} onClick={() => setActiveSection("activity")}>Activity</Button>
+            <Button variant={activeSection === "mailboxes" ? "default" : "outline"} onClick={() => setActiveSection("mailboxes")}>Mailboxes</Button>
           </nav>
           {/* Main section */}
           <div className="flex-1">
             {renderSection()}
+
             {/* Actions row */}
             <div className="flex flex-col md:flex-row gap-4 mt-8">
               <Button variant="outline" className="flex items-center gap-2" onClick={() => toast({ title: "Export Data", description: "Data export coming soon." })}>
@@ -256,8 +402,16 @@ export default function ProfilePage() {
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={async () => {
-                      await dispatch(deleteUserAccount())
-                      router.push("/auth/login")
+                      await deleteUserAccount()(dispatch)
+                      // Replicate sign out logic from header
+                      Cookies.remove('token')
+                      Cookies.remove('refreshToken')
+                      localStorage.removeItem('user')
+                      // Redirect to Cognito logout
+                      const clientId = "3cv6n93ibe6f3sfltfjrtf8j17";
+                      const logoutUri = "http://localhost:3000/";
+                      const cognitoDomain = "https://auth.mrphilip.cv";
+                      window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri)}`;
                     }}>Delete</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -269,3 +423,4 @@ export default function ProfilePage() {
     </MainLayout>
   )
 }
+

@@ -48,6 +48,9 @@ export default function TemplateDetailPage() {
                 await dispatch(handleDeleteTemplate(tplId))
                 router.push("/templates")
               }}>Delete</Button>
+              <Button variant="default" onClick={() => router.push(`/email-sending?type=template&id=${tplId}`)}>
+                Send as Email
+              </Button>
             </div>
           </CardContent>
         </Card>

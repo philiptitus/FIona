@@ -1,4 +1,5 @@
 import axios from "axios"
+import { getCookie } from "./utils"
 
 // Create an axios instance with default config
 const api = axios.create({
@@ -8,12 +9,20 @@ const api = axios.create({
   },
 })
 
-// Request interceptor for adding auth token
+// Request interceptor for adding auth token and CSRF token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token")
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+    }
+    // Add CSRF token for unsafe methods
+    const method = config.method?.toUpperCase()
+    if (["POST", "PUT", "PATCH", "DELETE"].includes(method || "")) {
+      const csrfToken = getCookie("csrftoken")
+      if (csrfToken) {
+        config.headers["X-CSRFToken"] = csrfToken
+      }
     }
     return config
   },
@@ -55,6 +64,27 @@ api.interceptors.response.use(
         localStorage.removeItem("refreshToken")
         return Promise.reject(refreshError)
       }
+    }
+
+    // Handle 403 Forbidden (session expired or invalid)
+    if (error.response?.status === 403) {
+      // Clear entire localStorage to ensure all auth data is removed
+      localStorage.clear()
+      
+      // Clear all cookies
+      document.cookie.split(";").forEach(function(c) { 
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+      });
+      
+      // Dynamically import toast to avoid circular dependency
+      import("@/hooks/use-toast").then(({ toast }) => {
+        toast({
+          title: "Session expired",
+          description: "Please sign in again.",
+          variant: "destructive",
+        })
+      })
+      // Note: Removed automatic redirect - let the app handle navigation
     }
 
     return Promise.reject(error)

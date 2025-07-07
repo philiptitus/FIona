@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { useDispatch } from "react-redux"
 import { createSmartCampaign } from "@/store/actions/campaignActions"
 import type { AppDispatch } from "@/store/store"
+import MailLoader from '@/components/MailLoader'
 
 export default function SmartCampaignPage() {
   const [campaignName, setCampaignName] = useState("")
@@ -89,7 +90,8 @@ export default function SmartCampaignPage() {
 
   return (
     <MainLayout>
-      <div className="flex flex-col gap-6">
+      {isLoading && <MailLoader />}
+      <div className="flex flex-col gap-6 max-h-[100vh] overflow-y-auto px-2 md:px-0" style={{ minHeight: '0' }}>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Create Smart Campaign</h1>
           <p className="text-muted-foreground">Let AI help you create a complete email campaign</p>

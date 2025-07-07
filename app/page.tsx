@@ -7,7 +7,13 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import LandingHeroAnimation from "@/components/landing-hero-animation"
 import { LandingFeatureCard } from "@/components/landing-feature-card"
 import { motion } from "framer-motion"
-
+import { useAuth } from "react-oidc-context"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
+import { useDispatch } from "react-redux"
+import { loginSuccess,  } from "@/store/slices/authSlice"
+import Cookies from "js-cookie"
+import { handleUpdateProfile } from "@/store/actions/authActions"
 const FEATURES = [
   {
     icon: Zap,
@@ -84,6 +90,60 @@ const PRICING = [
 ]
 
 export default function LandingPage() {
+  const auth = useAuth()
+  const router = useRouter()
+  const dispatch = useDispatch()
+
+  // Handle Cognito callback
+  useEffect(() => {
+    // Check if we have auth code in URL (Cognito callback)
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const code = urlParams.get('code')
+      const state = urlParams.get('state')
+      
+      if (code && state) {
+        // We have a Cognito callback, wait for auth to complete
+        if (auth.isAuthenticated && auth.user) {
+          // Set cookies and Redux state to match your existing auth flow
+          const user = {
+            id: auth.user.profile.sub,
+            username: auth.user.profile.preferred_username || auth.user.profile.email,
+            email: auth.user.profile.email,
+            first_name: auth.user.profile.given_name || auth.user.profile.email?.split('@')[0] || 'User',
+            last_name: auth.user.profile.family_name || '',
+          }
+          
+          // Set cookies to match your existing auth flow
+          Cookies.set('token', auth.user.id_token)
+          if (auth.user.refresh_token) {
+            Cookies.set('refreshToken', auth.user.refresh_token)
+          }
+          
+          // Set user in localStorage
+          localStorage.setItem('user', JSON.stringify(user))
+          
+          // Dispatch to Redux store
+          dispatch(loginSuccess({ 
+            user, 
+            token: auth.user.id_token, 
+            refreshToken: auth.user.refresh_token 
+          }))
+
+          // --- Background sync with backend profile ---
+          // Only send name and email as per backend expectations
+          const name = auth.user.profile.given_name || auth.user.profile.email?.split('@')[0] || 'User';
+          const email = auth.user.profile.email;
+          dispatch(handleUpdateProfile({ name, email }));
+          // --- End background sync ---
+          
+          // Redirect to dashboard
+          router.replace('/dashboard')
+        }
+      }
+    }
+  }, [auth.isAuthenticated, auth.user, router, dispatch])
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Header */}
@@ -111,7 +171,7 @@ export default function LandingPage() {
                 <Link href="/auth/login">Sign In</Link>
               </Button>
               <Button asChild>
-                <Link href="/auth/register">Start Free Trial</Link>
+                <Link href="/auth/login">Start Free Trial</Link>
               </Button>
             </div>
           </div>
@@ -135,7 +195,7 @@ export default function LandingPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 mt-4">
               <Button size="lg" className="bg-primary text-primary-foreground" asChild>
-                <Link href="/auth/register">Start Free Trial</Link>
+                <Link href="/auth/login">Start Free Trial</Link>
               </Button>
               <Button size="lg" variant="outline" className="bg-secondary text-secondary-foreground" asChild>
                 <Link href="#demo">View Demo</Link>
@@ -255,7 +315,17 @@ export default function LandingPage() {
             <Mail className="h-5 w-5 text-primary" />
             <span className="text-lg font-bold">FionaAI</span>
           </div>
-          <div className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} FionaAI. All rights reserved.</div>
+          <div className="text-sm text-muted-foreground">
+            &copy; {new Date().getFullYear()} FionaAI. All rights reserved. Built by {" "}
+            <a
+              href="https://mrphilip.cv"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-primary"
+            >
+              Philip Titus
+            </a>.
+          </div>
         </div>
       </footer>
     </div>

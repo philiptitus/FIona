@@ -88,6 +88,15 @@ export default function NewCampaignPage() {
           <h1 className="text-3xl font-bold tracking-tight">Create New Campaign</h1>
           <p className="text-muted-foreground">Set up your email campaign details</p>
         </div>
+        <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 flex items-center gap-4">
+          <span className="text-lg">🤔</span>
+          <div className="flex-1">
+            <span className="font-medium">Does this seem too hard?</span> <span className="text-muted-foreground">Let AI automate your campaign for you!</span>
+          </div>
+          <Button asChild variant="secondary" className="shrink-0">
+            <a href="/campaigns/smart-campaign">Try Smart Campaign</a>
+          </Button>
+        </div>
 
         <Card>
           <form onSubmit={handleSubmit}>
