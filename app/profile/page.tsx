@@ -1,5 +1,6 @@
 "use client"
 export const dynamic = "force-dynamic";
+import React, { Suspense } from "react";
 
 import MainLayout from "@/components/layout/main-layout"
 import { ProtectedRoute } from "@/components/auth/protected-route"
@@ -51,7 +52,7 @@ function getInitials(name: string, email: string) {
   return email[0].toUpperCase()
 }
 
-export default function ProfilePage() {
+function ProfilePageContent() {
   const { user, isLoading } = useSelector((state: RootState) => state.auth)
   const [name, setName] = useState(user?.first_name || "")
   const [email, setEmail] = useState(user?.email || "")
@@ -423,5 +424,13 @@ export default function ProfilePage() {
       </div>
     </MainLayout>
   )
+}
+
+export default function ProfilePageWrapper() {
+  return (
+    <Suspense fallback={null}>
+      <ProfilePageContent />
+    </Suspense>
+  );
 }
 

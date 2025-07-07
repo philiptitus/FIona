@@ -1,6 +1,6 @@
 "use client"
 export const dynamic = "force-dynamic";
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, Suspense } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { sendEmail } from "@/store/actions/mailboxActions"
 import { handleFetchContents } from "@/store/actions/contentActions"
@@ -78,7 +78,7 @@ interface Mailbox {
   provider: string
 }
 
-export default function SendEmailPage() {
+function SendEmailPageContent() {
   const dispatch = useDispatch<AppDispatch>()
   const { isLoading: isSending, sendResult, error: sendError, mailboxes, isLoading: isMailboxesLoading, error: mailboxesError } = useSelector((state: RootState) => state.mailbox)
   const { contents, isLoading: isContentsLoading, error: contentsError } = useSelector((state: RootState) => state.content)
@@ -722,4 +722,12 @@ export default function SendEmailPage() {
       </div>
     </MainLayout>
   )
+}
+
+export default function SendEmailPageWrapper() {
+  return (
+    <Suspense fallback={null}>
+      <SendEmailPageContent />
+    </Suspense>
+  );
 }
