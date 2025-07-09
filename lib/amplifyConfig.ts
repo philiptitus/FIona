@@ -1,4 +1,5 @@
 import { Amplify } from "aws-amplify";
+import { frontendUrl } from "@/lib/route";
 
 Amplify.configure({
   Auth: {
@@ -8,8 +9,8 @@ Amplify.configure({
     oauth: {
       domain: "eu-north-1fvslormyo.auth.eu-north-1.amazoncognito.com",
       scope: ["openid", "email", "profile"],
-      redirectSignIn: "http://localhost:3000/",
-      redirectSignOut: "http://localhost:3000/",
+      redirectSignIn: frontendUrl + "/",
+      redirectSignOut: frontendUrl + "/",
       responseType: "code",
     },
   },

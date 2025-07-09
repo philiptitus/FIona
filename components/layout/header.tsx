@@ -1,6 +1,7 @@
 "use client"
 
 import { Bell, Mail, Menu, Search, User, LogOut } from "lucide-react"
+import { frontendUrl } from "@/lib/route"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -106,7 +107,7 @@ export default function Header() {
     
     // Then redirect to Cognito logout
     const clientId = "3cv6n93ibe6f3sfltfjrtf8j17";
-    const logoutUri = "http://localhost:3000/";
+    const logoutUri = frontendUrl + "/";
     // Use the AWS Cognito region domain
     const cognitoDomain = "https://auth.mrphilip.cv";
     window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri)}`;

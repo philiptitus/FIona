@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import React, { Suspense } from "react";
 
 import MainLayout from "@/components/layout/main-layout"
+import { frontendUrl } from "@/lib/route"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -411,7 +412,7 @@ function ProfilePageContent() {
                       localStorage.removeItem('user')
                       // Redirect to Cognito logout
                       const clientId = "3cv6n93ibe6f3sfltfjrtf8j17";
-                      const logoutUri = "http://localhost:3000/";
+                      const logoutUri = frontendUrl + "/";
                       const cognitoDomain = "https://auth.mrphilip.cv";
                       window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri)}`;
                     }}>Delete</AlertDialogAction>
