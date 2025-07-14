@@ -42,6 +42,7 @@ import {
 import MailLoader from "@/components/MailLoader"
 import MainLayout from "@/components/layout/main-layout"
 import { useSearchParams } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
 
 interface EmailContent {
   id: number
@@ -80,6 +81,7 @@ interface Mailbox {
 
 function SendEmailPageContent() {
   const dispatch = useDispatch<AppDispatch>()
+  const { toast } = useToast()
   const { isLoading: isSending, sendResult, error: sendError, mailboxes, isLoading: isMailboxesLoading, error: mailboxesError } = useSelector((state: RootState) => state.mailbox)
   const { contents, isLoading: isContentsLoading, error: contentsError } = useSelector((state: RootState) => state.content)
   const { templates, isLoading: isTemplatesLoading, error: templatesError } = useSelector((state: RootState) => state.template)
@@ -226,6 +228,20 @@ function SendEmailPageContent() {
       setManualRecipients([])
       setManualInput("")
       setSelectedSavedEmails([])
+      toast({
+        title: (
+          <span className="flex items-center gap-2 text-lg font-bold text-primary">
+            <Sparkles className="h-6 w-6 text-yellow-400 animate-bounce" />
+            Fiona, sent your email!
+          </span>
+        ),
+        description: (
+          <span className="block text-sm text-muted-foreground mt-1">
+            Your message is on its way. Check your outbox for details!
+          </span>
+        ),
+        variant: "default",
+      })
     } catch (err: any) {
       setLocalError(err || "Failed to send email.")
     }

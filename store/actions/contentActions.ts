@@ -54,11 +54,15 @@ export const generateContent = createAsyncThunk(
     { rejectWithValue },
   ) => {
     try {
-      const response = await api.post("/mail/email-content/generate/", {
-        campaign_id: campaignId,
-        context,
-        tone,
-      })
+      const response = await api.post(
+        "/mail/email-content/generate/",
+        {
+          campaign_id: campaignId,
+          context,
+          tone,
+        },
+        { useLambda: true }
+      )
       return response.data
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error || "Failed to generate content")
@@ -100,9 +104,11 @@ export const updateContentWithAI = createAsyncThunk(
   "content/updateWithAI",
   async ({ id, updateRequirements }: { id: number; updateRequirements: string }, { rejectWithValue }) => {
     try {
-      const response = await api.put(`/mail/email-content/${id}/update-with-ai/`, {
-        update_requirements: updateRequirements,
-      })
+      const response = await api.put(
+        `/mail/email-content/${id}/update-with-ai/`,
+        { update_requirements: updateRequirements },
+        { useLambda: true }
+      )
       return response.data
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error || "Failed to update content with AI")

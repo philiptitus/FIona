@@ -58,11 +58,16 @@ export const createSmartCampaign = createAsyncThunk(
   "campaigns/createSmart",
   async (formData: FormData, { rejectWithValue }) => {
     try {
-      const response = await api.post("/mail/campaigns/smart/", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      })
+      const response = await api.post(
+        "/mail/campaigns/smart/",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          useLambda: true,
+        }
+      )
       return response.data
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error || "Failed to create smart campaign")

@@ -57,11 +57,15 @@ export const generateTemplate = createAsyncThunk(
     { rejectWithValue },
   ) => {
     try {
-      const response = await api.post("/mail/generate-template/", {
-        campaign_id: campaignId,
-        template_name: templateName,
-        requirements,
-      })
+      const response = await api.post(
+        "/mail/generate-template/",
+        {
+          campaign_id: campaignId,
+          template_name: templateName,
+          requirements,
+        },
+        { useLambda: true }
+      )
       return response.data
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error || "Failed to generate template")
@@ -122,9 +126,11 @@ export const updateTemplateWithAI = createAsyncThunk(
   "templates/updateWithAI",
   async ({ id, updateRequirements }: { id: number; updateRequirements: string }, { rejectWithValue }) => {
     try {
-      const response = await api.put(`/mail/templates/${id}/update-with-ai/`, {
-        update_requirements: updateRequirements,
-      })
+      const response = await api.put(
+        `/mail/templates/${id}/update-with-ai/`,
+        { update_requirements: updateRequirements },
+        { useLambda: true }
+      )
       return response.data
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error || "Failed to update template with AI")

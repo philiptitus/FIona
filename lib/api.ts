@@ -1,5 +1,6 @@
 import axios from "axios"
 import { getCookie } from "./utils"
+import { lamdaurl } from "./route"
 
 // Create an axios instance with default config
 const api = axios.create({
@@ -9,9 +10,13 @@ const api = axios.create({
   },
 })
 
-// Request interceptor for adding auth token and CSRF token
+// Request interceptor for adding auth token, CSRF token, and switching to Lambda URL if needed
 api.interceptors.request.use(
   (config) => {
+    // If useLambda is set, override baseURL for this request
+    if ((config as any).useLambda) {
+      config.baseURL = lamdaurl
+    }
     const token = localStorage.getItem("token")
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
