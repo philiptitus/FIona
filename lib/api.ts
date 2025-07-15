@@ -88,6 +88,8 @@ api.interceptors.response.use(
           description: "Please sign in again.",
           variant: "destructive",
         })
+        // Immediately refresh the screen
+        // window.location.reload()
       })
       // Note: Removed automatic redirect - let the app handle navigation
     }

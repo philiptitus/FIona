@@ -53,7 +53,7 @@ export const fetchTemplateById = createAsyncThunk("templates/fetchById", async (
 export const generateTemplate = createAsyncThunk(
   "templates/generate",
   async (
-    { campaignId, templateName, requirements }: { campaignId: number; templateName?: string; requirements: string },
+    { campaignId, templateName, requirements, designContext }: { campaignId: number; templateName?: string; requirements: string; designContext?: string },
     { rejectWithValue },
   ) => {
     try {
@@ -63,6 +63,7 @@ export const generateTemplate = createAsyncThunk(
           campaign_id: campaignId,
           template_name: templateName,
           requirements,
+          ...(designContext ? { design_context: designContext } : {}),
         },
         { useLambda: true }
       )
@@ -124,11 +125,11 @@ export const updateTemplate = createAsyncThunk(
 // Update a template with AI
 export const updateTemplateWithAI = createAsyncThunk(
   "templates/updateWithAI",
-  async ({ id, updateRequirements }: { id: number; updateRequirements: string }, { rejectWithValue }) => {
+  async ({ id, ui_change_context }: { id: number; ui_change_context: string }, { rejectWithValue }) => {
     try {
       const response = await api.put(
         `/mail/templates/${id}/update-with-ai/`,
-        { update_requirements: updateRequirements },
+        { ui_change_context },
         { useLambda: true }
       )
       return response.data
@@ -200,11 +201,27 @@ export const handleFetchTemplateById = (id: number) => async (dispatch: AppDispa
 }
 
 export const handleGenerateTemplate =
-  ({ campaignId, templateName, requirements }: { campaignId: number; templateName?: string; requirements: string }) =>
+  ({ campaignId, templateName, requirements, designContext, id, ui_change_context, isDesignEdit }: { campaignId?: number; templateName?: string; requirements?: string; designContext?: string; id?: number; ui_change_context?: string; isDesignEdit?: boolean }) =>
   async (dispatch: AppDispatch) => {
+    if (isDesignEdit && id && ui_change_context) {
+      // Design-only edit
+      try {
+        const resultAction = await dispatch(updateTemplateWithAI({ id, ui_change_context }))
+        if (updateTemplateWithAI.fulfilled.match(resultAction)) {
+          dispatch(updateTemplateSuccess(resultAction.payload))
+          return resultAction
+        } else {
+          dispatch(updateTemplateFailure(resultAction.payload as string))
+          return resultAction
+        }
+      } catch (error: any) {
+        dispatch(updateTemplateFailure(error.message || "Failed to update template with AI"))
+        return false
+      }
+    }
     dispatch(createTemplateStart())
     try {
-      const resultAction = await dispatch(generateTemplate({ campaignId, templateName, requirements }))
+      const resultAction = await dispatch(generateTemplate({ campaignId, templateName, requirements, designContext }))
       if (generateTemplate.fulfilled.match(resultAction)) {
         dispatch(createTemplateSuccess(resultAction.payload))
         return true

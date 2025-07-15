@@ -41,6 +41,7 @@ export default function TemplatesPage() {
   const [aiDialogOpen, setAIDialogOpen] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
+  const [aiDesignContext, setAIDesignContext] = useState("")
 
   useEffect(() => {
     dispatch({ type: "campaigns/fetchCampaignsStart" })
@@ -293,7 +294,7 @@ export default function TemplatesPage() {
                     </div>
                     {aiError && <div className="text-red-500 text-sm">{aiError}</div>}
                     <Button type="submit" disabled={aiLoading}>{aiLoading ? "Generating..." : "Generate with AI"}</Button>
-                    <Button type="button" variant="outline" onClick={() => { setShowAIForm(false); setAIError(""); setAIRequirements("") }} disabled={aiLoading}>Cancel</Button>
+                    <Button type="button" variant="outline" onClick={() => { setShowAIForm(false); setAIError(""); setAIRequirements(""); }} disabled={aiLoading}>Cancel</Button>
                   </form>
                   {templateLoading && <div className="text-blue-500 mt-2">Generating template...</div>}
                   {templateError && <div className="text-red-500 mt-2">{templateError}</div>}
@@ -308,48 +309,56 @@ export default function TemplatesPage() {
               </DialogTrigger>
               <DialogContent className="max-w-lg w-full">
                 <DialogHeader>
-                  <DialogTitle>Edit Template with AI</DialogTitle>
+                  <DialogTitle>Edit Template Design with AI</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleAIEdit} className="flex flex-col gap-4">
-                  <Input
-                    name="name"
-                    placeholder="Template Name (optional)"
-                    value={form.name}
-                    onChange={handleChange}
-                    disabled={aiLoading}
-                  />
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!editId) return;
+                  setAILoading(true);
+                  setAIError("");
+                  try {
+                    const result = await dispatch(handleGenerateTemplate({
+                      id: editId,
+                      ui_change_context: aiDesignContext,
+                      isDesignEdit: true,
+                    }));
+                    if (result && result.payload && result.meta && result.meta.requestStatus === "fulfilled" && result.payload.id) {
+                      toast({ variant: "success", title: "Template design updated!", description: "Your template design was updated successfully." });
+                      setAIDialogOpen(false);
+                      setAIError("");
+                      setAIRequirements("");
+                      setAIDesignContext("");
+                      setForm({ name: result.payload.name || "", html_content: result.payload.html_content || "" });
+                      setSelectedCampaign(null);
+                      dispatch(handleFetchTemplates());
+                    } else {
+                      toast({ variant: "destructive", title: "Design update failed", description: result.payload?.error || "AI could not update the template design." });
+                    }
+                  } catch (err) {
+                    toast({ variant: "destructive", title: "Design update error", description: err?.message || "An error occurred while updating the template design." });
+                  } finally {
+                    setAILoading(false);
+                  }
+                }} className="flex flex-col gap-4">
                   <div>
-                    <label className="block mb-1 font-medium">Requirements / Prompt</label>
+                    <label className="block mb-1 font-medium">Design Context</label>
                     <textarea
-                      name="requirements"
-                      placeholder="Describe how you want to update this template..."
+                      name="ui_change_context"
+                      placeholder="Describe the design changes you want (e.g., colors, layout, fonts, etc.)"
                       className="border rounded p-2 min-h-[80px] w-full"
-                      value={aiRequirements}
-                      onChange={e => setAIRequirements(e.target.value)}
+                      value={aiDesignContext}
+                      onChange={e => setAIDesignContext(e.target.value)}
                       required
                       disabled={aiLoading}
                     />
                   </div>
-                  <div>
-                    <label className="block mb-1 font-medium">Campaign</label>
-                    <Select value={selectedCampaign ? String(selectedCampaign) : undefined} onValueChange={val => setSelectedCampaign(Number(val))} disabled={aiLoading}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a campaign" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {campaigns.map((c: any) => (
-                          <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                   {aiError && <div className="text-red-500 text-sm">{aiError}</div>}
                   <DialogFooter>
-                    <Button type="submit" disabled={aiLoading} className="w-full">{aiLoading ? "Generating..." : "Update with AI"}</Button>
-                    <Button type="button" variant="outline" onClick={() => { setAIDialogOpen(false); setAIError(""); setAIRequirements("") }} disabled={aiLoading}>Cancel</Button>
+                    <Button type="submit" disabled={aiLoading} className="w-full">{aiLoading ? "Updating..." : "Update Design with AI"}</Button>
+                    <Button type="button" variant="outline" onClick={() => { setAIDialogOpen(false); setAIError(""); setAIDesignContext("") }} disabled={aiLoading}>Cancel</Button>
                   </DialogFooter>
                 </form>
-                {templateLoading && <div className="text-blue-500 mt-2">Generating template...</div>}
+                {templateLoading && <div className="text-blue-500 mt-2">Updating template design...</div>}
                 {templateError && <div className="text-red-500 mt-2">{templateError}</div>}
               </DialogContent>
             </Dialog>
