@@ -126,6 +126,12 @@ export default function CampaignsPage() {
     return statuses[randomIndex]
   }
 
+  // Find the latest campaign by created_at
+  const latestCampaign = filteredCampaigns.reduce((latest, c) => {
+    if (!latest) return c;
+    return new Date(c.created_at) > new Date(latest.created_at) ? c : latest;
+  }, null as any)
+
   return (
     <MainLayout>
       <div className="flex flex-col gap-6">
@@ -237,6 +243,7 @@ export default function CampaignsPage() {
                     <div className="divide-y">
                       {paginatedCampaigns.map((campaign) => {
                         const status = getCampaignStatus(campaign)
+                        const isLatest = latestCampaign && campaign.id === latestCampaign.id
                         return (
                           <Card
                             key={campaign.id}
@@ -244,7 +251,10 @@ export default function CampaignsPage() {
                             onClick={() => router.push(`/campaigns/${campaign.id}`)}
                           >
                             <CardHeader className="flex flex-row items-center justify-between">
-                              <CardTitle className="truncate max-w-[60%]" title={campaign.name}>{campaign.name}</CardTitle>
+                              <div className="flex items-center gap-2">
+                                <CardTitle className="truncate max-w-[60%]" title={campaign.name}>{campaign.name}</CardTitle>
+                                {isLatest && <Badge variant="default">Latest</Badge>}
+                              </div>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" size="icon" className="opacity-70 group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>

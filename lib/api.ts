@@ -88,8 +88,8 @@ api.interceptors.response.use(
           description: "Please sign in again.",
           variant: "destructive",
         })
-        // Immediately refresh the screen
-        // window.location.reload()
+        // Redirect to login page after showing toast
+        window.location.href = "/auth/login";
       })
       // Note: Removed automatic redirect - let the app handle navigation
     }

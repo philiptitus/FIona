@@ -43,12 +43,23 @@ export default function NewCampaignPage() {
         formData.append("image", image)
       }
 
-      const success = await dispatch(handleCreateCampaign(formData))
+      let created = null;
+      try {
+        created = await dispatch(handleCreateCampaign(formData)).unwrap();
+      } catch (e) {
+        created = false;
+      }
 
-      if (success) {
+      if (created && typeof created === 'object' && created.id) {
         toast({
           title: "Campaign created",
-          description: "Your campaign has been created successfully.",
+          description: "Your campaign has been created successfully. You can click on 'View Template' or 'View Content' to visit your email and customize.",
+        })
+        router.push(`/campaigns/${created.id}`)
+      } else if (created) {
+        toast({
+          title: "Campaign created",
+          description: "Your campaign has been created successfully. You can click on 'View Template' or 'View Content' to visit your email and customize.",
         })
         router.push("/campaigns")
       } else {

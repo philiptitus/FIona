@@ -53,11 +53,16 @@ export default function SmartCampaignPage() {
       const resultAction = await dispatch(createSmartCampaign(formData))
 
       if (createSmartCampaign.fulfilled.match(resultAction)) {
+        const campaignId = resultAction.payload?.dispatch?.campaign?.id || resultAction.payload?.id
         toast({
           title: "Smart campaign created",
-          description: "Your AI-powered campaign has been created successfully.",
+          description: "Your AI-powered campaign has been created successfully. You can click on 'View Template' or 'View Content' to visit your email and customize.",
         })
-        router.push("/campaigns")
+        if (campaignId) {
+          router.push(`/campaigns/${campaignId}`)
+        } else {
+          router.push("/campaigns")
+        }
       } else {
         toast({
           variant: "destructive",
