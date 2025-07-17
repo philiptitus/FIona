@@ -212,44 +212,65 @@ export default function TemplatesPage() {
                   <CardTitle>{editId ? "Edit Template" : "Create Template"}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                    <Input
-                      name="name"
-                      placeholder="Template Name"
-                      value={form.name}
-                      onChange={handleChange}
-                      required
-                    />
-                    <div>
-                      <label className="mb-1 block font-medium">HTML Content</label>
-                      <MiniHtmlEditor
-                        value={form.html_content}
-                        onChange={val => setForm(f => ({ ...f, html_content: val }))}
-                        height={180}
-                      />
+                  <div className="flex flex-col md:flex-row gap-8">
+                    {/* Edit Form */}
+                    <form onSubmit={handleSubmit} className="flex-1 min-w-0">
+                      <div className="mb-4">
+                        <label className="block mb-1 font-medium">Subject</label>
+                        <Input
+                          name="name"
+                          placeholder="Subject"
+                          value={form.name}
+                          onChange={handleChange}
+                          required
+                        />
+                      </div>
+                      <div className="mb-4">
+                        <label className="mb-1 block font-medium">HTML Content</label>
+                        <MiniHtmlEditor
+                          value={form.html_content}
+                          onChange={val => setForm(f => ({ ...f, html_content: val }))}
+                          height={180}
+                        />
+                      </div>
+                      <div className="mb-4">
+                        <label className="block mb-1 font-medium">Campaign</label>
+                        <Select value={selectedCampaign ? String(selectedCampaign) : undefined} onValueChange={val => setSelectedCampaign(Number(val))}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a campaign" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {campaigns.map((c: any) => (
+                              <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex gap-2 mt-4">
+                        <Button type="submit">{editId ? "Update" : "Create"}</Button>
+                        <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditId(null); setForm({ name: "", html_content: "" }); setSelectedCampaign(null) }}>Cancel</Button>
+                      </div>
+                    </form>
+                    {/* Live Email Preview */}
+                    <div className="flex-1 min-w-0">
+                      <div className="mb-2 font-semibold text-lg">Live Email Preview</div>
+                      <div className="rounded-lg border bg-gray-50 dark:bg-zinc-800 p-6 shadow-inner">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="rounded-full bg-blue-200 dark:bg-blue-900 w-10 h-10 flex items-center justify-center font-bold text-lg text-blue-900 dark:text-blue-100">
+                            {form.name?.[0] || "E"}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-base text-gray-900 dark:text-gray-100">From: <span className="text-gray-700 dark:text-gray-300">Your Campaign</span></div>
+                            <div className="text-xs text-gray-500">To: [Recipient]</div>
+                          </div>
+                        </div>
+                        <div className="mb-2">
+                          <span className="block text-lg font-bold text-gray-900 dark:text-gray-100">{form.name || "(No Subject)"}</span>
+                        </div>
+                        <HtmlPreview html={form.html_content || ""} />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block mb-1 font-medium">Campaign</label>
-                      <Select value={selectedCampaign ? String(selectedCampaign) : undefined} onValueChange={val => setSelectedCampaign(Number(val))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a campaign" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {campaigns.map((c: any) => (
-                            <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="mb-1 block font-medium">Preview</label>
-                      <HtmlPreview html={form.html_content} />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button type="submit">{editId ? "Update" : "Create"}</Button>
-                      <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditId(null); setForm({ name: "", html_content: "" }); setSelectedCampaign(null) }}>Cancel</Button>
-                    </div>
-                  </form>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -307,57 +328,78 @@ export default function TemplatesPage() {
                   🤖 Edit with AI
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-lg w-full">
+              <DialogContent className="max-w-3xl w-full">
                 <DialogHeader>
                   <DialogTitle>Edit Template Design with AI</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!editId) return;
-                  setAILoading(true);
-                  setAIError("");
-                  try {
-                    const result = await dispatch(handleGenerateTemplate({
-                      id: editId,
-                      ui_change_context: aiDesignContext,
-                      isDesignEdit: true,
-                    }));
-                    if (result && result.payload && result.meta && result.meta.requestStatus === "fulfilled" && result.payload.id) {
-                      toast({ variant: "success", title: "Template design updated!", description: "Your template design was updated successfully." });
-                      setAIDialogOpen(false);
-                      setAIError("");
-                      setAIRequirements("");
-                      setAIDesignContext("");
-                      setForm({ name: result.payload.name || "", html_content: result.payload.html_content || "" });
-                      setSelectedCampaign(null);
-                      dispatch(handleFetchTemplates());
-                    } else {
-                      toast({ variant: "destructive", title: "Design update failed", description: result.payload?.error || "AI could not update the template design." });
+                <div className="flex flex-col md:flex-row gap-8">
+                  {/* AI Prompt Form */}
+                  <form className="flex-1 min-w-0" onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!editId) return;
+                    setAILoading(true);
+                    setAIError("");
+                    try {
+                      const result = await dispatch(handleGenerateTemplate({
+                        id: editId,
+                        ui_change_context: aiDesignContext,
+                        isDesignEdit: true,
+                      }));
+                      if (result && result.payload && result.meta && result.meta.requestStatus === "fulfilled" && result.payload.id) {
+                        toast({ variant: "success", title: "Template design updated!", description: "Your template design was updated successfully." });
+                        setAIDesignContext("");
+                        dispatch(handleFetchTemplates());
+                      } else {
+                        setAIError(result.payload?.error || "AI could not update the template design.");
+                      }
+                    } catch (err) {
+                      setAIError(err?.message || "An error occurred while updating the template design.");
+                    } finally {
+                      setAILoading(false);
                     }
-                  } catch (err) {
-                    toast({ variant: "destructive", title: "Design update error", description: err?.message || "An error occurred while updating the template design." });
-                  } finally {
-                    setAILoading(false);
-                  }
-                }} className="flex flex-col gap-4">
-                  <div>
-                    <label className="block mb-1 font-medium">Design Context</label>
-                    <textarea
-                      name="ui_change_context"
-                      placeholder="Describe the design changes you want (e.g., colors, layout, fonts, etc.)"
-                      className="border rounded p-2 min-h-[80px] w-full"
-                      value={aiDesignContext}
-                      onChange={e => setAIDesignContext(e.target.value)}
-                      required
-                      disabled={aiLoading}
-                    />
+                  }}>
+                    <div className="mb-4 p-2 bg-blue-50 border border-blue-200 rounded text-blue-900 text-sm">
+                      <b>Note:</b> This prompt is for <b>design changes only</b> (e.g., layout, colors, fonts). <br />
+                      <span className="text-blue-700">It will not change the content or words of your template.</span>
+                    </div>
+                    <div className="mb-4">
+                      <label className="block mb-1 font-medium">Design Context / Prompt</label>
+                      <textarea
+                        name="ui_change_context"
+                        placeholder="Describe the design changes you want (e.g., colors, layout, fonts, etc.)"
+                        className="border rounded p-2 min-h-[80px] w-full"
+                        value={aiDesignContext}
+                        onChange={e => setAIDesignContext(e.target.value)}
+                        required
+                        disabled={aiLoading}
+                      />
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                      <Button type="submit" disabled={aiLoading}>{aiLoading ? "Updating..." : "Update Design with AI"}</Button>
+                      <Button type="button" variant="outline" onClick={() => { setAIDialogOpen(false); setAIError(""); setAIDesignContext("") }} disabled={aiLoading}>Cancel</Button>
+                    </div>
+                    {aiError && <div className="text-red-500 text-sm mt-2">{aiError}</div>}
+                  </form>
+                  {/* Live Email Preview */}
+                  <div className="flex-1 min-w-0">
+                    <div className="mb-2 font-semibold text-lg">Live Email Preview</div>
+                    <div className="rounded-lg border bg-gray-50 dark:bg-zinc-800 p-6 shadow-inner">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="rounded-full bg-blue-200 dark:bg-blue-900 w-10 h-10 flex items-center justify-center font-bold text-lg text-blue-900 dark:text-blue-100">
+                          {form.name?.[0] || "E"}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-base text-gray-900 dark:text-gray-100">From: <span className="text-gray-700 dark:text-gray-300">Your Campaign</span></div>
+                          <div className="text-xs text-gray-500">To: [Recipient]</div>
+                        </div>
+                      </div>
+                      <div className="mb-2">
+                        <span className="block text-lg font-bold text-gray-900 dark:text-gray-100">{form.name || "(No Subject)"}</span>
+                      </div>
+                      <HtmlPreview html={templates.find(t => t.id === editId)?.html_content || form.html_content || ""} />
+                    </div>
                   </div>
-                  {aiError && <div className="text-red-500 text-sm">{aiError}</div>}
-                  <DialogFooter>
-                    <Button type="submit" disabled={aiLoading} className="w-full">{aiLoading ? "Updating..." : "Update Design with AI"}</Button>
-                    <Button type="button" variant="outline" onClick={() => { setAIDialogOpen(false); setAIError(""); setAIDesignContext("") }} disabled={aiLoading}>Cancel</Button>
-                  </DialogFooter>
-                </form>
+                </div>
                 {templateLoading && <div className="text-blue-500 mt-2">Updating template design...</div>}
                 {templateError && <div className="text-red-500 mt-2">{templateError}</div>}
               </DialogContent>

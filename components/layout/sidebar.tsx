@@ -59,6 +59,12 @@ export default function Sidebar({ isMobile, onNavClick }: SidebarProps) {
       icon: Send,
     },
     {
+      name: "Sent",
+      href: "/sent-emails",
+      icon: Send,
+      dataTour: "sidebar-sent",
+    },
+    {
       name: "Analytics",
       href: "/analytics",
       icon: BarChart3,

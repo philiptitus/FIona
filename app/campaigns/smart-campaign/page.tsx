@@ -95,7 +95,11 @@ export default function SmartCampaignPage() {
 
   return (
     <MainLayout>
-      {isLoading && <MailLoader />}
+      {isLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/70 dark:bg-black/70">
+          <MailLoader />
+        </div>
+      )}
       <div className="flex flex-col gap-6 max-h-[100vh] overflow-y-auto px-2 md:px-0" style={{ minHeight: '0' }}>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Create Smart Campaign</h1>

@@ -16,6 +16,7 @@ import settingsReducer from "./settingsSlice"
 import metricsReducer from "./slices/metricsSlice"
 import notificationsReducer from "./slices/notificationsSlice"
 import tasksReducer from "./slices/tasksSlice"
+import sentEmailReducer from "./slices/sentEmailSlice"
 import { authMiddleware } from "./middleware/authMiddleware"
 import mailboxReducer from "./slices/mailboxSlice"
 
@@ -31,6 +32,7 @@ const rootReducer = {
   notifications: notificationsReducer,
   tasks: tasksReducer,
   mailbox: mailboxReducer,
+  sentEmail: sentEmailReducer,
 } as const
 
 type StoreMiddleware = Middleware<{}, ReturnType<typeof store.getState>>
