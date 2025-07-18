@@ -14,6 +14,13 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { handleFetchContentById } from '@/store/actions/contentActions';
 import { handleFetchTemplates } from '@/store/actions/templateActions';
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
+import React from "react"
+import AddEmailDialog from "@/components/emails/AddEmailDialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Send } from "lucide-react"
+import { handleSendDispatch } from "@/store/actions/dispatchActions"
+import { handleFetchMailboxes } from "@/store/actions/mailboxActions"
 
 export default function CampaignDetailPage() {
   const params = useParams()
@@ -23,20 +30,51 @@ export default function CampaignDetailPage() {
   const { emails: allEmails, isLoading: emailsLoading } = useSelector((state: RootState) => state.emails)
   const campaignId = Number(params.id)
   const campaign = campaigns.find((c) => c.id === campaignId)
+  const [showAddEmailDialog, setShowAddEmailDialog] = React.useState(false)
+  const [sendModalOpen, setSendModalOpen] = React.useState(false)
+  const [selectedMailbox, setSelectedMailbox] = React.useState<number | null>(null)
+  const [selectedType, setSelectedType] = React.useState<"content" | "template" | "">("")
+  const [sendError, setSendError] = React.useState("")
+  const { mailboxes, isLoading: isMailboxesLoading } = useSelector((state: RootState) => state.mailbox)
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!campaign) {
       dispatch(handleFetchCampaignById(campaignId))
     }
     dispatch(handleFetchEmails(campaignId))
   }, [campaign, dispatch, campaignId])
 
+  React.useEffect(() => {
+    if (sendModalOpen) {
+      dispatch(handleFetchMailboxes())
+      setSelectedMailbox(null)
+      setSelectedType("")
+      setSendError("")
+    }
+  }, [sendModalOpen, dispatch])
+
+  const handleSendModal = async () => {
+    if (!campaignId || !selectedMailbox || !selectedType) {
+      setSendError("Please select a mailbox and type.")
+      return
+    }
+    setSendError("")
+    const result = await dispatch(handleSendDispatch(campaignId, selectedMailbox, selectedType) as any)
+    if (result && result.success >= 0) {
+      setSendModalOpen(false)
+    } else {
+      setSendError(result?.error || "Failed to send dispatch.")
+    }
+  }
+
+  const campaignEmails = allEmails.filter((email) => email.campaign === campaignId)
+
+  const hasSendable = (campaign?.latest_email_template_id || campaign?.latest_email_content_id) && campaignEmails.length > 0
+
   if (!campaign && !isLoading) {
     router.replace("/campaigns")
     return null
   }
-
-  const campaignEmails = allEmails.filter((email) => email.campaign === campaignId)
 
   const handleViewTemplate = async (id: number) => {
     await dispatch(handleFetchTemplates());
@@ -101,6 +139,24 @@ export default function CampaignDetailPage() {
                 </div>
               </div>
             )}
+            {/* Inline alert/banner if no emails */}
+            {!emailsLoading && campaignEmails.length === 0 && (
+              <Alert variant="destructive" className="mb-6">
+                <AlertTitle>No Emails Attached</AlertTitle>
+                <AlertDescription>
+                  This campaign currently does not have any valid emails attached. To begin sending, add emails to this campaign.
+                  <div className="mt-4">
+                    <Button
+                      variant="default"
+                      onClick={() => setShowAddEmailDialog(true)}
+                    >
+                      Add Emails to Campaign
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+            <AddEmailDialog open={showAddEmailDialog} onOpenChange={setShowAddEmailDialog} initialCampaignId={campaignId} />
             {/* Collapsible Associated Emails Section */}
             <Accordion type="single" collapsible defaultValue="emails">
               <AccordionItem value="emails">
@@ -109,20 +165,75 @@ export default function CampaignDetailPage() {
               {emailsLoading ? (
                 <div>Loading emails...</div>
               ) : campaignEmails.length === 0 ? (
-                <div className="text-muted-foreground">No emails associated with this campaign.</div>
+                <div className="flex flex-col items-center gap-4 py-8">
+                  <div className="text-muted-foreground mb-2">No emails associated with this campaign.</div>
+                </div>
               ) : (
-                    <ul className="list-disc pl-6 mt-2 max-h-64 overflow-y-auto">
-                  {campaignEmails.map((email) => (
-                    <li key={email.id} className="mb-1">
-                      <span className="font-medium">{email.organization_name}</span>: {email.email}
-                      {email.context && <span className="text-muted-foreground"> ({email.context})</span>}
-                    </li>
-                  ))}
-                </ul>
-              )}
+                    <>
+                      <ul className="list-disc pl-6 mt-2 max-h-64 overflow-y-auto">
+                        {campaignEmails.map((email) => (
+                          <li key={email.id} className="mb-1">
+                            <span className="font-medium">{email.organization_name}</span>: {email.email}
+                            {email.context && <span className="text-muted-foreground"> ({email.context})</span>}
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="flex justify-between items-center mt-6">
+                        <Button variant="outline" onClick={() => router.push("/emails")}>You can add more emails here</Button>
+                        {hasSendable && (
+                          <Button variant="primary" className="flex items-center gap-2" onClick={() => setSendModalOpen(true)}>
+                            <Send className="w-4 h-4" /> Send Out Emails
+                          </Button>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
+            <Dialog open={sendModalOpen} onOpenChange={setSendModalOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Send Dispatch</DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <label className="block mb-1 font-medium">Select Mailbox</label>
+                    {isMailboxesLoading ? (
+                      <div>Loading mailboxes...</div>
+                    ) : (
+                      <select
+                        className="w-full border rounded px-3 py-2"
+                        value={selectedMailbox || ""}
+                        onChange={e => setSelectedMailbox(Number(e.target.value))}
+                      >
+                        <option value="">Select mailbox...</option>
+                        {mailboxes.map((mb: any) => (
+                          <option key={mb.id} value={mb.id}>{mb.email} ({mb.provider})</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block mb-1 font-medium">Type</label>
+                    <select
+                      className="w-full border rounded px-3 py-2"
+                      value={selectedType}
+                      onChange={e => setSelectedType(e.target.value as "content" | "template")}
+                    >
+                      <option value="">Select type...</option>
+                      <option value="content">Content (plain text)</option>
+                      <option value="template">Template (HTML)</option>
+                    </select>
+                  </div>
+                  {sendError && <div className="text-red-600 text-sm">{sendError}</div>}
+                </div>
+                <DialogFooter>
+                  <Button onClick={handleSendModal}>Send</Button>
+                  <Button variant="outline" onClick={() => setSendModalOpen(false)}>Cancel</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
       </div>

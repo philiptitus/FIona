@@ -14,6 +14,9 @@ import { useDispatch } from "react-redux"
 import { loginSuccess,  } from "@/store/slices/authSlice"
 import Cookies from "js-cookie"
 import { handleUpdateProfile } from "@/store/actions/authActions"
+import { useToast } from "@/components/ui/use-toast"
+import React from "react"
+import { toast } from "sonner"
 const FEATURES = [
   {
     icon: Zap,
@@ -93,6 +96,7 @@ export default function LandingPage() {
   const auth = useAuth()
   const router = useRouter()
   const dispatch = useDispatch()
+  const { toast } = useToast()
 
   // Handle Cognito callback
   useEffect(() => {
