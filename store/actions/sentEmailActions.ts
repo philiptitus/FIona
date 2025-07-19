@@ -14,7 +14,7 @@ import {
 export const handleFetchSentEmails = (filters: Record<string, any> = {}, pageUrl: string | null = null) => async (dispatch: AppDispatch) => {
   dispatch(fetchSentEmailsStart())
   try {
-    let url = pageUrl || "/sent-emails/"
+    let url = pageUrl || "/mail/sent-emails/"
     const params = new URLSearchParams()
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== "") {
@@ -25,7 +25,11 @@ export const handleFetchSentEmails = (filters: Record<string, any> = {}, pageUrl
       url += `?${params.toString()}`
     }
     const response = await api.get(url)
-    dispatch(fetchSentEmailsSuccess(response.data))
+    let data = response.data;
+    if (Array.isArray(data)) {
+      data = { results: data, count: data.length, next: null, previous: null };
+    }
+    dispatch(fetchSentEmailsSuccess(data))
   } catch (error: any) {
     dispatch(fetchSentEmailsFailure(error.response?.data?.error || "Failed to fetch sent emails"))
   }
@@ -40,7 +44,7 @@ export const handleSetSentEmailFilters = (filters: Record<string, any>) => (disp
 export const handleFetchSentEmailDetail = (id: number) => async (dispatch: AppDispatch) => {
   dispatch(fetchSentEmailDetailStart())
   try {
-    const response = await api.get(`/sent-emails/${id}/`)
+    const response = await api.get(`/mail/sent-emails/${id}/`)
     dispatch(fetchSentEmailDetailSuccess(response.data))
   } catch (error: any) {
     dispatch(fetchSentEmailDetailFailure(error.response?.data?.error || "Failed to fetch sent email detail"))

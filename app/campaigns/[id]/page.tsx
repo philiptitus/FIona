@@ -18,7 +18,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import React from "react"
 import AddEmailDialog from "@/components/emails/AddEmailDialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Send } from "lucide-react"
+import { Send, Loader2, CheckCircle2, XCircle } from "lucide-react"
 import { handleSendDispatch } from "@/store/actions/dispatchActions"
 import { handleFetchMailboxes } from "@/store/actions/mailboxActions"
 
@@ -28,25 +28,28 @@ export default function CampaignDetailPage() {
   const dispatch = useDispatch<AppDispatch>()
   const { campaigns, isLoading } = useSelector((state: RootState) => state.campaigns)
   const { emails: allEmails, isLoading: emailsLoading } = useSelector((state: RootState) => state.emails)
+  const { dispatches } = useSelector((state: RootState) => state.dispatch);
   const campaignId = Number(params.id)
-  const campaign = campaigns.find((c) => c.id === campaignId)
+  const campaign = campaigns.find((c: any) => c.id === campaignId)
   const [showAddEmailDialog, setShowAddEmailDialog] = React.useState(false)
   const [sendModalOpen, setSendModalOpen] = React.useState(false)
   const [selectedMailbox, setSelectedMailbox] = React.useState<number | null>(null)
   const [selectedType, setSelectedType] = React.useState<"content" | "template" | "">("")
   const [sendError, setSendError] = React.useState("")
   const { mailboxes, isLoading: isMailboxesLoading } = useSelector((state: RootState) => state.mailbox)
+  const [isSending, setIsSending] = React.useState(false)
+  const [sendSuccess, setSendSuccess] = React.useState(false)
 
   React.useEffect(() => {
     if (!campaign) {
-      dispatch(handleFetchCampaignById(campaignId))
+      dispatch(handleFetchCampaignById(campaignId) as any)
     }
-    dispatch(handleFetchEmails(campaignId))
+    dispatch(handleFetchEmails(campaignId) as any)
   }, [campaign, dispatch, campaignId])
 
   React.useEffect(() => {
     if (sendModalOpen) {
-      dispatch(handleFetchMailboxes())
+      dispatch(handleFetchMailboxes() as any)
       setSelectedMailbox(null)
       setSelectedType("")
       setSendError("")
@@ -58,16 +61,27 @@ export default function CampaignDetailPage() {
       setSendError("Please select a mailbox and type.")
       return
     }
+    if (!campaign?.dispatch_id) {
+      setSendError("No dispatch found for this campaign.")
+      return
+    }
     setSendError("")
-    const result = await dispatch(handleSendDispatch(campaignId, selectedMailbox, selectedType) as any)
+    setIsSending(true)
+    setSendSuccess(false)
+    const result = await dispatch(handleSendDispatch(campaign.dispatch_id, selectedMailbox, selectedType) as any)
+    setIsSending(false)
     if (result && result.success >= 0) {
-      setSendModalOpen(false)
+      setSendSuccess(true)
+      setTimeout(() => {
+        setSendModalOpen(false)
+        setSendSuccess(false)
+      }, 1800)
     } else {
       setSendError(result?.error || "Failed to send dispatch.")
     }
   }
 
-  const campaignEmails = allEmails.filter((email) => email.campaign === campaignId)
+  const campaignEmails = allEmails.filter((email: any) => email.campaign === campaignId)
 
   const hasSendable = (campaign?.latest_email_template_id || campaign?.latest_email_content_id) && campaignEmails.length > 0
 
@@ -77,11 +91,11 @@ export default function CampaignDetailPage() {
   }
 
   const handleViewTemplate = async (id: number) => {
-    await dispatch(handleFetchTemplates());
+    await dispatch(handleFetchTemplates() as any);
     router.push(`/templates/${id}`);
   };
   const handleViewContent = async (id: number) => {
-    await dispatch(handleFetchContentById(id));
+    await dispatch(handleFetchContentById(id) as any);
     router.push(`/content/${id}`);
   };
 
@@ -171,7 +185,7 @@ export default function CampaignDetailPage() {
               ) : (
                     <>
                       <ul className="list-disc pl-6 mt-2 max-h-64 overflow-y-auto">
-                        {campaignEmails.map((email) => (
+                        {campaignEmails.map((email: any) => (
                           <li key={email.id} className="mb-1">
                             <span className="font-medium">{email.organization_name}</span>: {email.email}
                             {email.context && <span className="text-muted-foreground"> ({email.context})</span>}
@@ -181,7 +195,7 @@ export default function CampaignDetailPage() {
                       <div className="flex justify-between items-center mt-6">
                         <Button variant="outline" onClick={() => router.push("/emails")}>You can add more emails here</Button>
                         {hasSendable && (
-                          <Button variant="primary" className="flex items-center gap-2" onClick={() => setSendModalOpen(true)}>
+                          <Button variant="default" className="flex items-center gap-2" onClick={() => setSendModalOpen(true)}>
                             <Send className="w-4 h-4" /> Send Out Emails
                           </Button>
                         )}
@@ -196,47 +210,85 @@ export default function CampaignDetailPage() {
                 <DialogHeader>
                   <DialogTitle>Send Dispatch</DialogTitle>
                 </DialogHeader>
-                <div className="flex flex-col gap-4">
-                  <div>
-                    <label className="block mb-1 font-medium">Select Mailbox</label>
-                    {isMailboxesLoading ? (
-                      <div>Loading mailboxes...</div>
-                    ) : (
-                      <select
-                        className="w-full border rounded px-3 py-2"
-                        value={selectedMailbox || ""}
-                        onChange={e => setSelectedMailbox(Number(e.target.value))}
-                      >
-                        <option value="">Select mailbox...</option>
-                        {mailboxes.map((mb: any) => (
-                          <option key={mb.id} value={mb.id}>{mb.email} ({mb.provider})</option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block mb-1 font-medium">Type</label>
-                    <select
-                      className="w-full border rounded px-3 py-2"
-                      value={selectedType}
-                      onChange={e => setSelectedType(e.target.value as "content" | "template")}
-                    >
-                      <option value="">Select type...</option>
-                      <option value="content">Content (plain text)</option>
-                      <option value="template">Template (HTML)</option>
-                    </select>
-                  </div>
-                  {sendError && <div className="text-red-600 text-sm">{sendError}</div>}
+                <div className="flex flex-col gap-4 min-h-[120px]">
+                  {isSending ? (
+                    <div className="flex flex-col items-center justify-center py-8">
+                      <Loader2 className="animate-spin w-10 h-10 text-primary mb-2" />
+                      <div className="text-primary font-semibold">Sending...</div>
+                    </div>
+                  ) : sendSuccess ? (
+                    <div className="flex flex-col items-center justify-center py-8 animate-fade-in">
+                      <CheckCircle2 className="w-12 h-12 text-green-500 mb-2 animate-pop" />
+                      <div className="text-green-600 font-semibold text-lg">Emails sent successfully!</div>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="block mb-1 font-medium">Select Mailbox</label>
+                        {isMailboxesLoading ? (
+                          <div>Loading mailboxes...</div>
+                        ) : (
+                          <select
+                            className="w-full border rounded px-3 py-2"
+                            value={selectedMailbox || ""}
+                            onChange={e => setSelectedMailbox(Number(e.target.value))}
+                          >
+                            <option value="">Select mailbox...</option>
+                            {mailboxes.map((mb: any) => (
+                              <option key={mb.id} value={mb.id}>{mb.email} ({mb.provider})</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block mb-1 font-medium">Type</label>
+                        <select
+                          className="w-full border rounded px-3 py-2"
+                          value={selectedType}
+                          onChange={e => setSelectedType(e.target.value as "content" | "template")}
+                        >
+                          <option value="">Select type...</option>
+                          <option value="content">Content (plain text)</option>
+                          <option value="template">Template (HTML)</option>
+                        </select>
+                      </div>
+                      {sendError && (
+                        <div className="flex items-center gap-2 text-red-600 text-sm mt-2 animate-fade-in">
+                          <XCircle className="w-5 h-5" />
+                          <span>{sendError}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
-                <DialogFooter>
-                  <Button onClick={handleSendModal}>Send</Button>
-                  <Button variant="outline" onClick={() => setSendModalOpen(false)}>Cancel</Button>
-                </DialogFooter>
+                {!isSending && !sendSuccess && (
+                  <DialogFooter>
+                    <Button onClick={handleSendModal} disabled={isSending}>Send</Button>
+                    <Button variant="outline" onClick={() => setSendModalOpen(false)} disabled={isSending}>Cancel</Button>
+                  </DialogFooter>
+                )}
               </DialogContent>
             </Dialog>
           </CardContent>
         </Card>
       </div>
+      <style jsx global>{`
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fade-in {
+  animation: fade-in 0.5s;
+}
+@keyframes pop {
+  0% { transform: scale(0.7); opacity: 0; }
+  80% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-pop {
+  animation: pop 0.4s;
+}
+`}</style>
     </MainLayout>
   )
 }

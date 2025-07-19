@@ -1,4 +1,5 @@
 "use client"
+import React from "react";
 import { useEffect } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { handleFetchSentEmails } from "@/store/actions/sentEmailActions"
@@ -10,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Mail, CheckCircle, XCircle } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import EmailDetailModal from "./EmailDetailModal";
 
 function formatDate(dateStr: string) {
   const date = new Date(dateStr)
@@ -18,12 +20,20 @@ function formatDate(dateStr: string) {
 
 export default function SentEmailsPage() {
   const dispatch = useDispatch<AppDispatch>()
-  const sentEmails = useSelector((state: RootState) => state.sentEmail.list.items)
+  const sentEmails = useSelector((state: RootState) => state.sentEmail.list.items) || [];
   const isLoading = useSelector((state: RootState) => state.sentEmail.list.isLoading)
+
+  const [selectedEmailId, setSelectedEmailId] = React.useState<number | null>(null);
+  const [modalOpen, setModalOpen] = React.useState(false);
 
   useEffect(() => {
     dispatch(handleFetchSentEmails())
   }, [dispatch])
+
+  const handleEmailClick = (id: number) => {
+    setSelectedEmailId(id);
+    setModalOpen(true);
+  };
 
   return (
     <MainLayout>
@@ -48,12 +58,12 @@ export default function SentEmailsPage() {
                   </div>
                 </div>
               ))
-            ) : sentEmails.length > 0 ? (
+            ) : sentEmails && sentEmails.length > 0 ? (
               sentEmails.map((email: any) => (
-                <Link
+                <button
                   key={email.id}
-                  href={`/sent-emails/${email.id}`}
-                  className="flex items-center gap-4 px-6 py-4 hover:bg-muted/60 transition group"
+                  onClick={() => handleEmailClick(email.id)}
+                  className="flex items-center gap-4 px-6 py-4 hover:bg-muted/60 transition group w-full text-left focus:outline-none"
                   style={{ textDecoration: "none" }}
                 >
                   <div className="flex-shrink-0">
@@ -84,7 +94,7 @@ export default function SentEmailsPage() {
                       </Badge>
                     )}
                   </div>
-                </Link>
+                </button>
               ))
             ) : (
               <div className="flex flex-col items-center justify-center p-12 text-center gap-4">
@@ -94,6 +104,10 @@ export default function SentEmailsPage() {
                 <Button asChild variant="default" className="mt-2">
                   <Link href="/campaigns/new">Send Your First Campaign</Link>
                 </Button>
+                {/* Debug: show raw data if present but not rendering */}
+                {sentEmails && Array.isArray(sentEmails) && sentEmails.length === 0 ? (
+                  <pre className="text-xs text-left mt-4 bg-zinc-100 dark:bg-zinc-800 p-2 rounded max-h-40 overflow-auto">{JSON.stringify(sentEmails, null, 2)}</pre>
+                ) : null}
               </div>
             )}
           </div>
@@ -109,6 +123,7 @@ export default function SentEmailsPage() {
           </div>
         </div>
       </div>
+      <EmailDetailModal open={modalOpen} onOpenChange={setModalOpen} emailId={selectedEmailId} />
     </MainLayout>
   )
 } 
