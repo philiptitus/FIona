@@ -14,6 +14,9 @@ import {
   passwordResetStart,
   passwordResetSuccess,
   passwordResetFailure,
+  fetchProfileStart,
+  fetchProfileSuccess,
+  fetchProfileFailure,
 } from "../slices/authSlice"
 import api from "@/lib/api"
 import { API_ENDPOINTS } from "@/lib/constants/api"
@@ -147,10 +150,22 @@ export const handleRegister = createAsyncThunk<
   }
 )
 
+export const fetchUserProfile = createAsyncThunk<User, void, { dispatch: AppDispatch }>(
+  "auth/fetchProfile",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get(API_ENDPOINTS.AUTH.PROFILE)
+      return response.data
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error))
+    }
+  }
+)
+
 export const handleLogout = () => (dispatch: AppDispatch) => {
   removeAuthCookies()
-  delete api.defaults.headers.common["Authorization"]
   dispatch(logout())
+  window.location.href = "/login"
 }
 
 export const handleUpdateProfile = createAsyncThunk<

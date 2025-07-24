@@ -12,6 +12,7 @@ import { Mail, User, Lock, Eye, EyeOff, Shield, Download, Trash2, Edit2 } from "
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Card,
   CardContent,
@@ -32,7 +33,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/components/ui/use-toast"
-import { handleUpdateProfile, deleteUserAccount } from "@/store/actions/authActions"
+import { handleUpdateProfile, deleteUserAccount, fetchUserProfile } from "@/store/actions/authActions"
 import type { RootState, AppDispatch } from "@/store/store"
 import { validatePassword, validateEmail } from "@/lib/utils/validation"
 import { fetchMailboxes, startGmailOAuth, finishGmailOAuth, deleteMailbox } from '@/store/actions/mailboxActions'
@@ -54,9 +55,11 @@ function getInitials(name: string, email: string) {
 }
 
 function ProfilePageContent() {
-  const { user, isLoading } = useSelector((state: RootState) => state.auth)
+  const { user, isProfileLoading } = useSelector((state: RootState) => state.auth);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [name, setName] = useState(user?.first_name || "")
   const [email, setEmail] = useState(user?.email || "")
+  const [bio, setBio] = useState(user?.bio || "")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [formError, setFormError] = useState("")
@@ -85,14 +88,40 @@ function ProfilePageContent() {
   const [deleteError, setDeleteError] = useState("")
   const [deleteSuccess, setDeleteSuccess] = useState(false)
 
-  // Add state for localStorage user info
-  const [localUser, setLocalUser] = useState<any>(null)
+  // State for form fields
+  // const [name, setName] = useState('')
+  // const [email, setEmail] = useState('')
+  // const [password, setPassword] = useState('')
 
   useEffect(() => {
-    // Could fetch activity/preferences here if backend supports
-    setActivity(["Logged in", "Updated profile", "Changed password"])
-    setPreferences({ theme: "system", notifications: true })
-  }, [])
+    // Fetch user profile when component mounts
+    const loadProfile = async () => {
+      try {
+        await dispatch(fetchUserProfile() as any).unwrap();
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+      } finally {
+        setIsInitialLoad(false);
+      }
+    };
+    
+    loadProfile();
+    
+    // Set activity and preferences
+    setActivity(["Logged in", "Updated profile", "Changed password"]);
+    setPreferences({ theme: "system", notifications: true });
+  }, [dispatch]);
+  
+  // Update form fields when user data changes
+  useEffect(() => {
+    if (user) {
+      setName(user.first_name || '');
+      setEmail(user.email || '');
+      
+      // Save user data to localStorage for persistence
+      localStorage.setItem('user', JSON.stringify(user));
+    }
+  }, [user]);
 
   useEffect(() => {
     dispatch(fetchMailboxes())
@@ -149,8 +178,22 @@ function ProfilePageContent() {
     return <MailLoader />
   }
 
+  // Show loading state only on initial load
+  if (isInitialLoad || isProfileLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // If we're not loading but still don't have a user, show error
   if (!user) {
-    return <MailLoader />
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <p className="text-destructive">Failed to load user profile. Please try again.</p>
+      </div>
+    );
   }
 
   // Role logic
@@ -192,6 +235,7 @@ function ProfilePageContent() {
                     const success = await handleUpdateProfile({
                       name: name !== user?.first_name ? name : undefined,
                       email: email !== user?.email ? email : undefined,
+                      bio: bio !== user?.bio ? bio : undefined,
                       password: password || undefined,
                     })(dispatch)
                     if (success) {
@@ -216,36 +260,44 @@ function ProfilePageContent() {
                     <div className="text-muted-foreground">{email}</div>
                   </div>
                 </div>
-                {/* Show user info from localStorage below the profile icon */}
-                {localUser && (
-                  <div className="mt-2 mb-4 p-4 rounded bg-muted/40 text-sm">
-                    <div><span className="font-semibold">ID:</span> {localUser.id}</div>
-                    <div><span className="font-semibold">Username:</span> {localUser.username}</div>
-                    <div><span className="font-semibold">Email:</span> {localUser.email}</div>
-                    <div><span className="font-semibold">First Name:</span> {localUser.first_name}</div>
-                    <div><span className="font-semibold">Last Name:</span> {localUser.last_name || <span className="italic text-muted-foreground">(none)</span>}</div>
-                  </div>
-                )}
+                {/* Show user info from Redux store */}
+                <div className="mt-2 mb-4 p-4 rounded bg-muted/40 text-sm">
+                  <div><span className="font-semibold">Username:</span> {user?.username || 'N/A'}</div>
+                  <div><span className="font-semibold">Email:</span> {user?.email || 'N/A'}</div>
+                  <div><span className="font-semibold">First Name:</span> {user?.first_name || 'N/A'}</div>
+                  <div><span className="font-semibold">Last Name:</span> {user?.last_name || <span className="italic text-muted-foreground">(none)</span>}</div>
+                  {user?.bio && (
+                    <div className="mt-2">
+                      <p className="font-semibold">Bio:</p>
+                      <p className="text-muted-foreground whitespace-pre-line">{user.bio}</p>
+                    </div>
+                  )}
+                  <div><span className="font-semibold">Account Created:</span> {user?.date_joined ? new Date(user.date_joined).toLocaleDateString() : 'N/A'}</div>
+                  {user?.last_login && (
+                    <div><span className="font-semibold">Last Login:</span> {new Date(user.last_login).toLocaleString()}</div>
+                  )}
+                </div>
                 <div className="grid md:grid-cols-2 gap-4 mt-4">
                   <div>
                     <Label htmlFor="name">Name</Label>
                     <Input id="name" value={name} onChange={e => setName(e.target.value)} />
                   </div>
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" value={email} onChange={e => setEmail(e.target.value)} />
+                  <div className="md:col-span-2">
+                    <Label htmlFor="bio">Bio</Label>
+                    <Textarea
+                      id="bio"
+                      value={bio}
+                      onChange={e => setBio(e.target.value)}
+                      placeholder="Tell us about yourself"
+                      className="min-h-[100px] resize-y"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {bio.length}/500 characters
+                    </p>
                   </div>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="password">New Password</Label>
-                    <div className="relative">
-                      <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} />
-                      <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-10 w-10 text-muted-foreground" onClick={() => setShowPassword(!showPassword)}>
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </Button>
-                    </div>
-                  </div>
+
                   <div className="flex items-end">
                     <Button type="submit" className="w-full">Update Profile</Button>
                   </div>

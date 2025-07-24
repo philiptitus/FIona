@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell, Mail, Menu, Search, User, LogOut } from "lucide-react"
+import { Mail, Menu, Search, User, LogOut } from "lucide-react"
 import { frontendUrl } from "@/lib/route"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,6 +25,7 @@ import type { RootState, AppDispatch } from "@/store/store"
 import Fuse from "fuse.js"
 import { useAuth } from "react-oidc-context"
 import Cookies from "js-cookie"
+import { NotificationDropdown } from "@/components/notifications/notification-dropdown"
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -166,13 +167,7 @@ export default function Header() {
             </span>
             <span className="sr-only">Messages</span>
           </Button>
-          <Button variant="outline" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-              3
-            </span>
-            <span className="sr-only">Notifications</span>
-          </Button>
+          <NotificationDropdown />
           <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -13,6 +13,7 @@ interface AuthState {
   refreshToken: string | null
   isAuthenticated: boolean
   isLoading: boolean
+  isProfileLoading: boolean
   error: string | null
 }
 
@@ -22,6 +23,7 @@ const initialState: AuthState = {
   refreshToken: null,
   isAuthenticated: false,
   isLoading: false,
+  isProfileLoading: false,
   error: null,
 }
 
@@ -29,6 +31,20 @@ const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
+    fetchProfileStart: (state) => {
+      state.isProfileLoading = true;
+      state.error = null;
+    },
+    fetchProfileSuccess: (state, action: PayloadAction<User>) => {
+      state.isProfileLoading = false;
+      state.user = action.payload;
+      state.error = null;
+      state.error = null
+    },
+    fetchProfileFailure: (state, action: PayloadAction<string>) => {
+      state.isProfileLoading = false
+      state.error = action.payload
+    },
     loginStart: (state) => {
       state.isLoading = true
       state.error = null
@@ -96,6 +112,12 @@ const authSlice = createSlice({
   },
 })
 
+// Export actions
+export const authActions = {
+  ...authSlice.actions
+};
+
+// Export individual actions for better autocompletion
 export const {
   loginStart,
   loginSuccess,
@@ -110,6 +132,10 @@ export const {
   passwordResetStart,
   passwordResetSuccess,
   passwordResetFailure,
-} = authSlice.actions
+  fetchProfileStart,
+  fetchProfileSuccess,
+  fetchProfileFailure,
+} = authSlice.actions;
 
+// Export the reducer as default
 export default authSlice.reducer
