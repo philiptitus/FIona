@@ -20,6 +20,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import dynamic from 'next/dynamic';
+
+// Dynamically import the ContactListManager component with no SSR
+const ContactListManager = dynamic(
+  () => import('@/components/contact-lists/ContactListManager'),
+  { ssr: false }
+);
 
 interface EmailForm {
   organization_name: string
@@ -416,13 +423,14 @@ export default function EmailsPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
-            
             <p className="text-muted-foreground">Manage your campaign emails. Add emails manually, upload in bulk, or use AI to generate a list!</p>
           </div>
           <Button onClick={() => { setShowCreateDialog(true); setEditId(null); setForm({ organization_name: "", email: "", context: "" }) }}>
             <Plus className="mr-2 h-4 w-4" /> New Email(s)
           </Button>
         </div>
+
+
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
             <DialogHeader>
@@ -605,6 +613,10 @@ export default function EmailsPage() {
                   </CardContent>
                 </Card>
               ))}
+                      {/* Contact Lists Section */}
+        {/* <div className="mt-8">
+          <ContactListManager />
+        </div> */}
             </div>
             <div className="flex items-center justify-between p-4">
               <div className="text-sm text-muted-foreground">
@@ -1176,7 +1188,9 @@ export default function EmailsPage() {
                   )}
                 </Button>
               </DialogFooter>
+              
             </form>
+            
           </DialogContent>
         </Dialog>
       </div>

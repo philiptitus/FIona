@@ -37,7 +37,8 @@ import {
   Clock,
   Building2,
   User,
-  Sparkles
+  Sparkles,
+  ShieldCheck
 } from "lucide-react"
 import MailLoader from "@/components/MailLoader"
 import MainLayout from "@/components/layout/main-layout"
@@ -252,17 +253,34 @@ function SendEmailPageContent() {
 
   return (
     <MainLayout>
-      <div className="max-w-6xl mx-auto py-8 px-4">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Send className="h-6 w-6 text-primary" />
+      <div className="container mx-auto py-6 space-y-6">
+        {/* ML-Powered Spam Detection Banner */}
+        <div className="rounded-lg border bg-gradient-to-r from-blue-50 to-purple-50 p-4 shadow-sm dark:from-blue-900/30 dark:to-purple-900/20">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 rounded-full bg-blue-100 p-2 dark:bg-blue-900/50">
+                <ShieldCheck className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+              </div>
+              <div>
+                <h3 className="font-medium text-foreground">ML-Powered Spam Protection</h3>
+                <p className="text-sm text-muted-foreground">
+                  Your emails are automatically screened by our advanced machine learning system to prevent spam and protect your sender reputation.
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold">Send Email</h1>
-              <p className="text-muted-foreground">Compose and send emails to your contacts</p>
+            <div className="flex-shrink-0">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800 dark:bg-green-900/50 dark:text-green-200">
+                <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                Active Protection
+              </div>
             </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Send Email</h1>
+            <p className="text-muted-foreground">Compose and send emails to your contacts</p>
           </div>
         </div>
 

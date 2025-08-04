@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Mail, BarChart, Users, LayoutTemplate, Send, Zap, Sparkles } from "lucide-react"
+import { Mail, BarChart, Users, LayoutTemplate, Send, Zap, Sparkles, ShieldCheck } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import LandingHeroAnimation from "@/components/landing-hero-animation"
 import { LandingFeatureCard } from "@/components/landing-feature-card"
@@ -28,11 +28,7 @@ const FEATURES = [
     title: "Smart Templates",
     description: "AI-powered template creation and optimization"
   },
-  {
-    icon: BarChart,
-    title: "Advanced Analytics",
-    description: "Real-time insights and performance tracking"
-  },
+
   {
     icon: Send,
     title: "Automated Dispatch",
@@ -42,6 +38,11 @@ const FEATURES = [
     icon: Users,
     title: "List Management",
     description: "Smart contact organization and segmentation"
+  },
+  {
+    icon: ShieldCheck,
+    title: "AI Spam Detection",
+    description: "Advanced spam filtering to protect your sender reputation"
   },
   {
     icon: Sparkles,
