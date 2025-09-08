@@ -22,21 +22,47 @@ import {
 } from "../slices/templateSlice"
 import type { AppDispatch } from "../store"
 
-// Fetch templates for a campaign
+// Fetch templates for a campaign with optional pagination and search
 export const fetchTemplates = createAsyncThunk(
   "templates/fetchAll",
-  async (campaignId?: number, { rejectWithValue }) => {
+  async (
+    params: {
+      campaignId?: number
+      page?: number
+      search?: string
+    } = {},
+    { rejectWithValue }
+  ) => {
+    const { campaignId, page = 1, search = '' } = params
+    
     try {
-      let url = "/mail/templates/"
+      const queryParams = new URLSearchParams()
+      
+      // Add campaign ID if provided (backward compatible)
       if (campaignId) {
-        url += `?campaign_id=${campaignId}`
+        queryParams.append('campaign_id', campaignId.toString())
       }
+      
+      // Add pagination and search params
+      queryParams.append('page', page.toString())
+      if (search) {
+        queryParams.append('search', search)
+      }
+      
+      const url = `/mail/templates/?${queryParams.toString()}`
       const response = await api.get(url)
-      return response.data
+      
+      // Return response data with count for pagination
+      return {
+        results: response.data.results || response.data,
+        count: response.data.count,
+        page: page,
+        search: search
+      }
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error || "Failed to fetch templates")
     }
-  },
+  }
 )
 
 // Fetch a single template by ID

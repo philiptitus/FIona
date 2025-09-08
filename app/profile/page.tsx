@@ -87,6 +87,7 @@ function ProfilePageContent() {
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [deleteError, setDeleteError] = useState("")
   const [deleteSuccess, setDeleteSuccess] = useState(false)
+  const [isFinishingMailbox, setIsFinishingMailbox] = useState(false)
 
   // State for form fields
   // const [name, setName] = useState('')
@@ -133,6 +134,7 @@ function ProfilePageContent() {
     const error = searchParams.get("mailbox_error")
     if (connected) {
       setConnectSuccess(true)
+      setActiveSection("mailboxes")
       dispatch(fetchMailboxes())
     } else if (error) {
       setConnectError(error)
@@ -149,6 +151,8 @@ function ProfilePageContent() {
   useEffect(() => {
     const mailboxCode = searchParams.get("mailbox_code")
     if (mailboxCode) {
+      setActiveSection("mailboxes")
+      setIsFinishingMailbox(true)
       dispatch(finishGmailOAuth(mailboxCode) as any)
         .unwrap()
         .then(() => {
@@ -159,6 +163,9 @@ function ProfilePageContent() {
         .catch((err: any) => {
           setMailboxFinishError(err || "Failed to add mailbox.")
           setMailboxFinishSuccess(false)
+        })
+        .finally(() => {
+          setIsFinishingMailbox(false)
         })
     }
   }, [searchParams, dispatch])
@@ -174,7 +181,7 @@ function ProfilePageContent() {
     }
   }, [])
 
-  if (searchParams.get("mailbox_code") && loading) {
+  if (searchParams.get("mailbox_code") && (loading || isFinishingMailbox)) {
     return <MailLoader />
   }
 

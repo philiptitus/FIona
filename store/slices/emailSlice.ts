@@ -2,7 +2,7 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit"
 
 interface EmailListEntry {
   id: number
-  campaign: number
+  campaign: number | null
   organization_name: string
   email: string
   context?: string
@@ -67,11 +67,22 @@ interface EmailListEntry {
   tertiary_email_source?: string
 }
 
+interface PaginationInfo {
+  count: number
+  next: string | null
+  previous: string | null
+  currentPage: number
+  totalPages: number
+}
+
 interface EmailState {
   emails: EmailListEntry[]
   sentEmails: EmailListEntry[]
   isLoading: boolean
   error: string | null
+  pagination: PaginationInfo | null
+  // For backward compatibility - will be removed in future
+  isLegacyMode: boolean
 }
 
 const initialState: EmailState = {
@@ -79,6 +90,14 @@ const initialState: EmailState = {
   sentEmails: [],
   isLoading: false,
   error: null,
+  pagination: {
+    count: 0,
+    next: null,
+    previous: null,
+    currentPage: 1,
+    totalPages: 1
+  },
+  isLegacyMode: false
 }
 
 const emailSlice = createSlice({
@@ -89,10 +108,31 @@ const emailSlice = createSlice({
       state.isLoading = true
       state.error = null
     },
-    fetchEmailsSuccess: (state, action: PayloadAction<EmailListEntry[]>) => {
+    fetchEmailsSuccess: (state, action: PayloadAction<{ results?: EmailListEntry[], emails?: EmailListEntry[], count?: number, next?: string | null, previous?: string | null, currentPage?: number, totalPages?: number }>) => {
       state.isLoading = false
-      state.emails = action.payload
       state.error = null
+      
+      // Handle both paginated and non-paginated responses
+      if (Array.isArray(action.payload.results)) {
+        // New paginated response
+        state.emails = action.payload.results
+        state.pagination = {
+          count: action.payload.count || 0,
+          next: action.payload.next || null,
+          previous: action.payload.previous || null,
+          currentPage: action.payload.currentPage || 1,
+          totalPages: action.payload.totalPages || 1
+        }
+        state.isLegacyMode = false
+      } else if (Array.isArray(action.payload.emails)) {
+        // Legacy response for backward compatibility
+        state.emails = action.payload.emails
+        state.isLegacyMode = true
+      } else if (Array.isArray(action.payload)) {
+        // Fallback for very old response format
+        state.emails = action.payload
+        state.isLegacyMode = true
+      }
     },
     fetchEmailsFailure: (state, action: PayloadAction<string>) => {
       state.isLoading = false
@@ -189,6 +229,39 @@ const emailSlice = createSlice({
       state.isLoading = false
       state.error = action.payload
     },
+    addExistingEmailsStart: (state) => {
+      state.isLoading = true
+      state.error = null
+    },
+    addExistingEmailsSuccess: (state, action: PayloadAction<EmailListEntry[]>) => {
+      state.isLoading = false
+      state.emails = [...state.emails, ...action.payload]
+      state.error = null
+    },
+    addExistingEmailsFailure: (state, action: PayloadAction<string>) => {
+      state.isLoading = false
+      state.error = action.payload
+    },
+    disassociateEmailsStart: (state) => {
+      state.isLoading = true
+      state.error = null
+    },
+    disassociateEmailsSuccess: (state, action: PayloadAction<{emailIds: number[], campaignId: number}>) => {
+      state.isLoading = false
+      // Update emails by removing the campaign association
+      state.emails = state.emails.map(email => {
+        if (action.payload.emailIds.includes(email.id)) {
+          const { campaign, ...rest } = email
+          return { ...rest, campaign: null }
+        }
+        return email
+      })
+      state.error = null
+    },
+    disassociateEmailsFailure: (state, action: PayloadAction<string>) => {
+      state.isLoading = false
+      state.error = action.payload
+    },
   },
 })
 
@@ -217,6 +290,12 @@ export const {
   smartCreateEmailsStart,
   smartCreateEmailsSuccess,
   smartCreateEmailsFailure,
+  addExistingEmailsStart,
+  addExistingEmailsSuccess,
+  addExistingEmailsFailure,
+  disassociateEmailsStart,
+  disassociateEmailsSuccess,
+  disassociateEmailsFailure,
 } = emailSlice.actions
 
 export default emailSlice.reducer

@@ -25,43 +25,113 @@ import {
   smartCreateEmailsStart,
   smartCreateEmailsSuccess,
   smartCreateEmailsFailure,
+  addExistingEmailsStart,
+  addExistingEmailsSuccess,
+  addExistingEmailsFailure,
+  disassociateEmailsStart,
+  disassociateEmailsSuccess,
+  disassociateEmailsFailure,
 } from "../slices/emailSlice"
 import type { AppDispatch } from "../store"
 
-// Fetch emails for a campaign
-export const fetchEmails = createAsyncThunk("emails/fetchAll", async (campaignId?: number, { rejectWithValue }) => {
-  try {
-    let url = "/mail/emails/"
-    if (campaignId) {
-      url += `?campaign_id=${campaignId}`
+interface FetchEmailsParams {
+  campaignId?: number
+  search?: string
+  email?: string
+  firstName?: string
+  lastName?: string
+  organizationName?: string
+  emailStatus?: string
+  department?: string
+  country?: string
+  isSent?: boolean
+  page?: number
+  // Page size is fixed at 10 to match the backend
+}
+
+// Fetch emails for a campaign with optional search parameters
+export const fetchEmails = createAsyncThunk(
+  "emails/fetchAll", 
+  async (params: FetchEmailsParams = {}, { rejectWithValue }) => {
+    try {
+      const {
+        campaignId,
+        search,
+        email,
+        firstName,
+        lastName,
+        organizationName,
+        emailStatus,
+        department,
+        country,
+        isSent,
+        page = 1
+      } = params
+
+      const url = new URL('/mail/emails/', window.location.origin)
+      const searchParams = new URLSearchParams()
+
+      // Add search and filter parameters
+      if (campaignId) searchParams.append('campaign_id', campaignId.toString())
+      if (search) searchParams.append('search', search)
+      if (email) searchParams.append('email', email)
+      if (firstName) searchParams.append('first_name', firstName)
+      if (lastName) searchParams.append('last_name', lastName)
+      if (organizationName) searchParams.append('organization_name', organizationName)
+      if (emailStatus) searchParams.append('email_status', emailStatus)
+      if (department) searchParams.append('department', department)
+      if (country) searchParams.append('country', country)
+      if (isSent !== undefined) searchParams.append('is_sent', isSent.toString())
+      
+      // Add pagination parameters - page size is fixed at 10
+      searchParams.append('page', page.toString())
+      searchParams.append('page_size', '10')
+
+      const response = await api.get(`${url.pathname}?${searchParams.toString()}`)
+      
+      // Transform the response to match our expected format
+      if (response.data && response.data.results) {
+        // New paginated response format
+        return {
+          results: response.data.results,
+          count: response.data.count,
+          next: response.data.next,
+          previous: response.data.previous,
+          currentPage: page,
+          totalPages: Math.ceil(response.data.count / 10) // Fixed page size of 10
+        }
+      } else if (Array.isArray(response.data)) {
+        // Legacy response format for backward compatibility
+        return { emails: response.data }
+      }
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error || "Failed to fetch emails")
     }
-    const response = await api.get(url)
-    return response.data
-  } catch (error: any) {
-    return rejectWithValue(error.response?.data?.error || "Failed to fetch emails")
   }
-})
+)
 
 // Fetch sent emails
 export const fetchSentEmails = createAsyncThunk(
   "emails/fetchSent",
   async (
-    { campaignId, search, page, pageSize }: { campaignId?: number; search?: string; page?: number; pageSize?: number },
+    { campaignId, search, page = 1 }: { campaignId?: number; search?: string; page?: number },
     { rejectWithValue },
   ) => {
     try {
-      let url = "/mail/emails/sent/"
+      // Build the base URL
+      const baseUrl = "/mail/emails/sent/"
       const params = new URLSearchParams()
 
+      // Add query parameters
       if (campaignId) params.append("campaign_id", campaignId.toString())
       if (search) params.append("search", search)
-      if (page) params.append("page", page.toString())
-      if (pageSize) params.append("page_size", pageSize.toString())
+      params.append("page", page.toString())
+      // Fixed page size of 10 to match the backend
+      params.append("page_size", "10")
 
-      if (params.toString()) {
-        url += `?${params.toString()}`
-      }
-
+      // Build the full URL with search params
+      const queryString = params.toString()
+      const url = queryString ? `${baseUrl}?${queryString}` : baseUrl
       const response = await api.get(url)
       return response.data
     } catch (error: any) {
@@ -74,7 +144,7 @@ export const fetchSentEmails = createAsyncThunk(
 export const createEmail = createAsyncThunk(
   "emails/create",
   async (
-    emailData: { campaign: number; organization_name: string; email: string; context?: string },
+    emailData: { campaign: number; organization_name: string; email: string; context?: string; check_user_duplicates?: boolean },
     { rejectWithValue },
   ) => {
     try {
@@ -181,22 +251,21 @@ export const handleSmartCreateEmails = (smartCampaignData: any) => async (dispat
     return false
   }
 }
-
 // Thunk action creators for dispatching regular actions
-export const handleFetchEmails = (campaignId?: number) => async (dispatch: AppDispatch) => {
-  dispatch(fetchEmailsStart())
-  try {
-    const resultAction = await dispatch(fetchEmails(campaignId))
-    if (fetchEmails.fulfilled.match(resultAction)) {
-      dispatch(fetchEmailsSuccess(resultAction.payload))
-      return true
-    } else {
-      dispatch(fetchEmailsFailure(resultAction.payload as string))
-      return false
+export const handleFetchEmails = (params: FetchEmailsParams = {}) => {
+  return async (dispatch: AppDispatch) => {
+    try {
+      dispatch(fetchEmailsStart())
+      const result = await dispatch(fetchEmails(params)).unwrap()
+      // Persist the fetched (paginated or legacy) data into the slice state
+      dispatch(fetchEmailsSuccess(result))
+      return result
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.error || error?.message || 'Failed to fetch emails'
+      console.error('Error fetching emails:', error);
+      dispatch(fetchEmailsFailure(errorMessage))
+      throw new Error(errorMessage)
     }
-  } catch (error: any) {
-    dispatch(fetchEmailsFailure(error.message || "Failed to fetch emails"))
-    return false
   }
 }
 
@@ -205,12 +274,11 @@ export const handleFetchSentEmails =
     campaignId,
     search,
     page,
-    pageSize,
-  }: { campaignId?: number; search?: string; page?: number; pageSize?: number }) =>
+  }: { campaignId?: number; search?: string; page?: number }) =>
   async (dispatch: AppDispatch) => {
     dispatch(fetchSentEmailsStart())
     try {
-      const resultAction = await dispatch(fetchSentEmails({ campaignId, search, page, pageSize }))
+      const resultAction = await dispatch(fetchSentEmails({ campaignId, search, page }))
       if (fetchSentEmails.fulfilled.match(resultAction)) {
         dispatch(fetchSentEmailsSuccess(resultAction.payload))
         return true
@@ -225,7 +293,7 @@ export const handleFetchSentEmails =
   }
 
 export const handleCreateEmail =
-  (emailData: { campaign: number; organization_name: string; email: string; context?: string }) =>
+  (emailData: { campaign: number; organization_name: string; email: string; context?: string; check_user_duplicates?: boolean }) =>
   async (dispatch: AppDispatch) => {
     dispatch(createEmailStart())
     try {
@@ -320,3 +388,97 @@ export const handleBulkDeleteEmails =
       return false
     }
   }
+
+// Disassociate emails from campaign
+export const disassociateEmails = createAsyncThunk(
+  'emails/disassociate',
+  async (
+    { campaignId, emailIds }: { campaignId: number; emailIds: number[] },
+    { rejectWithValue, dispatch }
+  ) => {
+    try {
+      const response = await api.post('/mail/emails/disassociate/', {
+        campaign_id: campaignId,
+        email_ids: emailIds,
+      })
+      return { emailIds, campaignId, data: response.data }
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error || 'Failed to disassociate emails')
+    }
+  }
+)
+
+export const handleDisassociateEmails = (campaignId: number, emailIds: number[]) => 
+  async (dispatch: AppDispatch) => {
+    try {
+      const resultAction = await dispatch(disassociateEmails({ campaignId, emailIds }) as any)
+      
+      if (resultAction.error) {
+        throw new Error(resultAction.payload || 'Failed to disassociate emails')
+      }
+      
+      // Refetch the updated email list
+      await dispatch(handleFetchEmails({ campaignId }) as any)
+      return { success: true, data: resultAction.payload.data }
+      
+    } catch (error: any) {
+      console.error('Error disassociating emails:', error)
+      return { 
+        success: false, 
+        error: error.message || 'An error occurred while disassociating emails' 
+      }
+    }
+  }
+
+// Add existing emails to campaign
+export const addExistingEmails = createAsyncThunk(
+  'emails/addExisting',
+  async (
+    { campaignId, emailListIds, skipDuplicates = true }: 
+    { campaignId: number; emailListIds: number[]; skipDuplicates?: boolean },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await api.post('/mail/emails/', {
+        action: 'add_existing',
+        campaign_id: campaignId,
+        email_list_ids: emailListIds,
+        skip_duplicates: skipDuplicates
+      })
+      return response.data
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error || "Failed to add existing emails")
+    }
+  }
+)
+
+export const handleAddExistingEmails = ({
+  campaignId,
+  emailListIds,
+  skipDuplicates = true
+}: {
+  campaignId: number
+  emailListIds: number[]
+  skipDuplicates?: boolean
+}) => {
+  return async (dispatch: AppDispatch) => {
+    dispatch(addExistingEmailsStart())
+    try {
+      const resultAction = await dispatch(addExistingEmails({ campaignId, emailListIds, skipDuplicates }))
+      if (addExistingEmails.fulfilled.match(resultAction)) {
+        // The API returns a success message with added_count, not the actual email objects
+        // So we'll just indicate success without trying to update the emails array
+        dispatch(addExistingEmailsSuccess([])) // Pass empty array since we don't have the actual email objects
+        return { success: true, data: resultAction.payload }
+      } else {
+        const errorMessage = resultAction.payload as string || "Failed to add existing emails"
+        dispatch(addExistingEmailsFailure(errorMessage))
+        return { success: false, error: errorMessage }
+      }
+    } catch (error: any) {
+      const errorMessage = error.message || "Failed to add existing emails"
+      dispatch(addExistingEmailsFailure(errorMessage))
+      return { success: false, error: errorMessage }
+    }
+  }
+}

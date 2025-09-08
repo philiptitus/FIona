@@ -1,266 +1,605 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useDispatch, useSelector } from "react-redux"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
-import { Loader2, CheckCircle2, XCircle, Edit, Upload, Sparkles } from "lucide-react"
-import { handleFetchEmails, handleCreateEmail, handleBulkCreateEmails, handleSmartCreateEmails } from "@/store/actions/emailActions"
-import { handleFetchCampaigns } from "@/store/actions/campaignActions"
+import { Loader2, CheckCircle2, XCircle, Edit, Upload, Copy, Download } from "lucide-react"
+import { handleCreateEmail, handleBulkCreateEmails, handleAddExistingEmails, handleFetchEmails } from "@/store/actions/emailActions"
 import type { RootState, AppDispatch } from "@/store/store"
+
+interface Email {
+  id: number
+  email: string
+  first_name?: string | null
+  last_name?: string | null
+  organization_name?: string | null
+  campaigns?: Array<{ id: number }>
+}
 
 interface AddEmailDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   initialCampaignId?: number | null
+  emails?: Email[]
+  onAddExistingEmails?: (emailIds: number[], skipDuplicates: boolean) => Promise<{ success: boolean; error?: string }>
+  isLoadingEmails?: boolean
+  onSuccess?: () => void
 }
 
-interface EmailForm {
-  organization_name: string
-  email: string
-  context?: string
-  [key: string]: any
-}
-
-export default function AddEmailDialog({ open, onOpenChange, initialCampaignId }: AddEmailDialogProps) {
+export default function AddEmailDialog({
+  open,
+  onOpenChange,
+  initialCampaignId,
+  emails = [],
+  onAddExistingEmails,
+  isLoadingEmails = false,
+  onSuccess
+}: AddEmailDialogProps) {
   const dispatch = useDispatch<AppDispatch>()
-  const { campaigns } = useSelector((state: RootState) => state.campaigns)
-  const [form, setForm] = useState<EmailForm>({ organization_name: "", email: "", context: "" })
-  const [createTab, setCreateTab] = useState("manual")
+  const emailsFromStore = useSelector((state: RootState) => state.emails.emails)
+  const isEmailsLoading = useSelector((state: RootState) => state.emails.isLoading)
+  const pagination = useSelector((state: RootState) => state.emails.pagination)
+  const [isLoading, setIsLoading] = useState(false)
+  const [email, setEmail] = useState("")
+  const [organization, setOrganization] = useState("")
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState(false)
+  const [checkDuplicates, setCheckDuplicates] = useState(true)
   const [bulkFile, setBulkFile] = useState<File | null>(null)
   const [bulkError, setBulkError] = useState("")
-  const [smartData, setSmartData] = useState({ campaign_type: "", model: "gpt-4" })
-  const [smartError, setSmartError] = useState("")
-  const [showForm, setShowForm] = useState(false)
-  const [selectedCampaign, setSelectedCampaign] = useState<number | null>(initialCampaignId || null)
-  const [manualLoading, setManualLoading] = useState(false)
-  const [manualSuccess, setManualSuccess] = useState(false)
-  const [manualError, setManualError] = useState("")
-  const [bulkLoading, setBulkLoading] = useState(false)
   const [bulkSuccess, setBulkSuccess] = useState(false)
-  const [smartLoading, setSmartLoading] = useState(false)
-  const [smartSuccess, setSmartSuccess] = useState(false)
-  const [checkUserDuplicates, setCheckUserDuplicates] = useState(true)
+  const [isBulkLoading, setIsBulkLoading] = useState(false)
+  const [isClient, setIsClient] = useState(false)
+  const [selectedEmails, setSelectedEmails] = useState<number[]>([])
+  const [skipDuplicates, setSkipDuplicates] = useState(true)
+  const [isAddingExisting, setIsAddingExisting] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [selectedEmailIds, setSelectedEmailIds] = useState<number[]>([])
+  const [existingError, setExistingError] = useState("")
+  const [existingSuccess, setExistingSuccess] = useState(false)
 
   useEffect(() => {
-    if (open) {
-      dispatch(handleFetchCampaigns())
-      if (initialCampaignId) setSelectedCampaign(initialCampaignId)
-    }
-  }, [open, initialCampaignId, dispatch])
+    setIsClient(true)
+  }, [])
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target
-    if (type === 'checkbox') {
-      const checked = (e.target as HTMLInputElement).checked
-      setForm({ ...form, [name]: checked })
-    } else {
-      setForm({ ...form, [name]: value })
+  // Fetch emails when dialog opens, page changes, or search changes
+  useEffect(() => {
+    if (!open) return
+
+    const doFetch = async () => {
+      await dispatch(handleFetchEmails({ page: currentPage, search: searchQuery || undefined }) as any)
+    }
+
+    // Debounce search
+    const timer = setTimeout(doFetch, 500)
+    return () => clearTimeout(timer)
+  }, [open, currentPage, searchQuery, dispatch])
+
+  // Reset to first page when opening or when search changes
+  useEffect(() => {
+    if (!open) return
+    setCurrentPage(1)
+  }, [open])
+
+  const toggleEmailSelection = (emailId: number) => {
+    setSelectedEmailIds(prev =>
+      prev.includes(emailId)
+        ? prev.filter(id => id !== emailId)
+        : [...prev, emailId]
+    )
+  }
+
+
+  const handleAddExistingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!initialCampaignId) {
+      setExistingError("No campaign selected")
+      return
+    }
+    
+    if (selectedEmailIds.length === 0) {
+      setExistingError("Please select at least one email")
+      return
+    }
+    
+    setExistingError("")
+    setExistingSuccess(false)
+    setIsAddingExisting(true)
+    
+    try {
+      const result = await dispatch(handleAddExistingEmails({
+        campaignId: initialCampaignId,
+        emailListIds: selectedEmailIds,
+        skipDuplicates: skipDuplicates
+      }))
+      
+      console.log('API Response:', result)
+      
+      // Check for success based on the actual API response structure
+      if (result?.success && result?.data) {
+        setExistingSuccess(true)
+        setSelectedEmailIds([])
+        // Call onSuccess callback if provided
+        if (onSuccess) {
+          onSuccess()
+        }
+        setTimeout(() => setExistingSuccess(false), 2000)
+        setTimeout(() => onOpenChange(false), 1000)
+      } else {
+        const errorMessage = result?.data?.message || result?.error || "Failed to add existing emails"
+        setExistingError(errorMessage)
+      }
+    } catch (err: any) {
+      setExistingError(err?.message || "Failed to add existing emails")
+    } finally {
+      setIsAddingExisting(false)
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setManualLoading(true)
-    setManualError("")
-    setManualSuccess(false)
-    if (!selectedCampaign) { setManualLoading(false); return }
-    try {
-      const result = await dispatch(handleCreateEmail({ ...form, campaign: selectedCampaign, check_user_duplicates: checkUserDuplicates }) as any)
-      if (!result || result.error) {
-        setManualError(result?.error || "Failed to create email.")
-        setManualLoading(false)
-        return
-      }
-      setManualSuccess(true)
-      setTimeout(() => setManualSuccess(false), 2000)
-      onOpenChange(false)
-      setForm({ organization_name: "", email: "", context: "" })
-      dispatch(handleFetchEmails())
-    } catch (err: any) {
-      setManualError(err?.message || "Failed to create email.")
-    } finally {
-      setManualLoading(false)
-    }
+  const downloadTemplate = () => {
+    const csvContent = 'email,first_name,last_name,organization_name\nexample@example.com,John,Doe,Acme Inc.'
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'email_import_template.csv'
+    document.body.appendChild(a)
+    a.click()
+    URL.revokeObjectURL(url)
+    document.body.removeChild(a)
   }
 
   const handleBulkFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setBulkFile(e.target.files[0])
+      setBulkError("")
     }
   }
 
   const handleBulkSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setBulkLoading(true)
-    setBulkSuccess(false)
-    setBulkError("")
+
     if (!bulkFile) {
-      setBulkError("Please select a CSV or JSON file.")
-      setBulkLoading(false)
+      setBulkError("Please select a file to upload")
       return
     }
-    if (!selectedCampaign) {
-      setBulkError("Please select a campaign.")
-      setBulkLoading(false)
+
+    if (!initialCampaignId) {
+      setBulkError("No campaign selected")
       return
     }
-    const formData = new FormData()
-    formData.append("csv_file", bulkFile)
-    formData.append("campaign_id", String(selectedCampaign))
-    formData.append("check_user_duplicates", String(checkUserDuplicates))
-    const result = await dispatch(handleBulkCreateEmails(formData) as any)
-    const backendError = result?.response?.error || result?.error
-    if (!result || backendError) {
-      setBulkError(backendError || "Failed to upload emails.")
-      setBulkLoading(false)
-    } else {
+
+    setIsBulkLoading(true)
+    setBulkError("")
+    setBulkSuccess(false)
+
+    try {
+      const formData = new FormData()
+      formData.append("csv_file", bulkFile)
+      formData.append("campaign_id", String(initialCampaignId))
+      formData.append("check_user_duplicates", String(checkDuplicates))
+
+      const result = await dispatch(handleBulkCreateEmails(formData) as any)
+
+      if (result?.error) {
+        setBulkError(result.error)
+        return
+      }
+
       setBulkSuccess(true)
-      setTimeout(() => setBulkSuccess(false), 2000)
-      onOpenChange(false)
       setBulkFile(null)
-      dispatch(handleFetchEmails())
+
+      // Reset file input
+      const fileInput = document.getElementById('bulk-upload') as HTMLInputElement
+      if (fileInput) fileInput.value = ''
+
+      // Close dialog after 2 seconds on success
+      setTimeout(() => {
+        onOpenChange(false)
+        setBulkSuccess(false)
+      }, 2000)
+
+    } catch (err: any) {
+      setBulkError(err?.message || "Failed to upload emails")
+    } finally {
+      setIsBulkLoading(false)
     }
-    setBulkLoading(false)
   }
 
-  const handleSmartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSmartData({ ...smartData, [e.target.name]: e.target.value })
-  }
-
-  const handleSmartSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSmartLoading(true)
-    setSmartSuccess(false)
-    setSmartError("")
-    if (!smartData.campaign_type) {
-      setSmartError("Please describe your campaign type.")
-      setSmartLoading(false)
+
+    if (!email) {
+      setError("Email is required")
       return
     }
-    if (!selectedCampaign) {
-      setSmartError("Please select a campaign.")
-      setSmartLoading(false)
+
+    if (!initialCampaignId) {
+      setError("No campaign selected")
       return
     }
-    const result = await dispatch(handleSmartCreateEmails({ ...smartData, campaign_id: selectedCampaign }) as any)
-    if (!result || result.error) {
-      setSmartError(result?.error || "Failed to generate emails.")
-      setSmartLoading(false)
-    } else {
-      setSmartSuccess(true)
-      setTimeout(() => setSmartSuccess(false), 2000)
-      onOpenChange(false)
-      setSmartData({ campaign_type: "", model: "gpt-4" })
-      dispatch(handleFetchEmails())
+
+    setIsLoading(true)
+    setError("")
+    setSuccess(false)
+
+    try {
+      const result = await dispatch(handleCreateEmail({
+        email,
+        organization_name: organization,
+        campaign: initialCampaignId as number,
+        check_user_duplicates: checkDuplicates
+      }) as any)
+
+      if (result?.error) {
+        setError(result.error)
+        return
+      }
+
+      setSuccess(true)
+      setEmail("")
+      setOrganization("")
+
+      // Close dialog after 2 seconds on success
+      setTimeout(() => {
+        onOpenChange(false)
+        setSuccess(false)
+      }, 2000)
+
+    } catch (err: any) {
+      setError(err?.message || "Failed to add email")
+    } finally {
+      setIsLoading(false)
     }
-    setSmartLoading(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add Emails</DialogTitle>
-          <p className="text-muted-foreground text-sm mt-1">Choose how you want to add emails to your campaign. Each method is explained below.</p>
+          <p className="text-sm text-muted-foreground">Choose how you want to add emails to your campaign</p>
         </DialogHeader>
-        <div className="mb-4">
-          <label className="block font-medium mb-1">Select Campaign</label>
-          <select
-            className="w-full border rounded px-3 py-2"
-            value={selectedCampaign || ""}
-            onChange={e => setSelectedCampaign(Number(e.target.value))}
-            disabled={!!initialCampaignId}
-          >
-            <option value="">Choose a campaign...</option>
-            {campaigns.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-          <p className="text-xs text-muted-foreground mt-1">All emails you add will be attached to this campaign.</p>
-        </div>
-        <Tabs value={createTab} onValueChange={setCreateTab} className="w-full mt-2">
+
+        <Tabs defaultValue="manual" className="w-full">
           <TabsList className="grid grid-cols-3 mb-4">
-            <TabsTrigger value="manual"><Edit className="inline mr-1" /> Manual</TabsTrigger>
-            <TabsTrigger value="bulk"><Upload className="inline mr-1" /> Bulk Upload</TabsTrigger>
-            <TabsTrigger value="smart"><Sparkles className="inline mr-1" /> AI Smart</TabsTrigger>
+            <TabsTrigger value="manual"><Edit className="w-4 h-4 mr-1" /> Manual</TabsTrigger>
+            <TabsTrigger value="bulk"><Upload className="w-4 h-4 mr-1" /> Bulk Upload</TabsTrigger>
+            <TabsTrigger value="existing"><Copy className="w-4 h-4 mr-1" /> Add Existing</TabsTrigger>
           </TabsList>
+
+          {/* Manual Tab */}
           <TabsContent value="manual">
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <p className="text-xs text-muted-foreground mb-1">
-                Add a single email entry manually. Use this for quick, one-off additions.<br />
-                <b>Duplicate check:</b> By default, the system will prevent adding an email that already exists in any of your campaigns. You can disable this below.
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <Alert variant="destructive">
+                  <XCircle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {success && (
+                <Alert>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <AlertTitle>Success</AlertTitle>
+                  <AlertDescription>Email added successfully!</AlertDescription>
+                </Alert>
+              )}
+
+              <p className="text-sm text-muted-foreground mb-1">
+                Add a single email entry manually. Use this for quick, one-off additions.
               </p>
-              {manualLoading && <Alert variant="info"><Loader2 className="animate-spin mr-2 inline" /> <AlertTitle>Adding email...</AlertTitle></Alert>}
-              {manualSuccess && <Alert variant="success"><CheckCircle2 className="text-green-600 mr-2 inline" /> <AlertTitle>Email added!</AlertTitle></Alert>}
-              {manualError && <Alert variant="destructive"><XCircle className="text-red-600 mr-2 inline" /> <AlertTitle>Error</AlertTitle><AlertDescription>{manualError}</AlertDescription></Alert>}
-              <Input
-                name="organization_name"
-                placeholder="Organization Name"
-                value={form.organization_name}
-                onChange={handleChange}
-                required
-              />
-              <Input
-                name="email"
-                placeholder="Email"
-                value={form.email}
-                onChange={handleChange}
-                required
-              />
-              <Input
-                name="context"
-                placeholder="Context (optional)"
-                value={form.context}
-                onChange={handleChange}
-              />
-              <label className="flex items-center gap-2 text-xs">
-                <input type="checkbox" checked={checkUserDuplicates} onChange={e => setCheckUserDuplicates(e.target.checked)} />
-                Check for duplicates across all my campaigns
-              </label>
-              <DialogFooter>
-                <Button type="submit">Add Email</Button>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Email Address <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="email@example.com"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Organization
+                </label>
+                <Input
+                  value={organization}
+                  onChange={(e) => setOrganization(e.target.value)}
+                  placeholder="Acme Inc."
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="flex items-center space-x-2 pt-2">
+                <input
+                  type="checkbox"
+                  id="check-duplicates"
+                  checked={checkDuplicates}
+                  onChange={(e) => setCheckDuplicates(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  disabled={isLoading}
+                />
+                <label htmlFor="check-duplicates" className="text-sm text-gray-600">
+                  Check for duplicates across all my campaigns
+                </label>
+              </div>
+
+              <DialogFooter className="pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isLoading}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : 'Save Email'}
+                </Button>
               </DialogFooter>
             </form>
           </TabsContent>
+
+          {/* Bulk Upload Tab */}
           <TabsContent value="bulk">
-            <form onSubmit={handleBulkSubmit} className="flex flex-col gap-4">
-              <p className="text-xs text-muted-foreground mb-1">
-                Upload a CSV or JSON file to add many emails at once. Useful for importing lists from spreadsheets or other tools.<br />
-                <b>Required columns:</b> <code>organization_name</code> and <code>email</code>.<br />
-                <b>Optional columns:</b> You can include any of the additional fields shown in the downloadable template.<br />
-                <b>Duplicate check:</b> By default, the system will skip emails that already exist in any of your campaigns. You can disable this below.
+            <form onSubmit={handleBulkSubmit} className="space-y-4">
+              {bulkError && (
+                <Alert variant="destructive">
+                  <XCircle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{bulkError}</AlertDescription>
+                </Alert>
+              )}
+
+              {bulkSuccess && (
+                <Alert>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <AlertTitle>Success</AlertTitle>
+                  <AlertDescription>Emails uploaded successfully!</AlertDescription>
+                </Alert>
+              )}
+
+              <p className="text-sm text-muted-foreground mb-1">
+                Upload a CSV or JSON file to add many emails at once.
+                <span className="block mt-1">
+                  <b>Required columns:</b> <code>email</code>, <code>first_name</code>, <code>last_name</code>
+                </span>
               </p>
-              {bulkLoading && <Alert variant="info"><Loader2 className="animate-spin mr-2 inline" /> <AlertTitle>Uploading...</AlertTitle></Alert>}
-              {bulkSuccess && <Alert variant="success"><CheckCircle2 className="text-green-600 mr-2 inline" /> <AlertTitle>Bulk upload successful!</AlertTitle></Alert>}
-              {bulkError && <Alert variant="destructive"><XCircle className="text-red-600 mr-2 inline" /> <AlertTitle>Error</AlertTitle><AlertDescription>{bulkError}</AlertDescription></Alert>}
-              <label className="flex items-center gap-2 text-xs">
-                <input type="checkbox" checked={checkUserDuplicates} onChange={e => setCheckUserDuplicates(e.target.checked)} />
-                Check for duplicates across all my campaigns
-              </label>
-              <Input type="file" accept=".csv,.json" onChange={handleBulkFileChange} />
-              <DialogFooter>
-                <Button type="submit">Upload</Button>
+
+              <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                <div className="mt-2">
+                  <Input
+                    id="bulk-upload"
+                    type="file"
+                    accept=".csv,.json"
+                    onChange={handleBulkFileChange}
+                    disabled={isBulkLoading}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    or drag and drop
+                  </p>
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  CSV or JSON up to 10MB
+                </p>
+                {bulkFile && (
+                  <p className="mt-2 text-sm text-green-600">
+                    {bulkFile.name} ({(bulkFile.size / 1024).toFixed(2)} KB)
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between text-sm">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={downloadTemplate}
+                  disabled={isBulkLoading}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Download Template
+                </Button>
+
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="bulk-check-duplicates"
+                    checked={checkDuplicates}
+                    onChange={(e) => setCheckDuplicates(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    disabled={isBulkLoading}
+                  />
+                  <label htmlFor="bulk-check-duplicates" className="text-gray-600">
+                    Skip duplicates
+                  </label>
+                </div>
+              </div>
+
+              <DialogFooter className="pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isBulkLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={!bulkFile || isBulkLoading}
+                >
+                  {isBulkLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : 'Upload & Process'}
+                </Button>
               </DialogFooter>
             </form>
           </TabsContent>
-          <TabsContent value="smart">
-            <form onSubmit={handleSmartSubmit} className="flex flex-col gap-4">
-              <p className="text-xs text-muted-foreground mb-1">Let AI generate a targeted email list for your campaign. Describe your campaign and get a ready-to-use list!</p>
-              {smartLoading && <Alert variant="info"><Loader2 className="animate-spin mr-2 inline" /> <AlertTitle>Generating with AI...</AlertTitle></Alert>}
-              {smartSuccess && <Alert variant="success"><CheckCircle2 className="text-green-600 mr-2 inline" /> <AlertTitle>AI-generated emails added!</AlertTitle></Alert>}
-              {smartError && <Alert variant="destructive"><XCircle className="text-red-600 mr-2 inline" /> <AlertTitle>Error</AlertTitle><AlertDescription>{smartError}</AlertDescription></Alert>}
+
+          {/* Add Existing Tab */}
+          <TabsContent value="existing">
+            <form onSubmit={handleAddExistingSubmit} className="space-y-4">
+              {existingError && (
+                <Alert variant="destructive">
+                  <XCircle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{existingError}</AlertDescription>
+                </Alert>
+              )}
+              {existingSuccess && (
+                <Alert>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <AlertTitle>Success</AlertTitle>
+                  <AlertDescription>Emails added successfully!</AlertDescription>
+                </Alert>
+              )}
+              <p className="text-sm text-muted-foreground mb-1">
+                Select existing emails to add to this campaign.
+              </p>
+
               <Input
-                name="campaign_type"
-                placeholder="Describe your campaign (e.g. Outreach to tech startups in Kenya)"
-                value={smartData.campaign_type}
-                onChange={handleSmartChange}
-                required
+                placeholder="Search emails..."
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
+                className="mb-2"
               />
-              <DialogFooter>
-                <Button type="submit">Generate with AI</Button>
+
+              <div className="border rounded-md h-64 overflow-y-auto p-2 space-y-2">
+                {isEmailsLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                  </div>
+                ) : (emailsFromStore?.length || 0) === 0 ? (
+                  <div className="text-center text-gray-500 py-8">
+                    No emails found. Add some emails first.
+                  </div>
+                ) : (
+                  emailsFromStore
+                    .map(email => (
+                      <div key={email.id} className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded">
+                        <Checkbox
+                          id={`email-${email.id}`}
+                          checked={selectedEmailIds.includes(email.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedEmailIds([...selectedEmailIds, email.id]);
+                            } else {
+                              setSelectedEmailIds(selectedEmailIds.filter(id => id !== email.id));
+                            }
+                          }}
+                        />
+                        <label
+                          htmlFor={`email-${email.id}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 cursor-pointer"
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">{email.email}</span>
+                            <span className="text-xs text-gray-500">
+                              {[email.first_name, email.last_name].filter(Boolean).join(' ').trim() || 'No name'}
+                            </span>
+                          </div>
+                          {email.organization_name && (
+                            <div className="text-xs text-gray-500">{email.organization_name}</div>
+                          )}
+                        </label>
+                      </div>
+                    ))
+                )}
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <div className="text-xs text-gray-600">
+                  Showing {(emailsFromStore?.length || 0)} of {pagination?.count || 0}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={(pagination?.currentPage || 1) === 1}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-xs">Page {pagination?.currentPage || 1} of {pagination?.totalPages || 1}</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min((pagination?.totalPages || 1), p + 1))}
+                    disabled={(pagination?.currentPage || 1) >= (pagination?.totalPages || 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">{selectedEmailIds.length} selected</span>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="existing-check-duplicates"
+                    checked={skipDuplicates}
+                    onChange={(e) => setSkipDuplicates(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <label htmlFor="existing-check-duplicates" className="text-gray-600">
+                    Skip duplicates
+                  </label>
+                </div>
+              </div>
+
+              <DialogFooter className="pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isAddingExisting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={selectedEmailIds.length === 0 || isAddingExisting}
+                >
+                  {isAddingExisting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Adding...
+                    </>
+                  ) : `Add ${selectedEmailIds.length} email${selectedEmailIds.length !== 1 ? 's' : ''}`}
+                </Button>
               </DialogFooter>
             </form>
           </TabsContent>
@@ -268,4 +607,4 @@ export default function AddEmailDialog({ open, onOpenChange, initialCampaignId }
       </DialogContent>
     </Dialog>
   )
-} 
+}

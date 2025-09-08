@@ -11,72 +11,64 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
-import { useDispatch } from "react-redux"
+import { useDispatch, useSelector } from "react-redux"
 import { handleCreateCampaign } from "@/store/actions/campaignActions"
-import type { AppDispatch } from "@/store/store"
+import type { AppDispatch, RootState } from "@/store/store"
+import { useEffect } from "react"
 
 export default function NewCampaignPage() {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [attachment, setAttachment] = useState<File | null>(null)
   const [image, setImage] = useState<File | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-
   const router = useRouter()
   const { toast } = useToast()
   const dispatch = useDispatch<AppDispatch>()
+  const { isLoading, error, currentCampaign } = useSelector((state: RootState) => state.campaigns)
+
+  // Handle success message when campaign is created
+  useEffect(() => {
+    if (currentCampaign) {
+      toast({
+        title: "Success!",
+        description: "Campaign created successfully.",
+        variant: "default",
+      })
+      router.push("/campaigns")
+    }
+  }, [currentCampaign, router, toast])
+
+  // Handle error messages
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Error",
+        description: error,
+        variant: "destructive",
+      })
+    }
+  }, [error, toast])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
+    
+    const formData = new FormData()
+    formData.append("name", name)
+    formData.append("description", description)
+
+    if (attachment) {
+      formData.append("attachment", attachment)
+    }
+
+    if (image) {
+      formData.append("image", image)
+    }
 
     try {
-      const formData = new FormData()
-      formData.append("name", name)
-      formData.append("description", description)
-
-      if (attachment) {
-        formData.append("attachment", attachment)
-      }
-
-      if (image) {
-        formData.append("image", image)
-      }
-
-      let created = null;
-      try {
-        created = await dispatch(handleCreateCampaign(formData)).unwrap();
-      } catch (e) {
-        created = false;
-      }
-
-      if (created && typeof created === 'object' && created.id) {
-        toast({
-          title: "Campaign created",
-          description: "Your campaign has been created successfully. You can click on 'View Template' or 'View Content' to visit your email and customize.",
-        })
-        router.push(`/campaigns/${created.id}`)
-      } else if (created) {
-        toast({
-          title: "Campaign created",
-          description: "Your campaign has been created successfully. You can click on 'View Template' or 'View Content' to visit your email and customize.",
-        })
-        router.push("/campaigns")
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to create campaign. Please try again.",
-        })
-      }
+      await dispatch(handleCreateCampaign(formData)).unwrap()
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-      })
-    } finally {
-      setIsLoading(false)
+      // Error is already handled by the error effect
+      console.error("Error creating campaign:", error)
     }
   }
 
@@ -151,8 +143,22 @@ export default function NewCampaignPage() {
               <Button variant="outline" type="button" onClick={() => router.push("/campaigns")}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Creating..." : "Create Campaign"}
+              <Button
+                disabled={isLoading}
+                className="w-full"
+                type="submit"
+              >
+                {isLoading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Creating...
+                  </>
+                ) : (
+                  "Create Campaign"
+                )}
               </Button>
             </CardFooter>
           </form>

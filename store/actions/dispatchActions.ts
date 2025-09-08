@@ -66,18 +66,36 @@ export const verifyDispatch = createAsyncThunk("dispatches/verify", async (dispa
 export const sendDispatch = createAsyncThunk(
   "dispatches/send",
   async (
-    { dispatchId, mailboxId, type }: { dispatchId: number; mailboxId: number; type: "content" | "template" },
+    { 
+      dispatchId, 
+      mailboxId, 
+      mailboxIds,
+      type 
+    }: { 
+      dispatchId: number; 
+      mailboxId?: number; 
+      mailboxIds?: number[];
+      type: "content" | "template" 
+    },
     { rejectWithValue }
   ) => {
-  try {
-      const response = await api.post(`/mail/dispatches/${dispatchId}/send/`, {
-        mailbox_id: mailboxId,
-        type,
-      })
-    return response.data
-  } catch (error: any) {
-    return rejectWithValue(error.response?.data?.error || "Failed to send dispatch")
-  }
+    try {
+      const payload: any = { type }
+      
+      // Support both single mailbox_id and mailbox_ids for backward compatibility
+      if (mailboxIds && mailboxIds.length > 0) {
+        payload.mailbox_ids = mailboxIds
+      } else if (mailboxId) {
+        payload.mailbox_id = mailboxId
+      } else {
+        throw new Error('Either mailboxId or mailboxIds must be provided')
+      }
+      
+      const response = await api.post(`/mail/dispatches/${dispatchId}/send/`, payload)
+      return response.data
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error || error.message || "Failed to send dispatch")
+    }
   }
 )
 
@@ -95,7 +113,7 @@ export const autoSendNextDispatch = createAsyncThunk("dispatches/autoSend", asyn
 export const handleFetchDispatches = () => async (dispatch: AppDispatch) => {
   dispatch(fetchDispatchesStart())
   try {
-    const resultAction = await dispatch(fetchDispatches())
+    const resultAction = await dispatch(fetchDispatches() as any)
     if (fetchDispatches.fulfilled.match(resultAction)) {
       dispatch(fetchDispatchesSuccess(resultAction.payload))
       return true
@@ -112,7 +130,7 @@ export const handleFetchDispatches = () => async (dispatch: AppDispatch) => {
 export const handleFetchDispatchByCampaignId = (campaignId: number) => async (dispatch: AppDispatch) => {
   dispatch(fetchDispatchStart())
   try {
-    const resultAction = await dispatch(fetchDispatchByCampaignId(campaignId))
+    const resultAction = await dispatch(fetchDispatchByCampaignId(campaignId) as any)
     if (fetchDispatchByCampaignId.fulfilled.match(resultAction)) {
       dispatch(fetchDispatchSuccess(resultAction.payload))
       return true
@@ -129,52 +147,68 @@ export const handleFetchDispatchByCampaignId = (campaignId: number) => async (di
 export const handleCreateDispatch = (campaignId: number) => async (dispatch: AppDispatch) => {
   dispatch(createDispatchStart())
   try {
-    const resultAction = await dispatch(createDispatch(campaignId))
+    const resultAction = await dispatch(createDispatch(campaignId) as any)
     if (createDispatch.fulfilled.match(resultAction)) {
       dispatch(createDispatchSuccess(resultAction.payload))
-      return true
+      return { success: true, data: resultAction.payload }
     } else {
       dispatch(createDispatchFailure(resultAction.payload as string))
-      return false
+      return { success: false, error: resultAction.payload }
     }
   } catch (error: any) {
     dispatch(createDispatchFailure(error.message || "Failed to create dispatch"))
-    return false
+    return { success: false, error: error.message || "Failed to create dispatch" }
   }
 }
 
 export const handleVerifyDispatch = (dispatchId: number) => async (dispatch: AppDispatch) => {
   dispatch(verifyDispatchStart())
   try {
-    const resultAction = await dispatch(verifyDispatch(dispatchId))
+    const resultAction = await dispatch(verifyDispatch(dispatchId) as any)
     if (verifyDispatch.fulfilled.match(resultAction)) {
       dispatch(verifyDispatchSuccess(resultAction.payload))
-      return true
+      return { success: true, data: resultAction.payload }
     } else {
       dispatch(verifyDispatchFailure(resultAction.payload as string))
-      return false
+      return { success: false, error: resultAction.payload }
     }
   } catch (error: any) {
-    dispatch(verifyDispatchFailure(error.message || "Failed to verify dispatch"))
-    return false
+    const errorMessage = error.message || "Failed to verify dispatch"
+    dispatch(verifyDispatchFailure(errorMessage))
+    return { success: false, error: errorMessage }
   }
 }
 
-export const handleSendDispatch =
-  (dispatchId: number, mailboxId: number, type: "content" | "template") =>
-  async (dispatch: AppDispatch) => {
+export const handleSendDispatch = (
+  dispatchId: number, 
+  mailboxId?: number, 
+  mailboxIds?: number[],
+  type?: "content" | "template"
+) => async (dispatch: AppDispatch) => {
   dispatch(sendDispatchStart())
   try {
-      const resultAction = await dispatch(sendDispatch({ dispatchId, mailboxId, type }))
+    // Ensure either mailboxId or mailboxIds is provided
+    if (!mailboxId && (!mailboxIds || mailboxIds.length === 0)) {
+      throw new Error('Either mailboxId or mailboxIds must be provided')
+    }
+    
+    const resultAction = await dispatch(sendDispatch({ 
+      dispatchId, 
+      ...(mailboxId && { mailboxId }),
+      ...(mailboxIds && mailboxIds.length > 0 && { mailboxIds }),
+      type: type || 'content' // Default to 'content' if not provided
+    } as any))
+    
     if (sendDispatch.fulfilled.match(resultAction)) {
       dispatch(sendDispatchSuccess())
-      return resultAction.payload
+      return { success: true, data: resultAction.payload }
     } else {
       dispatch(sendDispatchFailure(resultAction.payload as string))
-        return { error: resultAction.payload }
+      return { success: false, error: resultAction.payload }
     }
   } catch (error: any) {
-    dispatch(sendDispatchFailure(error.message || "Failed to send dispatch"))
-      return { error: error.message || "Failed to send dispatch" }
+    const errorMessage = error.message || "Failed to send dispatch"
+    dispatch(sendDispatchFailure(errorMessage))
+    return { success: false, error: errorMessage }
   }
 }

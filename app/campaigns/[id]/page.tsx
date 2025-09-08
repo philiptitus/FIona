@@ -18,9 +18,13 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import React from "react"
 import AddEmailDialog from "@/components/emails/AddEmailDialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Send, Loader2, CheckCircle2, XCircle } from "lucide-react"
+import { Send, Loader2, CheckCircle2, XCircle, Trash2, AlertTriangle, CheckCircle, X, Loader } from "lucide-react"
 import { handleSendDispatch } from "@/store/actions/dispatchActions"
 import { handleFetchMailboxes } from "@/store/actions/mailboxActions"
+import { handleDisassociateEmails } from "@/store/actions/emailActions"
+import { Checkbox } from "@/components/ui/checkbox"
+import { motion, AnimatePresence } from "framer-motion"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 export default function CampaignDetailPage() {
   const params = useParams()
@@ -33,32 +37,156 @@ export default function CampaignDetailPage() {
   const campaign = campaigns.find((c: any) => c.id === campaignId)
   const [showAddEmailDialog, setShowAddEmailDialog] = React.useState(false)
   const [sendModalOpen, setSendModalOpen] = React.useState(false)
-  const [selectedMailbox, setSelectedMailbox] = React.useState<number | null>(null)
+  const [selectedMailboxIds, setSelectedMailboxIds] = React.useState<number[]>([])
   const [selectedType, setSelectedType] = React.useState<"content" | "template" | "">("")
   const [sendError, setSendError] = React.useState("")
   const { mailboxes, isLoading: isMailboxesLoading } = useSelector((state: RootState) => state.mailbox)
   const [isSending, setIsSending] = React.useState(false)
   const [sendSuccess, setSendSuccess] = React.useState(false)
+  const [showMailboxSelector, setShowMailboxSelector] = React.useState(false)
+  const [searchQuery, setSearchQuery] = React.useState("")
+  const selectorRef = React.useRef<HTMLDivElement>(null)
+  const [selectedEmails, setSelectedEmails] = React.useState<number[]>([])
+  const [isDisassociating, setIsDisassociating] = React.useState(false)
+  const [notification, setNotification] = React.useState<{ type: 'success' | 'error' | ''; message: string }>({ type: '', message: '' })
+  const [isLoadingEmails, setIsLoadingEmails] = React.useState(false)
+  const [allEmailsList, setAllEmailsList] = React.useState<any[]>([])
+  const [availableEmails, setAvailableEmails] = React.useState<any[]>([])
+  
+  // Filter emails that are not already in the campaign
+  React.useEffect(() => {
+    if (allEmails && campaign) {
+
+      const filtered = allEmails.filter(email => {
+        const isInCampaign = email.campaigns?.some((c: any) => c.id === campaign.id);
+        return !isInCampaign;
+      });
+      setAvailableEmails(filtered);
+    } else {
+      setAvailableEmails(allEmails || []);
+    }
+  }, [allEmails, campaign])
+  
+  const handleAddExistingEmailsToCampaign = async (emailIds: number[], skipDuplicates: boolean) => {
+    if (!campaign) return { success: false, error: 'No campaign selected' }
+    
+    try {
+      const result = await dispatch(handleAddExistingEmails({
+        campaignId: campaign.id,
+        emailListIds: emailIds,
+        skipDuplicates
+      }) as any)
+      
+      if (result?.payload?.success) {
+        // Refresh emails after successful addition
+        await dispatch(handleFetchEmails({ campaignId: campaign.id }) as any)
+        return { success: true }
+      } else {
+        return { 
+          success: false, 
+          error: result?.payload?.error || result?.error || 'Failed to add emails' 
+        }
+      }
+    } catch (error: any) {
+      return { 
+        success: false, 
+        error: error?.message || 'Failed to add emails' 
+      }
+    }
+  }
 
   React.useEffect(() => {
     if (!campaign) {
       dispatch(handleFetchCampaignById(campaignId) as any)
     }
-    dispatch(handleFetchEmails(campaignId) as any)
+    // Only fetch emails for the current campaign
+    if (campaignId) {
+      dispatch(handleFetchEmails({ campaignId }) as any)
+    }
   }, [campaign, dispatch, campaignId])
+
+  // Show notification with auto-dismiss
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message })
+    setTimeout(() => setNotification({ type: '', message: '' }), 4000)
+  }
+
+  // Handle email selection
+  const toggleEmailSelection = (emailId: number) => {
+    setSelectedEmails(prev => 
+      prev.includes(emailId) 
+        ? prev.filter(id => id !== emailId)
+        : [...prev, emailId]
+    )
+  }
+
+  // Handle select all/none
+  const toggleSelectAll = () => {
+    if (selectedEmails.length === filteredEmails.length) {
+      setSelectedEmails([])
+    } else {
+      setSelectedEmails(filteredEmails.map(email => email.id))
+    }
+  }
+
+  // Handle disassociating emails
+  const handleDisassociateSelected = async () => {
+    if (selectedEmails.length === 0 || !campaignId) return
+    
+    try {
+      setIsDisassociating(true)
+      const result = await dispatch(handleDisassociateEmails(campaignId, selectedEmails) as any)
+      
+      if (result?.success) {
+        showNotification('success', result?.data?.message || `Removed ${selectedEmails.length} email(s) from campaign`)
+        setSelectedEmails([])
+        // Refresh the emails list
+        await dispatch(handleFetchEmails({ campaignId }) as any)
+      } else {
+        throw new Error(result?.error || 'Failed to remove emails')
+      }
+    } catch (error) {
+      showNotification('error', error instanceof Error ? error.message : 'Failed to remove emails')
+    } finally {
+      setIsDisassociating(false)
+    }
+  }
+
+  // Filter emails to only show those in the current campaign and match search
+  const campaignEmails = allEmails.filter(email => email.campaign === campaignId)
+  
+  const filteredEmails = campaignEmails.filter(email => 
+    email.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (email.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+    (email.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+    (email.organization_name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
+  )
+
+  // Close selector when clicking outside
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (selectorRef.current && !selectorRef.current.contains(event.target as Node)) {
+        setShowMailboxSelector(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   React.useEffect(() => {
     if (sendModalOpen) {
       dispatch(handleFetchMailboxes() as any)
-      setSelectedMailbox(null)
+      setSelectedMailboxIds([])
       setSelectedType("")
       setSendError("")
+      setShowMailboxSelector(false)
+      setSearchQuery("")
     }
   }, [sendModalOpen, dispatch])
 
   const handleSendModal = async () => {
-    if (!campaignId || !selectedMailbox || !selectedType) {
-      setSendError("Please select a mailbox and type.")
+    if (!campaignId || selectedMailboxIds.length === 0 || !selectedType) {
+      setSendError(selectedMailboxIds.length === 0 ? "Please select at least one mailbox." : "Please select a type.")
       return
     }
     if (!campaign?.dispatch_id) {
@@ -68,9 +196,9 @@ export default function CampaignDetailPage() {
     setSendError("")
     setIsSending(true)
     setSendSuccess(false)
-    const result = await dispatch(handleSendDispatch(campaign.dispatch_id, selectedMailbox, selectedType) as any)
+    const result = await dispatch(handleSendDispatch(campaign.dispatch_id, undefined, selectedMailboxIds, selectedType) as any)
     setIsSending(false)
-    if (result && result.success >= 0) {
+    if (result && result.success) {
       setSendSuccess(true)
       setTimeout(() => {
         setSendModalOpen(false)
@@ -81,13 +209,34 @@ export default function CampaignDetailPage() {
     }
   }
 
-  const campaignEmails = allEmails.filter((email: any) => email.campaign === campaignId)
+  const allEmailsSent = campaignEmails.length > 0 && campaignEmails.every(email => email.is_sent);
+  const hasSendable = !allEmailsSent && (campaign?.latest_email_template_id || campaign?.latest_email_content_id) && campaignEmails.length > 0
 
-  const hasSendable = (campaign?.latest_email_template_id || campaign?.latest_email_content_id) && campaignEmails.length > 0
+  useEffect(() => {
+    if (!campaign && !isLoading) {
+      router.replace("/campaigns")
+    }
+  }, [campaign, isLoading, router])
 
-  if (!campaign && !isLoading) {
-    router.replace("/campaigns")
-    return null
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (!campaign) {
+    return (
+      <MainLayout>
+        <div className="p-8 text-center">
+          <h1 className="text-2xl font-bold mb-4">Campaign not found</h1>
+          <Button onClick={() => router.push('/campaigns')}>Back to Campaigns</Button>
+        </div>
+      </MainLayout>
+    );
   }
 
   const handleViewTemplate = async (id: number) => {
@@ -101,6 +250,37 @@ export default function CampaignDetailPage() {
 
   return (
     <MainLayout>
+      {/* Notification Toast */}
+      <AnimatePresence>
+        {notification.type && (
+          <motion.div
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -100, opacity: 0 }}
+            className={`fixed top-4 right-4 z-50 max-w-md w-full p-4 rounded-lg shadow-lg ${
+              notification.type === 'success' 
+                ? 'bg-green-100 border border-green-300 text-green-800' 
+                : 'bg-red-100 border border-red-300 text-red-800'
+            }`}
+          >
+            <div className="flex items-center">
+              {notification.type === 'success' ? (
+                <CheckCircle className="h-5 w-5 mr-2 text-green-600" />
+              ) : (
+                <AlertTriangle className="h-5 w-5 mr-2 text-red-600" />
+              )}
+              <span>{notification.message}</span>
+              <button 
+                onClick={() => setNotification({ type: '', message: '' })}
+                className="ml-auto p-1 hover:bg-opacity-20 hover:bg-gray-500 rounded-full"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="max-w-2xl mx-auto py-12 px-4">
         <Button variant="ghost" className="mb-4" onClick={() => router.push("/campaigns")}>{"<-"} Back to Campaigns</Button>
         <Card className="shadow-xl border-2 border-primary/10 bg-white dark:bg-zinc-900">
@@ -135,70 +315,224 @@ export default function CampaignDetailPage() {
             {/* Email Options Section */}
             {(campaign?.latest_email_template_id || campaign?.latest_email_content_id) && (
               <div className="mb-6">
-                <div className="mb-2 font-semibold text-lg">Email Options</div>
+                <div className="mb-2 font-semibold text-lg">Your Email Sending Options</div>
                 <div className="mb-3 text-muted-foreground text-sm">
                   You can view and customize your campaign's emails. Choose between the HTML <b>Template</b> (for styled emails) or the plain <b>Content</b> (for simple text emails).
                 </div>
                 <div className="flex gap-4">
                   {campaign?.latest_email_template_id && (
                     <Button variant="outline" onClick={() => handleViewTemplate(campaign.latest_email_template_id)}>
-                      View Email Template
+                      View and Send Email Template
                     </Button>
                   )}
                   {campaign?.latest_email_content_id && (
-                    <Button variant="outline" onClick={() => handleViewContent(campaign.latest_email_content_id)}>
-                      View Email Content
+                    <Button variant="outline" onClick={() => router.push(`/content/${campaign.latest_email_content_id}`)}>
+                      View and Send Email Content
                     </Button>
                   )}
+
                 </div>
               </div>
             )}
-            {/* Inline alert/banner if no emails */}
-            {!emailsLoading && campaignEmails.length === 0 && (
-              <Alert variant="destructive" className="mb-6">
-                <AlertTitle>No Emails Attached</AlertTitle>
-                <AlertDescription>
-                  This campaign currently does not have any valid emails attached. To begin sending, add emails to this campaign.
-                  <div className="mt-4">
-                    <Button
+            {/* Email List Header */}
+            <div className="flex flex-col space-y-4 mb-6">
+              <div className="flex justify-between items-center">
+                <h1 className="text-3xl font-bold">{campaign?.name || 'Campaign Details'}</h1>
+                <div className="flex space-x-2">
+                <Button
                       variant="default"
                       onClick={() => setShowAddEmailDialog(true)}
                     >
                       Add Emails to Campaign
                     </Button>
+
+                  <Button onClick={() => setSendModalOpen(true)}>
+                    <Send className="mr-2 h-4 w-4" /> Send Campaign
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Inline alert/banner if no emails */}
+              {!emailsLoading && campaignEmails.length === 0 && (
+                <Alert variant="destructive">
+                  <AlertTitle>No Emails Attached</AlertTitle>
+                  <AlertDescription>
+                    This campaign doesn't have any emails attached yet.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {/* <div className="flex flex-col space-y-4">
+                {selectedEmails.length > 0 && (
+                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <AlertTriangle className="h-5 w-5 text-blue-500 mr-2" />
+                        <span className="font-medium text-blue-700">
+                          {selectedEmails.length} email{selectedEmails.length !== 1 ? 's' : ''} selected
+                        </span>
+                      </div>
+                      <div className="space-x-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setSelectedEmails([])}
+                          className="border-gray-300"
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleDisassociateSelected}
+                          disabled={isDisassociating}
+                          className="flex items-center gap-2"
+                        >
+                          {isDisassociating ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                          Remove Selected
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                </AlertDescription>
-              </Alert>
-            )}
-            <AddEmailDialog open={showAddEmailDialog} onOpenChange={setShowAddEmailDialog} initialCampaignId={campaignId} />
+                )}
+              </div> */}
+            </div>
             {/* Collapsible Associated Emails Section */}
             <Accordion type="single" collapsible defaultValue="emails">
               <AccordionItem value="emails">
                 <AccordionTrigger className="text-lg font-semibold">Associated Emails ({campaignEmails.length})</AccordionTrigger>
                 <AccordionContent>
-              {emailsLoading ? (
-                <div>Loading emails...</div>
-              ) : campaignEmails.length === 0 ? (
-                <div className="flex flex-col items-center gap-4 py-8">
-                  <div className="text-muted-foreground mb-2">No emails associated with this campaign.</div>
-                </div>
-              ) : (
+                  {emailsLoading ? (
+                    <div>Loading emails...</div>
+                  ) : campaignEmails.length === 0 ? (
+                    <div className="flex flex-col items-center gap-4 py-8">
+                      <div className="text-muted-foreground mb-2">No emails associated with this campaign.</div>
+                    </div>
+                  ) : (
                     <>
-                      <ul className="list-disc pl-6 mt-2 max-h-64 overflow-y-auto">
-                        {campaignEmails.map((email: any) => (
-                          <li key={email.id} className="mb-1">
-                            <span className="font-medium">{email.organization_name}</span>: {email.email}
-                            {email.context && <span className="text-muted-foreground"> ({email.context})</span>}
-                          </li>
-                        ))}
-                      </ul>
-                      <div className="flex justify-between items-center mt-6">
-                        <Button variant="outline" onClick={() => router.push("/emails")}>You can add more emails here</Button>
-                        {hasSendable && (
-                          <Button variant="default" className="flex items-center gap-2" onClick={() => setSendModalOpen(true)}>
-                            <Send className="w-4 h-4" /> Send Out Emails
-                          </Button>
+                      <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-semibold">Emails</h2>
+                        <div className="relative w-64">
+                          <input
+                            type="text"
+                            placeholder="Search emails..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                          {searchQuery && (
+                            <button
+                              onClick={() => setSearchQuery('')}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center gap-4 p-2 bg-gray-50 rounded-lg">
+                          <Checkbox 
+                            id="select-all"
+                            checked={selectedEmails.length > 0 && selectedEmails.length === filteredEmails.length}
+                            onCheckedChange={toggleSelectAll}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <label 
+                            htmlFor="select-all" 
+                            className="text-sm font-medium text-gray-700 cursor-pointer"
+                          >
+                            {selectedEmails.length > 0 
+                              ? `Selected ${selectedEmails.length} email(s)`
+                              : 'Select all'}
+                          </label>
+                          {selectedEmails.length > 0 && (
+                            <button 
+                              onClick={() => setSelectedEmails([])}
+                              className="ml-auto text-sm text-blue-600 hover:text-blue-800"
+                            >
+                              Clear selection
+                            </button>
+                          )}
+                        </div>
+                        {selectedEmails.length > 0 && (
+                          <div className="flex justify-end">
+                            <Button 
+                              variant="destructive"
+                              size="sm"
+                              onClick={handleDisassociateSelected}
+                              disabled={isDisassociating}
+                              className="flex items-center gap-2"
+                            >
+                              {isDisassociating ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                              Remove {selectedEmails.length} selected email{selectedEmails.length !== 1 ? 's' : ''}
+                            </Button>
+                          </div>
                         )}
+                      </div>
+                      <div className="space-y-2">
+                        {filteredEmails.map((email) => (
+                          <motion.div
+                            key={email.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className={`relative ${selectedEmails.includes(email.id) ? 'ring-2 ring-blue-500' : ''}`}
+                          >
+                            <Card className={`hover:shadow-md transition-shadow ${selectedEmails.includes(email.id) ? 'border-blue-500' : ''}`}>
+                              <CardContent className="p-4">
+                                <div className="flex items-center space-x-3">
+                                  <Checkbox 
+                                    id={`email-${email.id}`}
+                                    checked={selectedEmails.includes(email.id)}
+                                    onCheckedChange={() => toggleEmailSelection(email.id)}
+                                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  />
+                                  <div className="flex-1 flex items-center justify-between">
+                                    <div className="flex flex-col space-y-4 mb-6">
+                                      <div className="flex items-center space-x-2">
+                                        <span className="font-medium">{email.email}</span>
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              {email.is_sent ? (
+                                                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                              ) : (
+                                                <XCircle className="h-4 w-4 text-red-500" />
+                                              )}
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              {email.is_sent 
+                                                ? "Email has been sent successfully" 
+                                                : "Email has not been sent yet"}
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      </div>
+                                      {(email.first_name || email.last_name) && (
+                                        <div className="text-sm text-gray-500">
+                                          {email.first_name} {email.last_name}
+                                        </div>
+                                      )}
+                                      {email.organization_name && (
+                                        <div className="text-sm text-gray-500">
+                                          {email.organization_name}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </motion.div>
+                        ))}
                       </div>
                     </>
                   )}
@@ -206,15 +540,34 @@ export default function CampaignDetailPage() {
               </AccordionItem>
             </Accordion>
             <Dialog open={sendModalOpen} onOpenChange={setSendModalOpen}>
-              <DialogContent>
+              <DialogContent className="sm:max-w-[560px] rounded-xl border shadow-2xl">
                 <DialogHeader>
-                  <DialogTitle>Send Dispatch</DialogTitle>
+                  <DialogTitle className="text-xl">Send Campaign</DialogTitle>
                 </DialogHeader>
                 <div className="flex flex-col gap-4 min-h-[120px]">
+                  {!isSending && !sendSuccess && (
+                    <div className="rounded-lg bg-gradient-to-r from-primary/10 to-purple-200/20 p-4 border">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center">
+                          <Send className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-sm font-semibold">Finalize and send your campaign</div>
+                          <div className="text-xs text-muted-foreground">Choose mailboxes, select content type, and launch</div>
+                        </div>
+                        <div className="hidden sm:flex items-center gap-2 text-xs">
+                          <span className="px-2 py-1 rounded-full bg-background border">1. Mailboxes</span>
+                          <span className="px-2 py-1 rounded-full bg-background border">2. Type</span>
+                          <span className="px-2 py-1 rounded-full bg-background border">3. Send</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   {isSending ? (
                     <div className="flex flex-col items-center justify-center py-8">
                       <Loader2 className="animate-spin w-10 h-10 text-primary mb-2" />
-                      <div className="text-primary font-semibold">Sending...</div>
+                      <div className="text-primary font-semibold">Sending your campaign…</div>
+                      <div className="text-xs text-muted-foreground">Distributing messages across selected mailboxes</div>
                     </div>
                   ) : sendSuccess ? (
                     <div className="flex flex-col items-center justify-center py-8 animate-fade-in">
@@ -223,35 +576,118 @@ export default function CampaignDetailPage() {
                     </div>
                   ) : (
                     <>
-                      <div>
-                        <label className="block mb-1 font-medium">Select Mailbox</label>
+                      <div className="bg-muted/40 rounded-lg p-3 border">
+                        <label className="block mb-1 font-medium">Select Mailboxes</label>
                         {isMailboxesLoading ? (
                           <div>Loading mailboxes...</div>
                         ) : (
-                          <select
-                            className="w-full border rounded px-3 py-2"
-                            value={selectedMailbox || ""}
-                            onChange={e => setSelectedMailbox(Number(e.target.value))}
-                          >
-                            <option value="">Select mailbox...</option>
-                            {mailboxes.map((mb: any) => (
-                              <option key={mb.id} value={mb.id}>{mb.email} ({mb.provider})</option>
-                            ))}
-                          </select>
+                          <div className="relative" ref={selectorRef}>
+                            <div 
+                              className="w-full border rounded px-3 py-2 min-h-10 flex flex-wrap gap-2 cursor-pointer items-center"
+                              onClick={() => setShowMailboxSelector(!showMailboxSelector)}
+                            >
+                              {selectedMailboxIds.length === 0 ? (
+                                <span className="text-muted-foreground">Select mailboxes...</span>
+                              ) : (
+                                selectedMailboxIds.slice(0, 2).map(mailboxId => {
+                                  const mailbox = mailboxes.find((mb: any) => mb.id === mailboxId)
+                                  return mailbox ? (
+                                    <Badge key={mailbox.id} className="flex items-center gap-1">
+                                      {mailbox.email} ({mailbox.provider})
+                                      <button 
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          setSelectedMailboxIds(selectedMailboxIds.filter(id => id !== mailbox.id))
+                                        }}
+                                        className="ml-1 hover:text-destructive"
+                                      >
+                                        ×
+                                      </button>
+                                    </Badge>
+                                  ) : null
+                                })
+                              )}
+                              {selectedMailboxIds.length > 2 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{selectedMailboxIds.length - 2} more
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            {showMailboxSelector && (
+                              <div className="absolute z-10 mt-1 w-full bg-card border rounded shadow-lg p-2 max-h-60 overflow-y-auto">
+                                <input
+                                  type="text"
+                                  placeholder="Search mailboxes..."
+                                  className="w-full p-2 mb-2 border rounded"
+                                  value={searchQuery}
+                                  onChange={(e) => setSearchQuery(e.target.value)}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                                <div className="space-y-1">
+                                  {mailboxes
+                                    .filter((mb: any) => 
+                                      mb.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                      mb.provider.toLowerCase().includes(searchQuery.toLowerCase())
+                                    )
+                                    .map((mb: any) => (
+                                      <div 
+                                        key={mb.id} 
+                                        className="flex items-center p-2 hover:bg-accent rounded cursor-pointer"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          setSelectedMailboxIds(prev => 
+                                            prev.includes(mb.id)
+                                              ? prev.filter(id => id !== mb.id)
+                                              : [...prev, mb.id]
+                                          )
+                                        }}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedMailboxIds.includes(mb.id)}
+                                          className="mr-2 h-4 w-4"
+                                          onChange={() => {}} // Required for React controlled component
+                                        />
+                                        <span>{mb.email} ({mb.provider})</span>
+                                      </div>
+                                    ))}
+                                </div>
+                              </div>
+                            )}
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {selectedMailboxIds.length} mailbox{selectedMailboxIds.length !== 1 ? 'es' : ''} selected · Load-balanced sending for deliverability
+                            </div>
+                          </div>
                         )}
                       </div>
-                      <div>
-                        <label className="block mb-1 font-medium">Type</label>
-                        <select
-                          className="w-full border rounded px-3 py-2"
-                          value={selectedType}
-                          onChange={e => setSelectedType(e.target.value as "content" | "template")}
-                        >
-                          <option value="">Select type...</option>
-                          <option value="content">Content (plain text)</option>
-                          <option value="template">Template (HTML)</option>
-                        </select>
-                      </div>
+                      {campaign?.latest_email_content_id || campaign?.latest_email_template_id ? (
+                        <div className="bg-muted/40 rounded-lg p-3 border">
+                          <label className="block mb-1 font-medium">Type</label>
+                          <select
+                            className="w-full border rounded px-3 py-2"
+                            value={selectedType}
+                            onChange={e => setSelectedType(e.target.value as "content" | "template")}
+                          >
+                            <option value="">Select type...</option>
+                            {campaign?.latest_email_content_id && (
+                              <option value="content">Content (plain text)</option>
+                            )}
+                            {campaign?.latest_email_template_id && (
+                              <option value="template">Template (HTML)</option>
+                            )}
+                          </select>
+                          <p className="text-xs text-muted-foreground mt-1">Templates are styled HTML; content is simple, personal text.</p>
+                        </div>
+                      ) : (
+                        <Alert variant="destructive">
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTitle>No content available</AlertTitle>
+                          <AlertDescription>
+                            Please create or assign content or a template to this campaign before sending.
+                          </AlertDescription>
+                        </Alert>
+                      )}
                       {sendError && (
                         <div className="flex items-center gap-2 text-red-600 text-sm mt-2 animate-fade-in">
                           <XCircle className="w-5 h-5" />
@@ -262,9 +698,25 @@ export default function CampaignDetailPage() {
                   )}
                 </div>
                 {!isSending && !sendSuccess && (
-                  <DialogFooter>
-                    <Button onClick={handleSendModal} disabled={isSending}>Send</Button>
-                    <Button variant="outline" onClick={() => setSendModalOpen(false)} disabled={isSending}>Cancel</Button>
+                  <DialogFooter className="mt-2">
+                    <Button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSendModal();
+                      }} 
+                      disabled={isSending}
+                      className="gap-2"
+                    >
+                      <Send className="h-4 w-4" />
+                      Send Campaign Now
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setSendModalOpen(false)} 
+                      disabled={isSending}
+                    >
+                      Cancel
+                    </Button>
                   </DialogFooter>
                 )}
               </DialogContent>
@@ -272,23 +724,33 @@ export default function CampaignDetailPage() {
           </CardContent>
         </Card>
       </div>
+      
       <style jsx global>{`
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-.animate-fade-in {
-  animation: fade-in 0.5s;
-}
-@keyframes pop {
-  0% { transform: scale(0.7); opacity: 0; }
-  80% { transform: scale(1.1); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
-}
-.animate-pop {
-  animation: pop 0.4s;
-}
-`}</style>
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.5s;
+        }
+        @keyframes pop {
+          0% { transform: scale(0.7); opacity: 0; }
+          80% { transform: scale(1.1); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+          animation: pop 0.4s;
+        }
+      `}</style>
+      <AddEmailDialog 
+        open={showAddEmailDialog} 
+        onOpenChange={setShowAddEmailDialog} 
+        initialCampaignId={campaignId}
+        emails={availableEmails}
+        onAddExistingEmails={handleAddExistingEmailsToCampaign}
+        isLoadingEmails={emailsLoading}
+        onSuccess={() => dispatch(handleFetchEmails({ campaignId }) as any)}
+      />
     </MainLayout>
-  )
+  );
 }

@@ -9,7 +9,7 @@ import { LandingFeatureCard } from "@/components/landing-feature-card"
 import { motion } from "framer-motion"
 import { useAuth } from "react-oidc-context"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useDispatch } from "react-redux"
 import { loginSuccess,  } from "@/store/slices/authSlice"
 import Cookies from "js-cookie"
@@ -17,6 +17,7 @@ import { handleUpdateProfile } from "@/store/actions/authActions"
 import { useToast } from "@/components/ui/use-toast"
 import React from "react"
 import { toast } from "sonner"
+import MailLoader from '@/components/MailLoader'
 const FEATURES = [
   {
     icon: Zap,
@@ -98,6 +99,7 @@ export default function LandingPage() {
   const router = useRouter()
   const dispatch = useDispatch()
   const { toast } = useToast()
+  const [isAuthorizing, setIsAuthorizing] = useState(false)
 
   // Handle Cognito callback
   useEffect(() => {
@@ -108,6 +110,7 @@ export default function LandingPage() {
       const state = urlParams.get('state')
       
       if (code && state) {
+        setIsAuthorizing(true)
         // We have a Cognito callback, wait for auth to complete
         if (auth.isAuthenticated && auth.user) {
           // Set cookies and Redux state to match your existing auth flow
@@ -144,6 +147,7 @@ export default function LandingPage() {
           
           // Redirect to dashboard
           router.replace('/dashboard')
+          setIsAuthorizing(false)
         }
       }
     }
@@ -151,6 +155,15 @@ export default function LandingPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      {isAuthorizing && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/90 dark:bg-black/80">
+          <MailLoader />
+          <div className="mt-4 text-center">
+            <p className="text-lg font-semibold">Authorizing your session…</p>
+            <p className="text-sm text-muted-foreground">Securing your account and preparing your dashboard</p>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="border-b bg-white/80 dark:bg-background/80 backdrop-blur">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">

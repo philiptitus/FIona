@@ -1,6 +1,6 @@
 "use client"
 
-import { Mail, Menu, Search, User, LogOut } from "lucide-react"
+import { Menu, Search, User, LogOut } from "lucide-react"
 import { frontendUrl } from "@/lib/route"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -160,13 +160,6 @@ export default function Header() {
           )}
         </div>
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" className="relative">
-            <Mail className="h-5 w-5" />
-            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-              5
-            </span>
-            <span className="sr-only">Messages</span>
-          </Button>
           <NotificationDropdown />
           <ThemeToggle />
           <DropdownMenu>

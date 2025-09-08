@@ -9,11 +9,20 @@ interface EmailTemplate {
   updated_at: string
 }
 
+interface PaginationState {
+  currentPage: number
+  totalPages: number
+  totalItems: number
+  itemsPerPage: number
+}
+
 interface TemplateState {
   templates: EmailTemplate[]
   currentTemplate: EmailTemplate | null
   isLoading: boolean
   error: string | null
+  pagination: PaginationState
+  searchQuery: string
 }
 
 const initialState: TemplateState = {
@@ -21,6 +30,13 @@ const initialState: TemplateState = {
   currentTemplate: null,
   isLoading: false,
   error: null,
+  pagination: {
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 10
+  },
+  searchQuery: ''
 }
 
 const templateSlice = createSlice({
@@ -31,9 +47,18 @@ const templateSlice = createSlice({
       state.isLoading = true
       state.error = null
     },
-    fetchTemplatesSuccess: (state, action: PayloadAction<EmailTemplate[]>) => {
+    fetchTemplatesSuccess: (state, action: PayloadAction<{ results: EmailTemplate[]; count?: number }>) => {
       state.isLoading = false
-      state.templates = action.payload
+      // Handle both array response (backward compatible) and paginated response
+      if (Array.isArray(action.payload)) {
+        state.templates = action.payload
+      } else {
+        state.templates = action.payload.results || []
+        if (action.payload.count !== undefined) {
+          state.pagination.totalItems = action.payload.count
+          state.pagination.totalPages = Math.ceil(action.payload.count / state.pagination.itemsPerPage)
+        }
+      }
       state.error = null
     },
     fetchTemplatesFailure: (state, action: PayloadAction<string>) => {
@@ -118,6 +143,13 @@ const templateSlice = createSlice({
     clearCurrentTemplate: (state) => {
       state.currentTemplate = null
     },
+    setCurrentPage: (state, action: PayloadAction<number>) => {
+      state.pagination.currentPage = action.payload
+    },
+    setSearchQuery: (state, action: PayloadAction<string>) => {
+      state.searchQuery = action.payload
+      state.pagination.currentPage = 1 // Reset to first page on new search
+    },
   },
 })
 
@@ -141,6 +173,8 @@ export const {
   bulkDeleteTemplatesSuccess,
   bulkDeleteTemplatesFailure,
   clearCurrentTemplate,
+  setCurrentPage,
+  setSearchQuery,
 } = templateSlice.actions
 
 export default templateSlice.reducer

@@ -1,17 +1,20 @@
 "use client"
 import React from "react";
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { handleFetchSentEmails } from "@/store/actions/sentEmailActions"
 import type { RootState, AppDispatch } from "@/store/store"
+import { useDebounce } from "@/hooks/use-debounce"
 import MainLayout from "@/components/layout/main-layout"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Mail, CheckCircle, XCircle } from "lucide-react"
+import { Mail, CheckCircle, XCircle, Filter, ChevronDown, ChevronUp } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import EmailDetailModal from "./EmailDetailModal";
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function formatDate(dateStr: string) {
   const date = new Date(dateStr)
@@ -22,13 +25,23 @@ export default function SentEmailsPage() {
   const dispatch = useDispatch<AppDispatch>()
   const sentEmails = useSelector((state: RootState) => state.sentEmail.list.items) || [];
   const isLoading = useSelector((state: RootState) => state.sentEmail.list.isLoading)
+  const pagination = useSelector((state: RootState) => state.sentEmail.list.pagination)
+  const filters = useSelector((state: RootState) => state.sentEmail.list.filters)
 
   const [selectedEmailId, setSelectedEmailId] = React.useState<number | null>(null);
   const [modalOpen, setModalOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
+  // Handle initial load, search, and pagination
   useEffect(() => {
-    dispatch(handleFetchSentEmails())
-  }, [dispatch])
+    const currentFilters: Record<string, any> = { ...filters };
+    if (debouncedSearchQuery) {
+      currentFilters.search = debouncedSearchQuery;
+    }
+    dispatch(handleFetchSentEmails(currentFilters));
+  }, [dispatch, debouncedSearchQuery, filters.page, filters.page_size])
 
   const handleEmailClick = (id: number) => {
     setSelectedEmailId(id);
@@ -40,8 +53,174 @@ export default function SentEmailsPage() {
       <div className="max-w-4xl mx-auto py-10 px-2 sm:px-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
           <h1 className="text-3xl font-bold tracking-tight">Sent Emails</h1>
-          <Input className="w-full sm:w-80" placeholder="Search by subject or recipient..." />
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Input 
+              className="w-full sm:w-80" 
+              placeholder="Search by subject or recipient..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2"
+            >
+              <Filter className="h-4 w-4" />
+              {showFilters ? 'Hide Filters' : 'Show Filters'}
+              {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
+
+        {/* Filter Panel */}
+        {showFilters && (
+          <div className="bg-white dark:bg-zinc-900 rounded-lg border p-4 mb-6 shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select 
+                  value={filters.status || null}
+                  onValueChange={(value) => dispatch({ 
+                    type: 'sentEmail/setSentEmailFilters', 
+                    payload: { ...filters, status: value } 
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>All</SelectItem>
+                    <SelectItem value="sent">Sent</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="delivered">Delivered</SelectItem>
+                    <SelectItem value="opened">Opened</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="is_html">Email Type</Label>
+                <Select 
+                  value={filters.is_html === undefined ? null : (filters.is_html ? "html" : "plain")}
+                  onValueChange={(value) => dispatch({ 
+                    type: 'sentEmail/setSentEmailFilters', 
+                    payload: { 
+                      ...filters, 
+                      is_html: value === null ? undefined : (value === "html")
+                    } 
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>All Types</SelectItem>
+                    <SelectItem value="html">HTML</SelectItem>
+                    <SelectItem value="plain">Plain Text</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Date Range</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label htmlFor="from-date" className="text-xs">From</Label>
+                    <input
+                      id="from-date"
+                      type="date"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      value={filters.sent_at_after || ""}
+                      onChange={(e) => dispatch({ 
+                        type: 'sentEmail/setSentEmailFilters', 
+                        payload: { 
+                          ...filters, 
+                          sent_at_after: e.target.value 
+                        } 
+                      })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="to-date" className="text-xs">To</Label>
+                    <input
+                      id="to-date"
+                      type="date"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      value={filters.sent_at_before || ""}
+                      onChange={(e) => dispatch({ 
+                        type: 'sentEmail/setSentEmailFilters', 
+                        payload: { 
+                          ...filters, 
+                          sent_at_before: e.target.value 
+                        } 
+                      })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="recipient">Recipient</Label>
+                <input
+                  id="recipient"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Filter by recipient"
+                  value={filters.recipient || ""}
+                  onChange={(e) => dispatch({ 
+                    type: 'sentEmail/setSentEmailFilters', 
+                    payload: { ...filters, recipient: e.target.value } 
+                  })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="subject">Subject</Label>
+                <input
+                  id="subject"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Filter by subject"
+                  value={filters.subject || ""}
+                  onChange={(e) => dispatch({ 
+                    type: 'sentEmail/setSentEmailFilters', 
+                    payload: { ...filters, subject: e.target.value } 
+                  })}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center mt-4 pt-4 border-t">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => {
+                  dispatch({ type: 'sentEmail/resetFilters' });
+                  setSearchQuery("");
+                }}
+              >
+                Reset Filters
+              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setShowFilters(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  size="sm"
+                  onClick={() => {
+                    dispatch(handleFetchSentEmails(filters));
+                    setShowFilters(false);
+                  }}
+                >
+                  Apply Filters
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-lg overflow-hidden border">
           <div className="divide-y divide-muted-foreground/10">
             {isLoading ? (
@@ -111,14 +290,85 @@ export default function SentEmailsPage() {
               </div>
             )}
           </div>
-          {/* Pagination controls (mock) */}
+          {/* Pagination controls */}
           <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/30">
             <span className="text-xs text-muted-foreground">
-              {isLoading ? "Loading..." : sentEmails.length > 0 ? `Showing 1–${sentEmails.length} of ${sentEmails.length}` : ""}
+              {isLoading 
+                ? "Loading..." 
+                : sentEmails.length > 0 
+                  ? `Showing ${((pagination.currentPage - 1) * pagination.pageSize) + 1}–${Math.min(pagination.currentPage * pagination.pageSize, pagination.totalItems)} of ${pagination.totalItems}` 
+                  : "No results"}
             </span>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" disabled>Previous</Button>
-              <Button size="sm" variant="outline" disabled>Next</Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={() => dispatch(handleFetchSentEmails({ ...filters, page: pagination.currentPage - 1 }))}
+                disabled={pagination.currentPage <= 1 || isLoading}
+              >
+                Previous
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                  // Show pages around current page
+                  let pageNum = Math.max(1, Math.min(
+                    pagination.currentPage - 2 + i,
+                    Math.max(1, pagination.totalPages - 4)
+                  ));
+                  
+                  if (i === 0 && pageNum > 1) {
+                    return (
+                      <React.Fragment key="ellipsis-start">
+                        <Button 
+                          size="sm" 
+                          variant={pagination.currentPage === 1 ? "default" : "ghost"}
+                          onClick={() => dispatch(handleFetchSentEmails({ ...filters, page: 1 }))}
+                          disabled={isLoading}
+                        >
+                          1
+                        </Button>
+                        <span className="px-1">...</span>
+                      </React.Fragment>
+                    );
+                  }
+                  
+                  if (i === 4 && pageNum < pagination.totalPages - 1) {
+                    return (
+                      <React.Fragment key="ellipsis-end">
+                        <span className="px-1">...</span>
+                        <Button 
+                          size="sm" 
+                          variant={pagination.currentPage === pagination.totalPages ? "default" : "ghost"}
+                          onClick={() => dispatch(handleFetchSentEmails({ ...filters, page: pagination.totalPages }))}
+                          disabled={isLoading}
+                        >
+                          {pagination.totalPages}
+                        </Button>
+                      </React.Fragment>
+                    );
+                  }
+                  
+                  return (
+                    <Button 
+                      key={pageNum}
+                      size="sm" 
+                      variant={pagination.currentPage === pageNum ? "default" : "ghost"}
+                      onClick={() => dispatch(handleFetchSentEmails({ ...filters, page: pageNum }))}
+                      disabled={isLoading || pagination.currentPage === pageNum}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={() => dispatch(handleFetchSentEmails({ ...filters, page: pagination.currentPage + 1 }))}
+                disabled={pagination.currentPage >= pagination.totalPages || isLoading}
+              >
+                Next
+              </Button>
             </div>
           </div>
         </div>

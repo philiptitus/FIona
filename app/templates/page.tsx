@@ -48,11 +48,27 @@ export default function TemplatesPage() {
     dispatch(handleFetchTemplates())
   }, [dispatch])
 
+  // Handle search with debounce
   useEffect(() => {
-    setFiltered(
-      templates.filter(tpl => tpl.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    )
-  }, [templates, searchQuery])
+    const timer = setTimeout(() => {
+      if (searchQuery) {
+        dispatch(handleFetchTemplates({ search: searchQuery }))
+      } else {
+        dispatch(handleFetchTemplates())
+      }
+    }, 500) // 500ms debounce
+    
+    return () => clearTimeout(timer)
+  }, [searchQuery, dispatch])
+
+  // Update filtered templates when templates change
+  useEffect(() => {
+    setFiltered(templates)
+  }, [templates])
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value)
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -76,11 +92,13 @@ export default function TemplatesPage() {
     dispatch(handleFetchTemplates())
   }
 
-  const handleEdit = (tpl: any) => {
-    setEditId(tpl.id)
-    setForm({ name: tpl.name, html_content: tpl.html_content })
-    setShowForm(true)
-    setSelectedCampaign(tpl.campaign || null)
+  const handleEdit = (e: React.MouseEvent, tpl: any) => {
+    e.stopPropagation(); // Prevent event from bubbling up to the card
+    setEditId(tpl.id);
+    setForm({ name: tpl.name, html_content: tpl.html_content });
+    setShowForm(true);
+    setShowAIForm(false);
+    setSelectedCampaign(tpl.campaign || null);
   }
 
   const handleDelete = async (id: number) => {
@@ -171,7 +189,9 @@ export default function TemplatesPage() {
   const totalPages = Math.ceil(sortedTemplates.length / itemsPerPage)
   const paginatedTemplates = sortedTemplates.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
-  useEffect(() => { setCurrentPage(1) }, [filtered])
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage)
+  }
 
   return (
     <MainLayout>
@@ -196,13 +216,16 @@ export default function TemplatesPage() {
             </TabsList>
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search templates..."
-                className="pl-8 w-[200px] md:w-[300px]"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-              />
+              <div className="relative max-w-sm">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search templates..."
+                  value={searchQuery}
+                  onChange={handleSearch}
+                  className="pl-8"
+                />
+              </div>
             </div>
           </div>
           <TabsContent value="all" className="space-y-4">
@@ -324,9 +347,7 @@ export default function TemplatesPage() {
             )}
             <Dialog open={aiDialogOpen} onOpenChange={setAIDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="secondary" data-tour="create-template-btn" onClick={() => { setShowAIForm(false); setShowForm(false); setEditId(null); setForm({ name: "", html_content: "" }); setSelectedCampaign(null); setAIDialogOpen(true) }}>
-                  🤖 Edit with AI
-                </Button>
+              
               </DialogTrigger>
               <DialogContent className="max-w-3xl w-full">
                 <DialogHeader>
@@ -406,9 +427,13 @@ export default function TemplatesPage() {
             </Dialog>
             <div className="divide-y">
               {paginatedTemplates.map((tpl) => (
-                <Card key={tpl.id} className="rounded-lg border bg-card shadow-sm">
+                <Card 
+                  key={tpl.id} 
+                  className="rounded-lg border bg-card shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => handleView(tpl.id)}
+                >
                   <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>{tpl.name}</CardTitle>
+                    <CardTitle className="hover:text-primary transition-colors">{tpl.name}</CardTitle>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
@@ -417,7 +442,7 @@ export default function TemplatesPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleView(tpl.id)}><Eye className="mr-2 h-4 w-4" /> View</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEdit(tpl)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => handleEdit(e, tpl)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDelete(tpl.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
                         <DropdownMenuItem onClick={e => { e.stopPropagation(); setAIDialogOpen(true); setEditId(tpl.id); setForm({ name: tpl.name, html_content: tpl.html_content }); setSelectedCampaign(tpl.campaign || null); }}>
                           <Edit className="mr-2 h-4 w-4" /> Edit with AI
@@ -426,20 +451,22 @@ export default function TemplatesPage() {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-muted-foreground text-xs truncate max-w-full" title={tpl.html_content}>{tpl.html_content?.slice(0, 80) || "No content"}</div>
-                  </CardContent>
+                  {/* Removed HTML content from list view */}
                 </Card>
               ))}
             </div>
             <div className="flex items-center justify-between p-4">
               <div className="text-sm text-muted-foreground">
-                Showing {paginatedTemplates.length} of {filtered.length} filtered templates (Total: {templates.length})
+                Showing {paginatedTemplates.length} of {filtered.length} templates
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>Previous</Button>
+                <Button variant="outline" size="sm" onClick={() => handlePageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1}>
+                  Previous
+                </Button>
                 <span className="text-xs">Page {currentPage} of {totalPages}</span>
-                <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages || totalPages === 0}>Next</Button>
+                <Button variant="outline" size="sm" onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages || totalPages === 0}>
+                  Next
+                </Button>
               </div>
             </div>
           </TabsContent>

@@ -14,6 +14,7 @@ interface Mailbox {
 
 interface MailboxState {
   mailboxes: Mailbox[]
+  selectedMailboxes: number[]
   isLoading: boolean
   error: string | null
   gmailAuthUrl: string | null
@@ -22,6 +23,7 @@ interface MailboxState {
 
 const initialState: MailboxState = {
   mailboxes: [],
+  selectedMailboxes: [],
   isLoading: false,
   error: null,
   gmailAuthUrl: null,
@@ -31,7 +33,22 @@ const initialState: MailboxState = {
 const mailboxSlice = createSlice({
   name: "mailbox",
   initialState,
-  reducers: {},
+  reducers: {
+    setSelectedMailboxes: (state, action: PayloadAction<number[]>) => {
+      state.selectedMailboxes = action.payload
+    },
+    toggleMailboxSelection: (state, action: PayloadAction<number>) => {
+      const index = state.selectedMailboxes.indexOf(action.payload)
+      if (index === -1) {
+        state.selectedMailboxes.push(action.payload)
+      } else {
+        state.selectedMailboxes.splice(index, 1)
+      }
+    },
+    clearSelectedMailboxes: (state) => {
+      state.selectedMailboxes = []
+    },
+  },
   extraReducers: (builder) => {
     builder
       // fetchMailboxes
@@ -117,5 +134,6 @@ const mailboxSlice = createSlice({
   },
 })
 
+export const { setSelectedMailboxes, toggleMailboxSelection, clearSelectedMailboxes } = mailboxSlice.actions
 export type { Mailbox }
-export default mailboxSlice.reducer 
+export default mailboxSlice.reducer

@@ -10,10 +10,12 @@ import {
   deleteContactList,
   addEmailsToContactList,
   removeEmailsFromContactList,
-  resetContactListState
+  resetContactListState,
+  fetchContactListDetails
 } from '@/store/actions/contactListActions';
 import { Email } from '@/store/slices/contactListSlice';
 import { Plus, Trash2, Edit, Mail, Users, Loader2, Check, X, ChevronDown } from 'lucide-react';
+import AddContactsInput from './AddContactsInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -50,7 +52,7 @@ const ContactListManager = () => {
     name: '',
     description: '',
   });
-  const [emailInput, setEmailInput] = useState('');
+
   const [activeTab, setActiveTab] = useState('lists');
 
   // Fetch contact lists on component mount
@@ -126,30 +128,7 @@ const ContactListManager = () => {
     }
   };
 
-  // Handle adding emails to a list
-  const handleAddEmails = async (listId: number, emails: string[]) => {
-    try {
-      // This is a simplified version - in a real app, you'd need to map email strings to email objects/IDs
-      // and handle the actual API call to add emails to the list
-      await dispatch(addEmailsToContactList({ 
-        listId, 
-        emailIds: emails.map((_, index) => Date.now() + index) // Mock email IDs
-      })).unwrap();
-      
-      toast({
-        title: 'Success',
-        description: `${emails.length} email(s) added to the list`,
-        variant: 'default',
-      });
-      setEmailInput('');
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error as string,
-        variant: 'destructive',
-      });
-    }
-  };
+
 
   // Reset form
   const resetForm = () => {
@@ -177,13 +156,22 @@ const ContactListManager = () => {
     setIsDeleteDialogOpen(true);
   };
 
-  // Parse email input (comma or newline separated)
-  const parseEmails = (input: string): string[] => {
-    return input
-      .split(/[,\n]/)
-      .map(email => email.trim())
-      .filter(email => email.length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+  // Handle list selection
+  const handleListClick = async (listId: number) => {
+    const newSelectedList = selectedList === listId ? null : listId;
+    setSelectedList(newSelectedList);
+    
+    if (newSelectedList) {
+      try {
+        console.log("List selected");
+        await dispatch(fetchContactListDetails(newSelectedList));
+      } catch (error) {
+        console.error('Error fetching contact list details:', error);
+      }
+    }
   };
+
+
 
   // Get current list details
   const currentListDetails = lists.find(list => list.id === selectedList);
@@ -234,7 +222,7 @@ const ContactListManager = () => {
                 {lists.map((list) => (
                   <div 
                     key={list.id}
-                    onClick={() => setSelectedList(list.id)}
+                    onClick={() => handleListClick(list.id)}
                     className={`flex items-center justify-between p-3 rounded-md cursor-pointer transition-colors ${
                       selectedList === list.id 
                         ? 'bg-primary/10 border border-primary/20' 
@@ -338,39 +326,17 @@ const ContactListManager = () => {
                         </div>
                       </div>
 
-                      <div>
-                        <h3 className="text-sm font-medium mb-2">Add Contacts</h3>
-                        <div className="flex space-x-2">
-                          <Input 
-                            placeholder="Enter emails (comma or newline separated)"
-                            value={emailInput}
-                            onChange={(e) => setEmailInput(e.target.value)}
-                            className="flex-1"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && emailInput.trim()) {
-                                const emails = parseEmails(emailInput);
-                                if (emails.length > 0) {
-                                  handleAddEmails(selectedList, emails);
-                                }
-                              }
-                            }}
-                          />
-                          <Button 
-                            onClick={() => {
-                              const emails = parseEmails(emailInput);
-                              if (emails.length > 0) {
-                                handleAddEmails(selectedList, emails);
-                              }
-                            }}
-                            disabled={!emailInput.trim()}
-                          >
-                            Add
-                          </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Press Enter or click Add to save
-                        </p>
-                      </div>
+                      <AddContactsInput 
+                        listId={selectedList}
+                        disabled={!selectedList}
+                        onSuccess={() => {
+                          // Refresh both the lists and the current list details after adding emails
+                          if (selectedList) {
+                            dispatch(fetchContactLists());
+                            dispatch(fetchContactListDetails(selectedList));
+                          }
+                        }}
+                      />
                     </div>
                   )}
                 </CardContent>

@@ -46,12 +46,29 @@ export const deleteMailbox = createAsyncThunk("mailbox/delete", async (id: numbe
 export const sendEmail = createAsyncThunk(
   "mailbox/sendEmail",
   async (
-    { type, id, recipient, mailbox_id }: { type: string; id: number; recipient: string; mailbox_id?: number },
+    { 
+      type, 
+      id, 
+      recipient, 
+      mailbox_id, 
+      mailbox_ids 
+    }: { 
+      type: string; 
+      id: number; 
+      recipient: string; 
+      mailbox_id?: number;
+      mailbox_ids?: number[];
+    },
     { rejectWithValue }
   ) => {
     try {
       const payload: any = { type, id, recipient }
-      if (mailbox_id) payload.mailbox_id = mailbox_id
+      // Support both single mailbox_id and mailbox_ids for backward compatibility
+      if (mailbox_ids && mailbox_ids.length > 0) {
+        payload.mailbox_ids = mailbox_ids
+      } else if (mailbox_id) {
+        payload.mailbox_id = mailbox_id
+      }
       const response = await api.post("/mail/gmail/send/", payload)
       return response.data
     } catch (error: any) {
@@ -63,7 +80,7 @@ export const sendEmail = createAsyncThunk(
 // Thunk action creators for dispatching async thunks directly
 export const handleFetchMailboxes = () => async (dispatch: AppDispatch) => {
   try {
-    const resultAction = await dispatch(fetchMailboxes())
+    const resultAction = await dispatch(fetchMailboxes() as any)
     return fetchMailboxes.fulfilled.match(resultAction)
   } catch (error: any) {
     return false
@@ -72,9 +89,9 @@ export const handleFetchMailboxes = () => async (dispatch: AppDispatch) => {
 
 export const handleStartGmailOAuth = () => async (dispatch: AppDispatch) => {
   try {
-    const resultAction = await dispatch(startGmailOAuth())
+    const resultAction = await dispatch(startGmailOAuth() as any)
     return startGmailOAuth.fulfilled.match(resultAction)
   } catch (error: any) {
     return false
   }
-} 
+}

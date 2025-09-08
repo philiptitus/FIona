@@ -1,6 +1,6 @@
 "use client"
 export const dynamic = "force-dynamic";
-import React, { useEffect, useState, Suspense } from "react"
+import React, { useEffect, useState, Suspense, useRef, useMemo } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { sendEmail } from "@/store/actions/mailboxActions"
 import { handleFetchContents } from "@/store/actions/contentActions"
@@ -88,6 +88,8 @@ function SendEmailPageContent() {
   const { templates, isLoading: isTemplatesLoading, error: templatesError } = useSelector((state: RootState) => state.template)
   const { campaigns, isLoading: isCampaignsLoading, error: campaignsError } = useSelector((state: RootState) => state.campaigns)
   const { emails: savedEmails, isLoading: isEmailsLoading, error: emailsError } = useSelector((state: RootState) => state.emails)
+  const emailsFromStore = useSelector((state: RootState) => state.emails.emails)
+  const emailsPagination = useSelector((state: RootState) => state.emails.pagination)
   const searchParams = useSearchParams();
 
   const [type, setType] = useState("content")
@@ -97,15 +99,17 @@ function SendEmailPageContent() {
   const [manualInput, setManualInput] = useState("")
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [localError, setLocalError] = useState("")
-  const [mailboxId, setMailboxId] = useState("")
+  const [selectedMailboxIds, setSelectedMailboxIds] = useState<string[]>([])
+  const [showMailboxSelector, setShowMailboxSelector] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const mailboxSelectorRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     dispatch<any>(handleFetchContents())
     dispatch<any>(handleFetchTemplates())
     dispatch<any>(handleFetchCampaigns())
     dispatch<any>(handleFetchMailboxes())
-    dispatch<any>(handleFetchEmails())
     // Pre-select type and id from query params if present
     const queryType = searchParams.get("type")
     const queryId = searchParams.get("id")
@@ -116,6 +120,14 @@ function SendEmailPageContent() {
       setId(queryId)
     }
   }, [dispatch, searchParams])
+
+  // Backend-powered fetch for saved emails with pagination and search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      dispatch<any>(handleFetchEmails({ page: currentPage, search: searchQuery || undefined }))
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [dispatch, currentPage, searchQuery])
 
   // Helper to get campaign name by id
   const getCampaignName = (campaignId: number) => {
@@ -143,11 +155,8 @@ function SendEmailPageContent() {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   const isValidEmail = (email: string) => emailRegex.test(email)
 
-  // Filter saved emails based on search query
-  const filteredSavedEmails = savedEmails.filter((email: EmailListEntry) =>
-    email.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    email.organization_name?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Filter emails based on search query
+  const filteredSavedEmails = useMemo(() => emailsFromStore, [emailsFromStore])
 
   // Suggestions: saved emails not already selected or checked
   const emailSuggestions = filteredSavedEmails
@@ -202,7 +211,8 @@ function SendEmailPageContent() {
   }
 
   // Handle checkbox change for saved emails
-  const handleSavedEmailToggle = (email: string) => {
+  const handleSavedEmailToggle = (email: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
     setSelectedSavedEmails((prev) =>
       prev.includes(email) ? prev.filter((e) => e !== email) : [...prev, email]
     )
@@ -211,11 +221,22 @@ function SendEmailPageContent() {
   // Combine all recipients for sending
   const allRecipients = [...selectedSavedEmails, ...manualRecipients]
 
+  // Add click-outside handler for mailbox selector
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (mailboxSelectorRef.current && !mailboxSelectorRef.current.contains(event.target as Node)) {
+        setShowMailboxSelector(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   const handleSend = async (e: any) => {
     e.preventDefault()
     setLocalError("")
-    if (!id || !allRecipients.length || !mailboxId) {
-      setLocalError("Please select a " + type + ", a mailbox, and at least one valid recipient email.")
+    if (!id || !allRecipients.length || selectedMailboxIds.length === 0) {
+      setLocalError("Please select a " + type + ", at least one mailbox, and at least one valid recipient email.")
       return
     }
     if (!validateAllEmails()) {
@@ -224,7 +245,12 @@ function SendEmailPageContent() {
     }
     try {
       await dispatch(
-        sendEmail({ type, id: Number(id), recipient: allRecipients, mailbox_id: Number(mailboxId) }) as any
+        sendEmail({ 
+          type, 
+          id: Number(id), 
+          recipient: allRecipients, 
+          mailbox_ids: selectedMailboxIds.map(id => Number(id)) 
+        }) as any
       ).unwrap()
       setManualRecipients([])
       setManualInput("")
@@ -249,7 +275,7 @@ function SendEmailPageContent() {
   }
 
   const selectedOption = options.find(opt => opt.id.toString() === id)
-  const selectedMailbox = mailboxes.find(mb => mb.id.toString() === mailboxId)
+  const selectedMailboxes = mailboxes.filter(mb => selectedMailboxIds.includes(mb.id.toString()))
 
   return (
     <MainLayout>
@@ -376,7 +402,7 @@ function SendEmailPageContent() {
                   <Inbox className="h-5 w-5" />
                   From Mailbox
                 </CardTitle>
-                <CardDescription>Choose which mailbox to send from</CardDescription>
+                <CardDescription>Choose which mailboxes to send from (select multiple for load balancing)</CardDescription>
               </CardHeader>
               <CardContent>
                 {isMailboxesLoading ? (
@@ -390,31 +416,85 @@ function SendEmailPageContent() {
                     <AlertDescription>{mailboxesError}</AlertDescription>
                   </Alert>
                 ) : (
-                  <Select value={mailboxId} onValueChange={setMailboxId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select mailbox..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mailboxes.map((mb: Mailbox) => (
-                        <SelectItem key={mb.id} value={mb.id.toString()}>
-                          <div className="flex items-center gap-2">
-                            <Mail className="h-4 w-4" />
-                            <span>{mb.email}</span>
-                            <Badge variant="outline" className="text-xs">{mb.provider}</Badge>
+                  <div className="relative" ref={mailboxSelectorRef}>
+                    <div 
+                      className="flex flex-wrap gap-2 p-2 border rounded-md min-h-[40px] cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMailboxSelector(!showMailboxSelector);
+                      }}
+                    >
+                      {selectedMailboxes.length === 0 ? (
+                        <span className="text-muted-foreground text-sm py-1">Select mailboxes...</span>
+                      ) : (
+                        selectedMailboxes.map(mb => (
+                          <Badge key={mb.id} variant="secondary" className="flex items-center gap-1">
+                            {mb.email}
+                            <button
+                              type="button"
+                              className="ml-1 hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedMailboxIds(prev => prev.filter(id => id !== mb.id.toString()))
+                              }}
+                            >
+                              <XCircle className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))
+                      )}
+                    </div>
+
+                    {showMailboxSelector && (
+                      <div className="absolute z-10 mt-1 w-full bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
+                        {mailboxes.map((mb: Mailbox) => (
+                          <div 
+                            key={mb.id} 
+                            className={`flex items-center p-2 hover:bg-muted cursor-pointer ${selectedMailboxIds.includes(mb.id.toString()) ? 'bg-muted' : ''}`}
+                            onClick={() => {
+                              setSelectedMailboxIds(prev => 
+                                prev.includes(mb.id.toString())
+                                  ? prev.filter(id => id !== mb.id.toString())
+                                  : [...prev, mb.id.toString()]
+                              )
+                            }}
+                          >
+                            <Checkbox 
+                              checked={selectedMailboxIds.includes(mb.id.toString())}
+                              className="mr-2"
+                              onCheckedChange={() => {}}
+                            />
+                            <div className="flex items-center gap-2 flex-1">
+                              <Mail className="h-4 w-4 text-muted-foreground" />
+                              <span>{mb.email}</span>
+                              <Badge variant="outline" className="ml-auto">
+                                {mb.provider}
+                              </Badge>
+                            </div>
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
 
-                {selectedMailbox && (
-                  <div className="mt-3 p-3 bg-muted/50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="font-medium">Sending from: {selectedMailbox.email}</span>
-                      <Badge variant="outline">{selectedMailbox.provider}</Badge>
+                {selectedMailboxes.length > 0 && (
+                  <div className="mt-3 p-3 bg-muted/50 rounded-lg space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <span className="font-medium">Sending from {selectedMailboxes.length} mailbox{selectedMailboxes.length > 1 ? 'es' : ''}:</span>
                     </div>
+                    <ul className="text-sm space-y-1 pl-6 list-disc">
+                      {selectedMailboxes.map(mb => (
+                        <li key={mb.id} className="flex items-center gap-2">
+                          <span>{mb.email}</span>
+                          <Badge variant="outline">{mb.provider}</Badge>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Emails will be distributed randomly among selected mailboxes for better deliverability.
+                    </p>
                   </div>
                 )}
               </CardContent>
@@ -460,7 +540,7 @@ function SendEmailPageContent() {
                         <Input
                           placeholder="Search by email or organization..."
                           value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
+                          onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
                           className="pl-10"
                         />
                       </div>
@@ -491,12 +571,16 @@ function SendEmailPageContent() {
                               className={`flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer hover:bg-muted/50 ${
                                 selectedSavedEmails.includes(entry.email) ? 'bg-primary/5 border-primary/20' : ''
                               }`}
-                              onClick={() => handleSavedEmailToggle(entry.email)}
+                              onClick={(e) => handleSavedEmailToggle(entry.email, e)}
                             >
-                              <Checkbox
-                                checked={selectedSavedEmails.includes(entry.email)}
-                                onChange={() => handleSavedEmailToggle(entry.email)}
-                              />
+                              <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
+                                <Checkbox
+                                  id={`email-${entry.id}`}
+                                  checked={selectedSavedEmails.includes(entry.email)}
+                                  onCheckedChange={() => handleSavedEmailToggle(entry.email)}
+                                  className="h-4 w-4"
+                                />
+                              </div>
                               <div className="flex-1 min-w-0">
                                 <div className="font-medium truncate">{entry.email}</div>
                                 {entry.organization_name && (
@@ -516,6 +600,33 @@ function SendEmailPageContent() {
                         </div>
                       </ScrollArea>
                     )}
+                    {/* Pagination Controls */}
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="text-xs text-muted-foreground">
+                        Showing {filteredSavedEmails.length} of {emailsPagination?.count || 0}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={(emailsPagination?.currentPage || 1) === 1}
+                        >
+                          Previous
+                        </Button>
+                        <span className="text-xs">Page {emailsPagination?.currentPage || 1} of {emailsPagination?.totalPages || 1}</span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(p => Math.min((emailsPagination?.totalPages || 1), p + 1))}
+                          disabled={(emailsPagination?.currentPage || 1) >= (emailsPagination?.totalPages || 1)}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
                   </TabsContent>
 
                   <TabsContent value="manual" className="space-y-4">
@@ -645,11 +756,26 @@ function SendEmailPageContent() {
                     </span>
                   </div>
                   
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-start justify-between">
                     <span className="text-sm font-medium">From:</span>
-                    <span className="text-sm text-muted-foreground">
-                      {selectedMailbox ? selectedMailbox.email : "Not selected"}
-                    </span>
+                    <div className="text-right">
+                      {selectedMailboxes.length > 0 ? (
+                        <div className="space-y-1">
+                          {selectedMailboxes.slice(0, 2).map(mb => (
+                            <div key={mb.id} className="text-sm text-muted-foreground">
+                              {mb.email}
+                            </div>
+                          ))}
+                          {selectedMailboxes.length > 2 && (
+                            <div className="text-xs text-muted-foreground">
+                              +{selectedMailboxes.length - 2} more
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Not selected</span>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -662,7 +788,7 @@ function SendEmailPageContent() {
 
                 <Button 
                   onClick={handleSend} 
-                  disabled={isSending || !id || !allRecipients.length || !mailboxId || !validateAllEmails()}
+                  disabled={isSending || !id || !allRecipients.length || selectedMailboxIds.length === 0 || !validateAllEmails()}
                   className="w-full"
                   size="lg"
                 >
@@ -686,10 +812,10 @@ function SendEmailPageContent() {
                   </Alert>
                 )}
 
-                {!mailboxId && (
+                {selectedMailboxIds.length === 0 && (
                   <Alert>
                     <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>Please select a mailbox</AlertDescription>
+                    <AlertDescription>Please select at least one mailbox</AlertDescription>
                   </Alert>
                 )}
 

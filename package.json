@@ -39,6 +39,7 @@
     "@radix-ui/react-tooltip": "^1.1.6",
     "@reduxjs/toolkit": "latest",
     "@types/js-cookie": "^3.0.6",
+    "@vercel/analytics": "^1.5.0",
     "autoprefixer": "^10.4.20",
     "axios": "latest",
     "class-variance-authority": "^0.7.1",

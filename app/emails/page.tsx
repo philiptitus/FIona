@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { useRouter } from "next/navigation"
 import MainLayout from "@/components/layout/main-layout"
@@ -90,10 +90,16 @@ interface EmailForm {
 export default function EmailsPage() {
   const dispatch = useDispatch<AppDispatch>()
   const router = useRouter()
-  const { emails, isLoading, error } = useSelector((state: RootState) => state.emails)
+  // Use separate selectors for better performance and to ensure re-renders
+  const emails = useSelector((state: RootState) => state.emails.emails)
+  const isLoading = useSelector((state: RootState) => state.emails.isLoading)
+  const error = useSelector((state: RootState) => state.emails.error)
+  const pagination = useSelector((state: RootState) => state.emails.pagination)
   const { campaigns } = useSelector((state: RootState) => state.campaigns)
   const [searchQuery, setSearchQuery] = useState("")
+  const [isSearching, setIsSearching] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
   const [form, setForm] = useState<EmailForm>({ 
     organization_name: "", 
     email: "", 
@@ -174,21 +180,51 @@ export default function EmailsPage() {
   const [smartSuccess, setSmartSuccess] = useState(false)
   const [checkUserDuplicates, setCheckUserDuplicates] = useState(true)
 
+  // Fetch campaigns on component mount if not already loaded
   useEffect(() => {
-    dispatch(handleFetchEmails())
     if (!campaigns || campaigns.length === 0) {
-      dispatch(handleFetchCampaigns())
+      dispatch(handleFetchCampaigns());
     }
-  }, [dispatch])
+  }, [dispatch, campaigns]);
 
+  // Fetch emails when component mounts or page changes
   useEffect(() => {
-    setFiltered(
-      emails.filter(email =>
-        email.organization_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        email.email.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    )
-  }, [emails, searchQuery])
+    const fetchData = async () => {
+      try {
+        const result = await dispatch(handleFetchEmails({ page: currentPage }));
+      } catch (error) {
+      }
+    };
+    
+    fetchData();
+  }, [dispatch, currentPage]);
+
+  // Debounced search function
+  useEffect(() => {
+    const searchEmails = async () => {
+      if (!searchQuery.trim()) {
+        // If search is empty, reset to show all emails
+        dispatch(handleFetchEmails({ page: 1 }))
+        return
+      }
+
+      setIsSearching(true)
+      try {
+        // Use the search parameter in the API call
+        await dispatch(handleFetchEmails({ 
+          search: searchQuery,
+          page: 1 // Reset to first page when searching
+        }))
+      } catch (error) {
+        console.error('Search failed:', error)
+      } finally {
+        setIsSearching(false)
+      }
+    }
+
+    const timerId = setTimeout(searchEmails, 500) // 500ms debounce
+    return () => clearTimeout(timerId)
+  }, [searchQuery, dispatch])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
@@ -335,12 +371,23 @@ export default function EmailsPage() {
     router.push(`/emails/${emailId}`)
   }
 
-  // Pagination and sorting logic
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 10
-  const sortedEmails = [...filtered].sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())
-  const totalPages = Math.ceil(sortedEmails.length / itemsPerPage)
-  const paginatedEmails = sortedEmails.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  // Pagination state
+  const itemsPerPage = 10; // Fixed page size
+  const totalPages = pagination?.totalPages || 1;
+  const totalItems = pagination?.count || 0;
+  
+  // Use unique emails (by primary email) for display on this page only
+  const displayedEmails = useMemo(() => {
+    const seen = new Set<string>()
+    return (emails || []).filter((e: any) => {
+      const key = (e?.email || "").toLowerCase()
+      if (!key) return true
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }, [emails])
+  
 
   useEffect(() => { setCurrentPage(1) }, [filtered])
 
@@ -563,19 +610,23 @@ export default function EmailsPage() {
               <TabsTrigger value="all">All Emails</TabsTrigger>
             </TabsList>
             <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search className={`absolute left-2.5 top-2.5 h-4 w-4 ${isSearching ? 'text-primary' : 'text-muted-foreground'}`} />
+              {isSearching && (
+                <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+              )}
               <Input
                 type="search"
-                placeholder="Search emails..."
-                className="pl-8 w-[200px] md:w-[300px]"
+                placeholder="Search by name, email, or company..."
+                className={`pl-8 pr-8 w-[200px] md:w-[300px] ${isSearching ? 'pr-8' : ''}`}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
+                disabled={isLoading}
               />
             </div>
                     </div>
           <TabsContent value="all" className="space-y-4">
             <div className="flex flex-wrap gap-6 justify-center">
-              {paginatedEmails.map((email) => (
+              {displayedEmails.map((email) => (
                 <Card key={email.id} className="w-full sm:w-[350px] md:w-[320px] lg:w-[300px] rounded-xl border bg-card shadow-lg hover:shadow-2xl transition-shadow duration-200 relative group">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <div className="flex items-center gap-2">
@@ -614,13 +665,13 @@ export default function EmailsPage() {
                 </Card>
               ))}
                       {/* Contact Lists Section */}
-        {/* <div className="mt-8">
+        <div className="mt-8">
           <ContactListManager />
-        </div> */}
+        </div>
             </div>
             <div className="flex items-center justify-between p-4">
               <div className="text-sm text-muted-foreground">
-                Showing {paginatedEmails.length} of {filtered.length} filtered emails (Total: {emails.length})
+                Showing {displayedEmails.length} of {pagination?.count || emails.length} emails
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>Previous</Button>

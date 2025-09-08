@@ -1,0 +1,76 @@
+"use client"
+
+import { useState } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+
+export default function AddEmailDialog({ open, onOpenChange, initialCampaignId }: any) {
+  const [isLoading, setIsLoading] = useState(false)
+  const [email, setEmail] = useState("")
+  const [organization, setOrganization] = useState("")
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      console.log('Would submit:', { email, organization, campaignId: initialCampaignId })
+      onOpenChange(false)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add Email</DialogTitle>
+        </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              Email Address <span className="text-red-500">*</span>
+            </label>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="email@example.com"
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              Organization
+            </label>
+            <Input
+              value={organization}
+              onChange={(e) => setOrganization(e.target.value)}
+              placeholder="Acme Inc."
+            />
+          </div>
+          
+          <DialogFooter className="pt-4">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? 'Saving...' : 'Save Email'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}

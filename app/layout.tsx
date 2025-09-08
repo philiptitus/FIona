@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { Providers } from "./providers"
 import AuthHydrator from "./authHydrator"
+import { Analytics } from "@vercel/analytics/react"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -37,6 +38,7 @@ export default function RootLayout({
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             {children}
             <Toaster />
+            <Analytics />
           </ThemeProvider>
         </Providers>
       </body>
