@@ -18,7 +18,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import React from "react"
 import AddEmailDialog from "@/components/emails/AddEmailDialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Send, Loader2, CheckCircle2, XCircle, Trash2, AlertTriangle, CheckCircle, X, Loader } from "lucide-react"
+import { Send, Loader2, CheckCircle2, XCircle, Trash2, AlertTriangle, CheckCircle, X, Loader, Eye } from "lucide-react"
 import { handleSendDispatch } from "@/store/actions/dispatchActions"
 import { handleFetchMailboxes } from "@/store/actions/mailboxActions"
 import { handleDisassociateEmails } from "@/store/actions/emailActions"
@@ -495,8 +495,8 @@ export default function CampaignDetailPage() {
                                     onCheckedChange={() => toggleEmailSelection(email.id)}
                                     className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                   />
-                                  <div className="flex-1 flex items-center justify-between">
-                                    <div className="flex flex-col space-y-4 mb-6">
+                  <div className="flex-1 flex items-center justify-between">
+                    <div className="flex flex-col space-y-4 mb-6">
                                       <div className="flex items-center space-x-2">
                                         <span className="font-medium">{email.email}</span>
                                         <TooltipProvider>
@@ -526,6 +526,25 @@ export default function CampaignDetailPage() {
                                           {email.organization_name}
                                         </div>
                                       )}
+                                    </div>
+                                    <div className="ml-4 flex-shrink-0">
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                router.push(`/emails/${email.id}`)
+                                              }}
+                                            >
+                                              <Eye className="h-4 w-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>View contact</TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
                                     </div>
                                   </div>
                                 </div>

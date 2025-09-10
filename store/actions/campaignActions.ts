@@ -19,15 +19,26 @@ import {
 } from "../slices/campaignSlice"
 import type { AppDispatch } from "../store"
 
-// Fetch all campaigns
-export const fetchCampaigns = createAsyncThunk("campaigns/fetchAll", async (_, { rejectWithValue }) => {
-  try {
-    const response = await api.get("/mail/campaigns/")
-    return response.data
-  } catch (error: any) {
-    return rejectWithValue(error.response?.data?.error || "Failed to fetch campaigns")
+// Fetch all campaigns with search and pagination
+export const fetchCampaigns = createAsyncThunk(
+  "campaigns/fetchAll", 
+  async (
+    { search = "", page = 1 }: { search?: string; page?: number } = {},
+    { rejectWithValue }
+  ) => {
+    try {
+      const params = new URLSearchParams()
+      if (search) params.append("search", search)
+      if (page > 1) params.append("page", page.toString())
+      
+      const url = `/mail/campaigns/${params.toString() ? `?${params.toString()}` : ""}`
+      const response = await api.get(url)
+      return response.data
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error || "Failed to fetch campaigns")
+    }
   }
-})
+)
 
 // Fetch a single campaign by ID
 export const fetchCampaignById = createAsyncThunk("campaigns/fetchById", async (id: number, { rejectWithValue }) => {
@@ -203,10 +214,12 @@ export const fetchCompletedCampaigns = createAsyncThunk(
 )
 
 // Thunk action creators for dispatching regular actions
-export const handleFetchCampaigns = () => async (dispatch: AppDispatch) => {
+export const handleFetchCampaigns = (
+  { search = "", page = 1 }: { search?: string; page?: number } = {}
+) => async (dispatch: AppDispatch) => {
   dispatch(fetchCampaignsStart())
   try {
-    const resultAction = await dispatch(fetchCampaigns())
+    const resultAction = await dispatch(fetchCampaigns({ search, page }))
     if (fetchCampaigns.fulfilled.match(resultAction)) {
       dispatch(fetchCampaignsSuccess(resultAction.payload))
       return true

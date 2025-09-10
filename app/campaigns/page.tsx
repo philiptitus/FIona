@@ -16,41 +16,44 @@ import { format } from "date-fns"
 import { CalendarIcon, Copy, Edit, Eye, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react"
 import { useDispatch, useSelector } from "react-redux"
 import { handleFetchCampaigns, handleDeleteCampaign, bulkDeleteCampaigns } from "@/store/actions/campaignActions"
+import { setCurrentPage, setSearchQuery } from "@/store/slices/campaignSlice"
 import { useToast } from "@/components/ui/use-toast"
 import type { RootState, AppDispatch } from "@/store/store"
 import { useRouter } from "next/navigation"
 
 export default function CampaignsPage() {
-  const [searchQuery, setSearchQuery] = useState("")
   const [selectedCampaigns, setSelectedCampaigns] = useState<number[]>([])
   const [date, setDate] = useState<Date | undefined>(undefined)
   const [activeTab, setActiveTab] = useState("all")
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 10
+  const [searchInput, setSearchInput] = useState("")
 
   const dispatch = useDispatch<AppDispatch>()
   const { toast } = useToast()
   const router = useRouter()
 
-  const { campaigns, isLoading, error } = useSelector((state: RootState) => state.campaigns)
+  const { campaigns, isLoading, error, pagination, searchQuery } = useSelector((state: RootState) => state.campaigns)
 
+  // Fetch campaigns on component mount and when search/pagination changes
   useEffect(() => {
-    dispatch(handleFetchCampaigns())
-  }, [dispatch])
+    dispatch(handleFetchCampaigns({ search: searchQuery, page: pagination.currentPage }))
+  }, [dispatch, searchQuery, pagination.currentPage])
 
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchInput !== searchQuery) {
+        dispatch(setSearchQuery(searchInput))
+      }
+    }, 500) // 500ms debounce
+
+    return () => clearTimeout(timeoutId)
+  }, [searchInput, searchQuery, dispatch])
+
+  // Filter campaigns by date (client-side since backend doesn't support date filtering yet)
   const filteredCampaigns = campaigns.filter(
     (campaign) =>
-      (campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        campaign.description.toLowerCase().includes(searchQuery.toLowerCase())) &&
-      (date ? new Date(campaign.updated_at).toDateString() === date.toDateString() : true),
+      date ? new Date(campaign.updated_at).toDateString() === date.toDateString() : true
   )
-
-  const totalPages = Math.ceil(filteredCampaigns.length / itemsPerPage)
-  const paginatedCampaigns = filteredCampaigns.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchQuery, date, activeTab])
 
   const toggleCampaignSelection = (id: number) => {
     setSelectedCampaigns((prev) => (prev.includes(id) ? prev.filter((campaignId) => campaignId !== id) : [...prev, id]))
@@ -62,6 +65,10 @@ export default function CampaignsPage() {
     } else {
       setSelectedCampaigns(filteredCampaigns.map((campaign) => campaign.id))
     }
+  }
+
+  const handlePageChange = (newPage: number) => {
+    dispatch(setCurrentPage(newPage))
   }
 
   const handleDeleteSelected = async () => {
@@ -171,8 +178,8 @@ export default function CampaignsPage() {
                   type="search"
                   placeholder="Search campaigns..."
                   className="pl-8 w-[200px] md:w-[300px]"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                 />
               </div>
               <Popover>
@@ -229,7 +236,7 @@ export default function CampaignsPage() {
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                       <p className="mt-4 text-muted-foreground">Loading campaigns...</p>
                     </div>
-                  ) : paginatedCampaigns.length === 0 ? (
+                  ) : filteredCampaigns.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12">
                       <p className="text-muted-foreground mb-4">No campaigns found</p>
                       <Button asChild>
@@ -241,7 +248,7 @@ export default function CampaignsPage() {
                     </div>
                   ) : (
                     <div className="divide-y">
-                      {paginatedCampaigns.map((campaign) => {
+                      {filteredCampaigns.map((campaign) => {
                         const status = getCampaignStatus(campaign)
                         const isLatest = latestCampaign && campaign.id === latestCampaign.id
                         return (
@@ -291,16 +298,27 @@ export default function CampaignsPage() {
               </CardContent>
               <CardFooter className="flex items-center justify-between p-4">
                 <div className="text-sm text-muted-foreground">
-                  Showing {paginatedCampaigns.length} of {filteredCampaigns.length} filtered campaigns (Total: {campaigns.length})
+                  Showing {filteredCampaigns.length} of {pagination.count} campaigns
+                  {searchQuery && ` (filtered by "${searchQuery}")`}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handlePageChange(pagination.currentPage - 1)} 
+                    disabled={!pagination.previous}
+                  >
                     Previous
                   </Button>
                   <span className="text-xs">
-                    Page {currentPage} of {totalPages}
+                    Page {pagination.currentPage} of {pagination.totalPages}
                   </span>
-                  <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages || totalPages === 0}>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handlePageChange(pagination.currentPage + 1)} 
+                    disabled={!pagination.next}
+                  >
                     Next
                   </Button>
                 </div>

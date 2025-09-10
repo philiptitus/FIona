@@ -18,6 +18,7 @@ import { useDispatch } from "react-redux"
 import { createSmartCampaign } from "@/store/actions/campaignActions"
 import type { AppDispatch } from "@/store/store"
 import MailLoader from '@/components/MailLoader'
+import WorkflowPicker from '@/components/WorkflowPicker'
 
 export default function SmartCampaignPage() {
   const [campaignName, setCampaignName] = useState("")
@@ -27,6 +28,7 @@ export default function SmartCampaignPage() {
   const [attachment, setAttachment] = useState<File | null>(null)
   const [image, setImage] = useState<File | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [attachmentSuggested, setAttachmentSuggested] = useState(false)
   const [placeholderText, setPlaceholderText] = useState("")
   const [isTextareaFocused, setIsTextareaFocused] = useState(false)
 
@@ -82,6 +84,23 @@ export default function SmartCampaignPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    // check for placeholders like {{FIELD}} in campaignType or campaignName
+    const placeholderRegex = /{{\s*[A-Z0-9_]+\s*}}/i
+    const hasPlaceholder = placeholderRegex.test(campaignType) || placeholderRegex.test(campaignName)
+
+    if (hasPlaceholder) {
+      // ask confirmation before proceeding
+      const proceed = window.confirm(
+        'It looks like your campaign contains placeholders (e.g., {{FIELD}}). Are you sure you want to proceed with placeholder data?'
+      )
+      if (!proceed) return
+    }
+
+    if (attachmentSuggested && !attachment) {
+      const attachProceed = window.confirm('This workflow recommends attaching supporting documents. Do you want to continue without an attachment?')
+      if (!attachProceed) return
+    }
+
     setIsLoading(true)
 
     try {
@@ -164,6 +183,14 @@ export default function SmartCampaignPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <WorkflowPicker
+                  setCampaignName={setCampaignName}
+                  setCampaignType={setCampaignType}
+                  setGenerateEmailLists={setGenerateEmailLists}
+                  setAttachmentSuggested={setAttachmentSuggested}
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="campaignName">Campaign Name</Label>
                 <Input
@@ -214,10 +241,7 @@ export default function SmartCampaignPage() {
                 </RadioGroup>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Switch id="generateEmailLists" checked={generateEmailLists} onCheckedChange={setGenerateEmailLists} />
-                <Label htmlFor="generateEmailLists">Allow Fiona to find potential leads relevant for this campaign</Label>
-              </div>
+              {/* 'Generate email lists' option moved into 'More tools' collapsible for a cleaner UI */}
 
               <div className="space-y-2">
                 <Collapsible>
@@ -234,6 +258,10 @@ export default function SmartCampaignPage() {
                       <Label htmlFor="image">Image (JPEG, PNG, max 2MB)</Label>
                       <Input id="image" type="file" accept=".jpg,.jpeg,.png" onChange={handleImageChange} />
                       {image && <p className="text-sm text-muted-foreground">Selected: {image.name}</p>}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Switch id="generateEmailLists" checked={generateEmailLists} onCheckedChange={setGenerateEmailLists} />
+                      <Label htmlFor="generateEmailLists">Allow Fiona to find potential leads relevant for this campaign</Label>
                     </div>
                   </CollapsibleContent>
                 </Collapsible>

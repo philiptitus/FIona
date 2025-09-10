@@ -7,13 +7,14 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RootState, AppDispatch } from "@/store/store"
 import { handleDeleteEmail, handleFetchEmails } from "@/store/actions/emailActions"
-import { useEffect } from "react"
+import React, { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Mail, Phone, Building2, Globe, Linkedin, Facebook, Twitter, User, MapPin, CheckCircle2, Eye, XCircle, Reply, Sparkles } from "lucide-react"
+import EditEmailDialog from "@/components/emails/EditEmailDialog"
 
 export default function EmailDetailPage() {
   const params = useParams()
@@ -22,6 +23,7 @@ export default function EmailDetailPage() {
   const { emails, isLoading } = useSelector((state: RootState) => state.emails)
   const emailId = Number(params.id)
   const email = emails.find(e => e.id === emailId)
+  const [showEditDialog, setShowEditDialog] = useState(false)
 
   useEffect(() => {
     if (!email) {
@@ -131,12 +133,13 @@ export default function EmailDetailPage() {
               </TabsContent>
             </Tabs>
             <div className="flex gap-2 mt-8 justify-end">
-              <Button onClick={() => router.push(`/emails?edit=${emailId}`)}>Edit</Button>
+              <Button onClick={() => setShowEditDialog(true)}>Edit</Button>
               <Button variant="destructive" onClick={async () => {
                 await dispatch(handleDeleteEmail(emailId))
                 router.push("/emails")
               }}>Delete</Button>
             </div>
+            <EditEmailDialog open={showEditDialog} onOpenChange={setShowEditDialog} email={email} onSuccess={() => dispatch(handleFetchEmails())} />
           </CardContent>
         </Card>
       </div>

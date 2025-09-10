@@ -229,74 +229,72 @@ export default function TemplatesPage() {
             </div>
           </div>
           <TabsContent value="all" className="space-y-4">
-            {showForm && (
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle>{editId ? "Edit Template" : "Create Template"}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col md:flex-row gap-8">
-                    {/* Edit Form */}
-                    <form onSubmit={handleSubmit} className="flex-1 min-w-0">
-                      <div className="mb-4">
-                        <label className="block mb-1 font-medium">Subject</label>
-                        <Input
-                          name="name"
-                          placeholder="Subject"
-                          value={form.name}
-                          onChange={handleChange}
-                          required
-                        />
-                      </div>
-                      <div className="mb-4">
-                        <label className="mb-1 block font-medium">HTML Content</label>
-                        <MiniHtmlEditor
-                          value={form.html_content}
-                          onChange={val => setForm(f => ({ ...f, html_content: val }))}
-                          height={180}
-                        />
-                      </div>
-                      <div className="mb-4">
-                        <label className="block mb-1 font-medium">Campaign</label>
-                        <Select value={selectedCampaign ? String(selectedCampaign) : undefined} onValueChange={val => setSelectedCampaign(Number(val))}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a campaign" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {campaigns.map((c: any) => (
-                              <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex gap-2 mt-4">
-                        <Button type="submit">{editId ? "Update" : "Create"}</Button>
-                        <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditId(null); setForm({ name: "", html_content: "" }); setSelectedCampaign(null) }}>Cancel</Button>
-                      </div>
-                    </form>
-                    {/* Live Email Preview */}
-                    <div className="flex-1 min-w-0">
-                      <div className="mb-2 font-semibold text-lg">Live Email Preview</div>
-                      <div className="rounded-lg border bg-gray-50 dark:bg-zinc-800 p-6 shadow-inner">
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="rounded-full bg-blue-200 dark:bg-blue-900 w-10 h-10 flex items-center justify-center font-bold text-lg text-blue-900 dark:text-blue-100">
-                            {form.name?.[0] || "E"}
-                          </div>
-                          <div>
-                            <div className="font-semibold text-base text-gray-900 dark:text-gray-100">From: <span className="text-gray-700 dark:text-gray-300">Your Campaign</span></div>
-                            <div className="text-xs text-gray-500">To: [Recipient]</div>
-                          </div>
+            <Dialog open={showForm} onOpenChange={setShowForm}>
+              <DialogContent className="max-w-4xl w-full max-h-[80vh] overflow-auto">
+                <DialogHeader>
+                  <DialogTitle>{editId ? "Edit Template" : "Create Template"}</DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col md:flex-row gap-8 py-2">
+                  {/* Edit Form */}
+                  <form onSubmit={handleSubmit} className="flex-1 min-w-0">
+                    <div className="mb-4">
+                      <label className="block mb-1 font-medium">Subject</label>
+                      <Input
+                        name="name"
+                        placeholder="Subject"
+                        value={form.name}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+                    <div className="mb-4">
+                      <label className="mb-1 block font-medium">HTML Content</label>
+                      <MiniHtmlEditor
+                        value={form.html_content}
+                        onChange={val => setForm(f => ({ ...f, html_content: val }))}
+                        height={180}
+                      />
+                    </div>
+                    <div className="mb-4">
+                      <label className="block mb-1 font-medium">Campaign</label>
+                      <Select value={selectedCampaign ? String(selectedCampaign) : undefined} onValueChange={val => setSelectedCampaign(Number(val))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a campaign" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {campaigns.map((c: any) => (
+                            <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                      <Button type="submit">{editId ? "Update" : "Create"}</Button>
+                      <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditId(null); setForm({ name: "", html_content: "" }); setSelectedCampaign(null) }}>Cancel</Button>
+                    </div>
+                  </form>
+                  {/* Live Email Preview */}
+                  <div className="flex-1 min-w-0">
+                    <div className="mb-2 font-semibold text-lg">Live Email Preview</div>
+                    <div className="rounded-lg border bg-gray-50 dark:bg-zinc-800 p-6 shadow-inner max-h-[60vh] overflow-auto">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="rounded-full bg-blue-200 dark:bg-blue-900 w-10 h-10 flex items-center justify-center font-bold text-lg text-blue-900 dark:text-blue-100">
+                          {form.name?.[0] || "E"}
                         </div>
-                        <div className="mb-2">
-                          <span className="block text-lg font-bold text-gray-900 dark:text-gray-100">{form.name || "(No Subject)"}</span>
+                        <div>
+                          <div className="font-semibold text-base text-gray-900 dark:text-gray-100">From: <span className="text-gray-700 dark:text-gray-300">Your Campaign</span></div>
+                          <div className="text-xs text-gray-500">To: [Recipient]</div>
                         </div>
-                        <HtmlPreview html={form.html_content || ""} />
                       </div>
+                      <div className="mb-2">
+                        <span className="block text-lg font-bold text-gray-900 dark:text-gray-100">{form.name || "(No Subject)"}</span>
+                      </div>
+                      <HtmlPreview html={form.html_content || ""} />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                </div>
+              </DialogContent>
+            </Dialog>
             {showAIForm && (
               <Card className="mb-6">
                 <CardHeader>

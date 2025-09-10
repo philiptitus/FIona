@@ -18,6 +18,18 @@ export default function ContentDetailPage() {
   const contentId = Number(params.id)
   const content = contents.find((item) => item.id === contentId)
 
+  // Helper to render ISO dates in a readable, localized form
+  const formatDate = (iso?: string | null) => {
+    if (!iso) return "-"
+    try {
+      const d = new Date(iso)
+      if (isNaN(d.getTime())) return String(iso)
+      return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(d)
+    } catch (err) {
+      return String(iso)
+    }
+  }
+
   useEffect(() => {
     if (!content) {
       dispatch(handleFetchContentById(contentId))
@@ -59,8 +71,8 @@ export default function ContentDetailPage() {
             {/* Metadata Section */}
             <div className="mb-6 text-sm text-muted-foreground space-y-1">
               <div><b>Type:</b> {content?.type || (content?.campaign ? "Campaign Content" : "-")}</div>
-              <div><b>Uploaded:</b> {content?.created_at || "-"}</div>
-              <div><b>Updated:</b> {content?.updated_at || "-"}</div>
+              <div><b>Uploaded:</b> {formatDate(content?.created_at ?? null)}</div>
+              <div><b>Updated:</b> {formatDate(content?.updated_at ?? null)}</div>
               {content?.campaign && (
                 <div><b>Campaign:</b> <Button variant="link" className="p-0 h-auto" onClick={() => router.push(`/campaigns/${content.campaign}`)}>{content.campaign_name || `Campaign #${content.campaign}`}</Button></div>
               )}
