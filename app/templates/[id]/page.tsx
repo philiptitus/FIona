@@ -8,34 +8,33 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { HtmlPreview } from "@/components/ui/html-preview"
 import { RootState, AppDispatch } from "@/store/store"
-import { handleDeleteTemplate, handleFetchTemplates } from "@/store/actions/templateActions"
-import { handleUpdateTemplate } from "@/store/actions/templateActions"
+import { handleDeleteTemplate, handleFetchTemplates, handleFetchTemplateById, handleUpdateTemplate, handleGenerateTemplate } from "@/store/actions/templateActions"
 import { Input } from "@/components/ui/input"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
-import { MiniHtmlEditor } from "@/components/ui/mini-html-editor"
-import { useEffect } from "react"
+import AdvancedRichTextEditor from "@/components/AdvancedRichTextEditor"
+import { useEffect, useState } from "react"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { useState } from "react"
-import { handleGenerateTemplate } from "@/store/actions/templateActions"
 import { useToast } from "@/components/ui/use-toast"
 
 export default function TemplateDetailPage() {
   const params = useParams()
   const router = useRouter()
   const dispatch = useDispatch<AppDispatch>()
-  const { templates, isLoading } = useSelector((state: RootState) => state.template)
+  const { templates, currentTemplate, isLoading } = useSelector((state: RootState) => state.template)
   const { campaigns } = useSelector((state: RootState) => state.campaigns)
   const tplId = Number(params.id)
-  const template = templates.find(t => t.id === tplId)
+  // prefer backend-fetched currentTemplate (refresh-safe); fall back to list item
+  const template = currentTemplate && currentTemplate.id === tplId ? currentTemplate : templates.find(t => t.id === tplId)
   const [aiDialogOpen, setAIDialogOpen] = useState(false)
   const [aiDesignContext, setAIDesignContext] = useState("")
   const [aiLoading, setAILoading] = useState(false)
   const [aiError, setAIError] = useState("")
   // Edit dialog state
   const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [editForm, setEditForm] = useState<{ name: string, html_content: string, campaign?: number | null }>({ name: "", html_content: "", campaign: null })
+  const [editForm, setEditForm] = useState<{ name?: string, html_content?: string, campaign?: number }>({ name: "", html_content: "", campaign: undefined })
   const [editLoading, setEditLoading] = useState(false)
   const { toast } = useToast()
+  const [triedFetch, setTriedFetch] = useState(false)
 
   const formatDate = (value?: string | null) => {
     if (!value) return "-"
@@ -49,16 +48,18 @@ export default function TemplateDetailPage() {
   }
 
   useEffect(() => {
-    if (!template) {
-  dispatch(handleFetchTemplates())
-  // ensure campaigns are loaded for the edit dialog's campaign selector
-  dispatch({ type: "campaigns/fetchCampaignsStart" })
+    // Always attempt to fetch the template from backend so this page is reload-safe.
+    setTriedFetch(true)
+    if (tplId) {
+      dispatch(handleFetchTemplateById(tplId))
     }
-  }, [template, dispatch])
+    // ensure campaigns are loaded for the edit dialog's campaign selector
+    dispatch({ type: "campaigns/fetchCampaignsStart" })
+  }, [tplId, dispatch])
 
   useEffect(() => {
     if (template) {
-      setEditForm({ name: template.name || "", html_content: template.html_content || "", campaign: template.campaign || null })
+      setEditForm({ name: template.name || "", html_content: template.html_content || "", campaign: (template as any).campaign ?? undefined })
     }
   }, [template])
 
@@ -67,8 +68,8 @@ export default function TemplateDetailPage() {
     if (!tplId) return
     setEditLoading(true)
     try {
-      await dispatch(handleUpdateTemplate({ id: tplId, templateData: editForm }))
-      toast({ variant: "success", title: "Template updated", description: "Template was updated successfully." })
+  await dispatch(handleUpdateTemplate({ id: tplId, templateData: editForm }))
+  toast({ title: "Template updated", description: "Template was updated successfully." })
       setEditDialogOpen(false)
       dispatch(handleFetchTemplates())
     } catch (err: any) {
@@ -86,8 +87,8 @@ export default function TemplateDetailPage() {
     )
   }
 
-  if (!template && !isLoading) {
-    // If not found after fetching, redirect to templates list
+  // Only redirect after we've tried fetching and loading finished.
+  if (!template && triedFetch && !isLoading) {
     router.replace("/templates")
     return null
   }
@@ -103,16 +104,17 @@ export default function TemplateDetailPage() {
         ui_change_context: aiDesignContext,
         isDesignEdit: true,
       }))
-      if (result && result.payload && result.meta && result.meta.requestStatus === "fulfilled" && result.payload.id) {
-        toast({ variant: "success", title: "Template design updated!", description: "Your template design was updated successfully." })
+      const res: any = result
+      if (res && res.payload && res.meta && res.meta.requestStatus === "fulfilled" && res.payload.id) {
+        toast({ title: "Template design updated!", description: "Your template design was updated successfully." })
         setAIDesignContext("")
         setAIDialogOpen(false)
         dispatch(handleFetchTemplates())
       } else {
-        setAIError(result.payload?.error || "AI could not update the template design.")
+        setAIError(res?.payload?.error || "AI could not update the template design.")
       }
     } catch (err) {
-      setAIError(err?.message || "An error occurred while updating the template design.")
+      setAIError((err as any)?.message || "An error occurred while updating the template design.")
     } finally {
       setAILoading(false)
     }
@@ -145,7 +147,7 @@ export default function TemplateDetailPage() {
             </div>
             {/* Metadata Section */}
                   <div className="mb-6 text-sm text-muted-foreground space-y-1">
-                    <div><b>Type:</b> {template?.type || "-"}</div>
+                    <div><b>Type:</b> {(template as any)?.type || "-"}</div>
                     <div><b>Uploaded:</b> {formatDate(template?.created_at)}</div>
                     <div><b>Updated:</b> {formatDate(template?.updated_at)}</div>
                   </div>
@@ -229,8 +231,12 @@ export default function TemplateDetailPage() {
                       <Input name="name" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} required />
                     </div>
                     <div className="mb-4">
-                      <label className="mb-1 block font-medium">HTML Content</label>
-                      <MiniHtmlEditor value={editForm.html_content} onChange={val => setEditForm(f => ({ ...f, html_content: val }))} height={180} />
+                      <label className="mb-1 block font-medium">Email Content</label>
+                      <AdvancedRichTextEditor 
+                        data={String(editForm.html_content || "")} 
+                        onChange={val => setEditForm(f => ({ ...f, html_content: val }))} 
+                        placeholder="Edit your email content here..."
+                      />
                     </div>
                     <div className="mb-4">
                       <label className="block mb-1 font-medium">Campaign</label>

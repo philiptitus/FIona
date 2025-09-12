@@ -10,6 +10,9 @@ import {
   createCampaignStart,
   createCampaignSuccess,
   createCampaignFailure,
+  createSmartCampaignStart,
+  createSmartCampaignSuccess,
+  createSmartCampaignFailure,
   updateCampaignStart,
   updateCampaignSuccess,
   updateCampaignFailure,
@@ -299,6 +302,23 @@ export const handleDeleteCampaign = (id: number) => async (dispatch: AppDispatch
     }
   } catch (error: any) {
     dispatch(deleteCampaignFailure(error.message || "Failed to delete campaign"))
+    return false
+  }
+}
+
+export const handleCreateSmartCampaign = (formData: FormData) => async (dispatch: AppDispatch) => {
+  dispatch(createSmartCampaignStart())
+  try {
+    const resultAction = await dispatch(createSmartCampaign(formData))
+    if (createSmartCampaign.fulfilled.match(resultAction)) {
+      dispatch(createSmartCampaignSuccess(resultAction.payload))
+      return resultAction.payload
+    } else {
+      dispatch(createSmartCampaignFailure(resultAction.payload as string))
+      return false
+    }
+  } catch (error: any) {
+    dispatch(createSmartCampaignFailure(error.message || "Failed to create smart campaign"))
     return false
   }
 }

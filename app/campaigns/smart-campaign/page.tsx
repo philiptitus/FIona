@@ -14,11 +14,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Switch } from "@/components/ui/switch"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { useToast } from "@/components/ui/use-toast"
-import { useDispatch } from "react-redux"
+import { useDispatch, useSelector } from "react-redux"
 import { createSmartCampaign } from "@/store/actions/campaignActions"
-import type { AppDispatch } from "@/store/store"
+import { handleFetchLinks } from "@/store/actions/linksActions"
+import type { AppDispatch, RootState } from "@/store/store"
 import MailLoader from '@/components/MailLoader'
 import WorkflowPicker from '@/components/WorkflowPicker'
+import { Checkbox } from "@/components/ui/checkbox"
+import Link from "next/link"
 
 export default function SmartCampaignPage() {
   const [campaignName, setCampaignName] = useState("")
@@ -31,6 +34,9 @@ export default function SmartCampaignPage() {
   const [attachmentSuggested, setAttachmentSuggested] = useState(false)
   const [placeholderText, setPlaceholderText] = useState("")
   const [isTextareaFocused, setIsTextareaFocused] = useState(false)
+  const [selectedLinks, setSelectedLinks] = useState<string[]>([])
+  
+  const { links } = useSelector((state: RootState) => state.links)
 
   // Rotating, typed placeholders to guide users
   useEffect(() => {
@@ -81,6 +87,10 @@ export default function SmartCampaignPage() {
   const router = useRouter()
   const { toast } = useToast()
   const dispatch = useDispatch<AppDispatch>()
+  
+  useEffect(() => {
+    dispatch(handleFetchLinks() as any)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -117,17 +127,42 @@ export default function SmartCampaignPage() {
       if (image) {
         formData.append("image", image)
       }
+      
+      if (selectedLinks.length > 0) {
+        formData.append("selected_links", JSON.stringify(selectedLinks))
+      }
 
       const resultAction = await dispatch(createSmartCampaign(formData))
 
       if (createSmartCampaign.fulfilled.match(resultAction)) {
-        const campaignId = resultAction.payload?.dispatch?.campaign?.id || resultAction.payload?.id
+        const payload: any = resultAction.payload
+        // Try multiple known shapes for the response to pick up the campaign id
+        let campaignId: number | string | undefined = undefined
+        if (payload?.dispatch?.campaign?.id) campaignId = payload.dispatch.campaign.id
+        else if (payload?.campaign?.id) campaignId = payload.campaign.id
+        else if (payload?.id) campaignId = payload.id
+
+        // If payload is a string (edge-case), try parsing JSON to extract id
+        if (!campaignId && typeof payload === 'string') {
+          try {
+            const parsed = JSON.parse(payload)
+            if (parsed?.dispatch?.campaign?.id) campaignId = parsed.dispatch.campaign.id
+            else if (parsed?.campaign?.id) campaignId = parsed.campaign.id
+            else if (parsed?.id) campaignId = parsed.id
+          } catch (e) {
+            // ignore parse errors
+          }
+        }
+
         toast({
           title: "Smart campaign created",
           description: "Your AI-powered campaign has been created successfully. You can click on 'View Template' or 'View Content' to visit your email and customize.",
         })
+
         if (campaignId) {
+          // Navigate to the newly created campaign's detail page when id is available
           router.push(`/campaigns/${campaignId}`)
+          return
         } else {
           router.push("/campaigns")
         }
@@ -263,6 +298,58 @@ export default function SmartCampaignPage() {
                       <Switch id="generateEmailLists" checked={generateEmailLists} onCheckedChange={setGenerateEmailLists} />
                       <Label htmlFor="generateEmailLists">Allow Fiona to find potential leads relevant for this campaign</Label>
                     </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Include Your Links (Optional)</Label>
+                      <p className="text-sm text-muted-foreground">Select links to include in your campaign for better personalization</p>
+                      
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+                        <p className="text-blue-800 mb-2">💡 Want to add your social media and profile links?</p>
+                        <Link href="/settings" className="text-blue-600 hover:text-blue-800 underline">
+                          Add your links in Settings →
+                        </Link>
+                      </div>
+                      
+                      {links && (
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { key: 'personal_website', label: 'Personal Website' },
+                            { key: 'linkedin', label: 'LinkedIn' },
+                            { key: 'twitter', label: 'Twitter' },
+                            { key: 'github', label: 'GitHub' },
+                            { key: 'facebook', label: 'Facebook' },
+                            { key: 'instagram', label: 'Instagram' },
+                            { key: 'youtube', label: 'YouTube' },
+                            { key: 'medium', label: 'Medium' },
+                            { key: 'dribbble', label: 'Dribbble' },
+                            { key: 'behance', label: 'Behance' },
+                            { key: 'stackoverflow', label: 'Stack Overflow' },
+                            { key: 'angel_list', label: 'AngelList' }
+                          ].map(({ key, label }) => {
+                            const url = links[key as keyof typeof links] as string
+                            if (!url || !url.trim()) return null
+                            
+                            return (
+                              <div key={key} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={key}
+                                  checked={selectedLinks.includes(key)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setSelectedLinks([...selectedLinks, key])
+                                    } else {
+                                      setSelectedLinks(selectedLinks.filter(link => link !== key))
+                                    }
+                                  }}
+                                />
+                                <Label htmlFor={key} className="text-sm">{label}</Label>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+
                   </CollapsibleContent>
                 </Collapsible>
               </div>

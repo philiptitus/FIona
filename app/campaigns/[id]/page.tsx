@@ -25,16 +25,20 @@ import { handleDisassociateEmails } from "@/store/actions/emailActions"
 import { Checkbox } from "@/components/ui/checkbox"
 import { motion, AnimatePresence } from "framer-motion"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import MailLoader from '@/components/MailLoader'
 
 export default function CampaignDetailPage() {
   const params = useParams()
   const router = useRouter()
   const dispatch = useDispatch<AppDispatch>()
-  const { campaigns, isLoading } = useSelector((state: RootState) => state.campaigns)
+  // Always use currentCampaign from the store (fresh from backend) as the source of truth
+  const { isLoading, currentCampaign } = useSelector((state: RootState) => state.campaigns)
   const { emails: allEmails, isLoading: emailsLoading } = useSelector((state: RootState) => state.emails)
   const { dispatches } = useSelector((state: RootState) => state.dispatch);
   const campaignId = Number(params.id)
-  const campaign = campaigns.find((c: any) => c.id === campaignId)
+  // Use currentCampaign only when it matches the route id
+  const campaign = currentCampaign && currentCampaign.id === campaignId ? currentCampaign : null
+  const [triedFetch, setTriedFetch] = React.useState(false)
   const [showAddEmailDialog, setShowAddEmailDialog] = React.useState(false)
   const [sendModalOpen, setSendModalOpen] = React.useState(false)
   const [selectedMailboxIds, setSelectedMailboxIds] = React.useState<number[]>([])
@@ -96,14 +100,16 @@ export default function CampaignDetailPage() {
   }
 
   React.useEffect(() => {
-    if (!campaign) {
-      dispatch(handleFetchCampaignById(campaignId) as any)
-    }
-    // Only fetch emails for the current campaign
+    // Always fetch the campaign from the backend to ensure fresh data (refresh-safe)
+    setTriedFetch(true)
+    dispatch(handleFetchCampaignById(campaignId) as any)
+
+    // Always fetch emails for the current campaign id
     if (campaignId) {
       dispatch(handleFetchEmails({ campaignId }) as any)
     }
-  }, [campaign, dispatch, campaignId])
+    // We intentionally do not depend on `campaign` here because we always want to re-query by id
+  }, [dispatch, campaignId])
 
   // Show notification with auto-dismiss
   const showNotification = (type: 'success' | 'error', message: string) => {
@@ -213,22 +219,24 @@ export default function CampaignDetailPage() {
   const hasSendable = !allEmailsSent && (campaign?.latest_email_template_id || campaign?.latest_email_content_id) && campaignEmails.length > 0
 
   useEffect(() => {
-    if (!campaign && !isLoading) {
+    // Only redirect if we've attempted to fetch the campaign and it's still missing
+    if (triedFetch && !campaign && !isLoading) {
       router.replace("/campaigns")
     }
-  }, [campaign, isLoading, router])
+  }, [campaign, isLoading, router, triedFetch])
 
   if (isLoading) {
     return (
       <MainLayout>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/70 dark:bg-black/70">
+          <MailLoader />
         </div>
       </MainLayout>
     );
   }
 
-  if (!campaign) {
+  // Only show 'Campaign not found' after we've attempted a fetch and loading is finished
+  if (triedFetch && !isLoading && !campaign) {
     return (
       <MainLayout>
         <div className="p-8 text-center">
@@ -322,12 +330,12 @@ export default function CampaignDetailPage() {
                 <div className="flex gap-4">
                   {campaign?.latest_email_template_id && (
                     <Button variant="outline" onClick={() => handleViewTemplate(campaign.latest_email_template_id)}>
-                      View and Send Email Template
+                      Preview Email Template
                     </Button>
                   )}
                   {campaign?.latest_email_content_id && (
                     <Button variant="outline" onClick={() => router.push(`/content/${campaign.latest_email_content_id}`)}>
-                      View and Send Email Content
+                      Preview Email Content
                     </Button>
                   )}
 

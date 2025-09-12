@@ -14,6 +14,7 @@ import { authMiddleware } from "./middleware/authMiddleware"
 import mailboxReducer from "./slices/mailboxSlice"
 import contactListReducer from "./slices/contactListSlice"
 import workflowReducer from "./slices/workflowSlice"
+import linksReducer from "./slices/linksSlice"
 
 // Define root state type
 type RootState = {
@@ -31,6 +32,7 @@ type RootState = {
   sentEmail: ReturnType<typeof sentEmailReducer>
   contactList: ReturnType<typeof contactListReducer>
   workflows: ReturnType<typeof workflowReducer>
+  links: ReturnType<typeof linksReducer>
 }
 
 // Create root reducer with proper typing
@@ -49,6 +51,7 @@ const rootReducer: ReducersMapObject<RootState> = {
   sentEmail: sentEmailReducer,
   contactList: contactListReducer,
   workflows: workflowReducer,
+  links: linksReducer,
 }
 
 // Define app dispatch type with thunk support

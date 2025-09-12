@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Edit, Trash2, MoreHorizontal, Plus, Search, Copy, Eye } from "lucide-react"
 import { HtmlPreview } from "@/components/ui/html-preview"
-import { MiniHtmlEditor } from "@/components/ui/mini-html-editor"
+import CKEditorWrapper from "@/components/CKEditorWrapper"
 import type { RootState, AppDispatch } from "@/store/store"
 import { handleFetchTemplates, handleCreateTemplate, handleUpdateTemplate, handleDeleteTemplate, handleGenerateTemplate } from "@/store/actions/templateActions"
 import { useRouter } from "next/navigation"
@@ -248,11 +248,11 @@ export default function TemplatesPage() {
                       />
                     </div>
                     <div className="mb-4">
-                      <label className="mb-1 block font-medium">HTML Content</label>
-                      <MiniHtmlEditor
-                        value={form.html_content}
+                      <label className="mb-1 block font-medium">Email Content</label>
+                      <CKEditorWrapper
+                        data={form.html_content}
                         onChange={val => setForm(f => ({ ...f, html_content: val }))}
-                        height={180}
+                        placeholder="Write your email content here..."
                       />
                     </div>
                     <div className="mb-4">

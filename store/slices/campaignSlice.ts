@@ -98,6 +98,18 @@ const campaignSlice = createSlice({
       state.isLoading = false
       state.error = action.payload
     },
+    createSmartCampaignStart: (state) => {
+      state.isLoading = true
+      state.error = null
+    },
+    createSmartCampaignSuccess: (state, action: PayloadAction<any>) => {
+      state.isLoading = false
+      state.error = null
+    },
+    createSmartCampaignFailure: (state, action: PayloadAction<string>) => {
+      state.isLoading = false
+      state.error = action.payload
+    },
     updateCampaignStart: (state) => {
       state.isLoading = true
       state.error = null
@@ -151,6 +163,9 @@ export const {
   createCampaignStart,
   createCampaignSuccess,
   createCampaignFailure,
+  createSmartCampaignStart,
+  createSmartCampaignSuccess,
+  createSmartCampaignFailure,
   updateCampaignStart,
   updateCampaignSuccess,
   updateCampaignFailure,

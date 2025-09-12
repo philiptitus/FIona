@@ -7,16 +7,18 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RootState, AppDispatch } from "@/store/store"
 import { handleFetchContentById, handleDeleteContent } from "@/store/actions/contentActions"
-import { useEffect } from "react"
+import React, { useEffect, useState } from "react"
+import MailLoader from '@/components/MailLoader'
 
 export default function ContentDetailPage() {
   const params = useParams()
   const router = useRouter()
   const dispatch = useDispatch<AppDispatch>()
-  // Use correct state property: contents (not items)
-  const { contents, isLoading } = useSelector((state: RootState) => state.content)
+  // Always use currentContent from the store (fresh from backend) as the source of truth
+  const { isLoading, currentContent } = useSelector((state: RootState) => state.content)
   const contentId = Number(params.id)
-  const content = contents.find((item) => item.id === contentId)
+  const content = currentContent && currentContent.id === contentId ? currentContent : null
+  const [triedFetch, setTriedFetch] = useState(false)
 
   // Helper to render ISO dates in a readable, localized form
   const formatDate = (iso?: string | null) => {
@@ -31,14 +33,32 @@ export default function ContentDetailPage() {
   }
 
   useEffect(() => {
-    if (!content) {
-      dispatch(handleFetchContentById(contentId))
-    }
-  }, [content, dispatch, contentId])
+    // Match campaign detail behavior: mark we're trying and dispatch fetch (backend source)
+    setTriedFetch(true)
+    dispatch(handleFetchContentById(contentId) as any)
+    // intentionally do not depend on `content` here
+  }, [dispatch, contentId])
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/70 dark:bg-black/70">
+          <MailLoader />
+        </div>
+      </MainLayout>
+    )
+  }
 
-  if (!content && !isLoading) {
-    router.replace("/content")
-    return null
+  // Only show 'Content not found' after we've attempted a fetch and loading is finished
+  if (triedFetch && !isLoading && !content) {
+    return (
+      <MainLayout>
+        <div className="p-8 text-center">
+          <h1 className="text-2xl font-bold mb-4">Content not found</h1>
+          <p className="text-muted-foreground mb-4">We couldn't find the content you were looking for.</p>
+          <Button onClick={() => router.push('/content')}>Back to Content Library</Button>
+        </div>
+      </MainLayout>
+    )
   }
 
   return (
