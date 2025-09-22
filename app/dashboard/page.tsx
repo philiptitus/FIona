@@ -37,7 +37,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Main Dashboard Grid */}
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-6">
           {/* Campaign Summary */}
           <CampaignSummary 
             data={campaignSummary}
@@ -45,19 +45,22 @@ export default function DashboardPage() {
             error={error}
           />
 
-          {/* Email Performance */}
-          <EmailPerformance 
-            data={emailPerformance}
-            loading={loading}
-            error={error}
-          />
+          {/* Performance Metrics Row */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {/* Email Performance */}
+            <EmailPerformance 
+              data={emailPerformance}
+              loading={loading}
+              error={error}
+            />
 
-          {/* Engagement Metrics */}
-          <EngagementMetrics 
-            data={engagementMetrics}
-            loading={loading}
-            error={error}
-          />
+            {/* Engagement Metrics */}
+            <EngagementMetrics 
+              data={engagementMetrics}
+              loading={loading}
+              error={error}
+            />
+          </div>
 
           {/* System Health */}
           <SystemHealth 

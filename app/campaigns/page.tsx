@@ -141,52 +141,55 @@ export default function CampaignsPage() {
 
   return (
     <MainLayout>
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col gap-4 sm:gap-6 px-4 sm:px-0">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Campaigns</h1>
-            <p className="text-muted-foreground">Create and manage your email campaigns</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Campaigns</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">Create and manage your email campaigns</p>
           </div>
-          <div className="flex gap-2">
-            <Button asChild variant="outline">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button asChild variant="outline" className="w-full sm:w-auto">
               <Link href="/campaigns/smart-campaign">
                 <Plus className="mr-2 h-4 w-4" />
-                Smart Campaign
+                <span className="hidden sm:inline">Smart Campaign</span>
+                <span className="sm:hidden">Smart</span>
               </Link>
             </Button>
-            <Button asChild>
+            <Button asChild className="w-full sm:w-auto">
               <Link href="/campaigns/new">
                 <Plus className="mr-2 h-4 w-4" />
-                New Campaign
+                <span className="hidden sm:inline">New Campaign</span>
+                <span className="sm:hidden">New</span>
               </Link>
             </Button>
           </div>
         </div>
 
         <Tabs defaultValue="all" className="space-y-4" value={activeTab} onValueChange={setActiveTab}>
-          <div className="flex flex-col sm:flex-row justify-between gap-4">
-            <TabsList>
-              <TabsTrigger value="all">All Campaigns</TabsTrigger>
-              <TabsTrigger value="active">Active</TabsTrigger>
-              <TabsTrigger value="drafts">Drafts</TabsTrigger>
-              <TabsTrigger value="completed">Completed</TabsTrigger>
+          <div className="flex flex-col lg:flex-row justify-between gap-4">
+            <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:flex">
+              <TabsTrigger value="all" className="text-xs sm:text-sm">All</TabsTrigger>
+              <TabsTrigger value="active" className="text-xs sm:text-sm">Active</TabsTrigger>
+              <TabsTrigger value="drafts" className="text-xs sm:text-sm">Drafts</TabsTrigger>
+              <TabsTrigger value="completed" className="text-xs sm:text-sm">Done</TabsTrigger>
             </TabsList>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
-                  placeholder="Search campaigns..."
-                  className="pl-8 w-[200px] md:w-[300px]"
+                  placeholder="Search..."
+                  className="pl-8 w-full sm:w-[200px] lg:w-[300px]"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                 />
               </div>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-[240px] justify-start text-left font-normal">
+                  <Button variant="outline" className="w-full sm:w-auto justify-start text-left font-normal">
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "PPP") : <span>Filter by date</span>}
+                    <span className="hidden sm:inline">{date ? format(date, "PPP") : "Filter by date"}</span>
+                    <span className="sm:hidden">{date ? format(date, "MMM d") : "Date"}</span>
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="end">
@@ -205,25 +208,29 @@ export default function CampaignsPage() {
 
           <TabsContent value="all" className="space-y-4">
             <Card>
-              <CardHeader className="p-4">
-                <div className="flex items-center">
-                  <Checkbox
-                    id="select-all"
-                    checked={selectedCampaigns.length === filteredCampaigns.length && filteredCampaigns.length > 0}
-                    onCheckedChange={selectAllCampaigns}
-                  />
-                  <label htmlFor="select-all" className="ml-2 text-sm font-medium">
-                    Select All
-                  </label>
+              <CardHeader className="p-3 sm:p-4">
+                <div className="flex items-center flex-wrap gap-2">
+                  <div className="flex items-center">
+                    <Checkbox
+                      id="select-all"
+                      checked={selectedCampaigns.length === filteredCampaigns.length && filteredCampaigns.length > 0}
+                      onCheckedChange={selectAllCampaigns}
+                    />
+                    <label htmlFor="select-all" className="ml-2 text-xs sm:text-sm font-medium">
+                      Select All
+                    </label>
+                  </div>
                   {selectedCampaigns.length > 0 && (
-                    <div className="ml-auto flex gap-2">
-                      <Button variant="outline" size="sm">
-                        <Copy className="mr-2 h-4 w-4" />
-                        Duplicate
+                    <div className="ml-auto flex gap-1 sm:gap-2">
+                      <Button variant="outline" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
+                        <Copy className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="hidden sm:inline">Duplicate</span>
+                        <span className="sm:hidden">Copy</span>
                       </Button>
-                      <Button variant="destructive" size="sm" onClick={handleDeleteSelected}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
+                      <Button variant="destructive" size="sm" onClick={handleDeleteSelected} className="text-xs sm:text-sm px-2 sm:px-3">
+                        <Trash2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="hidden sm:inline">Delete</span>
+                        <span className="sm:hidden">Del</span>
                       </Button>
                     </div>
                   )}
@@ -257,15 +264,15 @@ export default function CampaignsPage() {
                             className="rounded-lg border bg-card shadow-sm hover:scale-[1.01] transition-all group cursor-pointer"
                             onClick={() => router.push(`/campaigns/${campaign.id}`)}
                           >
-                            <CardHeader className="flex flex-row items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <CardTitle className="truncate max-w-[60%]" title={campaign.name}>{campaign.name}</CardTitle>
-                                {isLatest && <Badge variant="default">Latest</Badge>}
+                            <CardHeader className="flex flex-row items-start justify-between p-3 sm:p-6 pb-2 sm:pb-2">
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 flex-1 min-w-0">
+                                <CardTitle className="text-sm sm:text-base truncate" title={campaign.name}>{campaign.name}</CardTitle>
+                                {isLatest && <Badge variant="default" className="text-xs w-fit">Latest</Badge>}
                               </div>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="opacity-70 group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>
-                                    <MoreHorizontal className="h-4 w-4" />
+                                  <Button variant="ghost" size="icon" className="opacity-70 group-hover:opacity-100 h-8 w-8 sm:h-10 sm:w-10" onClick={(e) => e.stopPropagation()}>
+                                    <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
@@ -281,12 +288,12 @@ export default function CampaignsPage() {
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </CardHeader>
-                            <CardContent>
-                              <div className="text-muted-foreground text-xs truncate max-w-full" title={campaign.description}>
+                            <CardContent className="p-3 sm:p-6 pt-0">
+                              <div className="text-muted-foreground text-xs sm:text-sm truncate max-w-full mb-1" title={campaign.description}>
                                 {campaign.description || "No description"}
                               </div>
                               <div className="text-muted-foreground text-xs truncate max-w-full" title={campaign.created_at}>
-                                Created: {campaign.created_at ? format(new Date(campaign.created_at), "PPP") : "-"}
+                                Created: {campaign.created_at ? format(new Date(campaign.created_at), "MMM d, yyyy") : "-"}
                               </div>
                             </CardContent>
                           </Card>
@@ -296,28 +303,31 @@ export default function CampaignsPage() {
                   )}
                 </div>
               </CardContent>
-              <CardFooter className="flex items-center justify-between p-4">
-                <div className="text-sm text-muted-foreground">
-                  Showing {filteredCampaigns.length} of {pagination.count} campaigns
-                  {searchQuery && ` (filtered by "${searchQuery}")`}
+              <CardFooter className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 sm:p-4">
+                <div className="text-xs sm:text-sm text-muted-foreground">
+                  Showing {filteredCampaigns.length} of {pagination.count}
+                  {searchQuery && ` (filtered)`}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 sm:gap-2">
                   <Button 
                     variant="outline" 
                     size="sm" 
                     onClick={() => handlePageChange(pagination.currentPage - 1)} 
                     disabled={!pagination.previous}
+                    className="text-xs sm:text-sm px-2 sm:px-3"
                   >
-                    Previous
+                    <span className="hidden sm:inline">Previous</span>
+                    <span className="sm:hidden">Prev</span>
                   </Button>
-                  <span className="text-xs">
-                    Page {pagination.currentPage} of {pagination.totalPages}
+                  <span className="text-xs px-2">
+                    {pagination.currentPage}/{pagination.totalPages}
                   </span>
                   <Button 
                     variant="outline" 
                     size="sm" 
                     onClick={() => handlePageChange(pagination.currentPage + 1)} 
                     disabled={!pagination.next}
+                    className="text-xs sm:text-sm px-2 sm:px-3"
                   >
                     Next
                   </Button>

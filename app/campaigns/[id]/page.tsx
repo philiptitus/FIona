@@ -289,73 +289,78 @@ export default function CampaignDetailPage() {
         )}
       </AnimatePresence>
 
-      <div className="max-w-2xl mx-auto py-12 px-4">
+      <div className="max-w-4xl mx-auto py-6 sm:py-12 px-4 sm:px-6">
         <Button variant="ghost" className="mb-4" onClick={() => router.push("/campaigns")}>{"<-"} Back to Campaigns</Button>
         <Card className="shadow-xl border-2 border-primary/10 bg-white dark:bg-zinc-900">
-          <CardHeader className="flex flex-row items-center gap-4 border-b">
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center gap-4 border-b p-4 sm:p-6">
             {campaign?.image ? (
-              <Avatar className="h-16 w-16">
+              <Avatar className="h-12 w-12 sm:h-16 sm:w-16">
                 <AvatarImage src={campaign.image} alt="Campaign" />
                 <AvatarFallback>{campaign.name?.[0] || "C"}</AvatarFallback>
               </Avatar>
             ) : (
-              <Avatar className="h-16 w-16">
+              <Avatar className="h-12 w-12 sm:h-16 sm:w-16">
                 <AvatarFallback>{campaign?.name?.[0] || "C"}</AvatarFallback>
               </Avatar>
             )}
-            <div className="flex-1">
-              <CardTitle className="text-3xl font-bold mb-1">{campaign?.name || "Campaign"}</CardTitle>
-              <div className="flex gap-2 items-center">
-                <Badge variant="secondary">ID: {campaign?.id}</Badge>
-                <Badge variant="outline">Created: {campaign?.created_at ? new Date(campaign.created_at).toLocaleDateString() : "-"}</Badge>
-                <Badge variant="outline">Updated: {campaign?.updated_at ? new Date(campaign.updated_at).toLocaleDateString() : "-"}</Badge>
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2 break-words">{campaign?.name || "Campaign"}</CardTitle>
+              <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                <Badge variant="secondary" className="text-xs">ID: {campaign?.id}</Badge>
+                <Badge variant="outline" className="text-xs">Created: {campaign?.created_at ? new Date(campaign.created_at).toLocaleDateString() : "-"}</Badge>
+                <Badge variant="outline" className="text-xs hidden sm:inline-flex">Updated: {campaign?.updated_at ? new Date(campaign.updated_at).toLocaleDateString() : "-"}</Badge>
               </div>
             </div>
-            <Button size="sm" variant="outline" onClick={() => router.push(`/campaigns/${campaignId}/edit`)}>Edit</Button>
+            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => router.push(`/campaigns/${campaignId}/edit`)}>Edit</Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6">
             <div className="mb-6 space-y-2">
-              <div className="text-lg"><b>Description:</b> {campaign?.description || <span className="text-muted-foreground">No description</span>}</div>
+              <div className="text-sm sm:text-base lg:text-lg break-words"><b>Description:</b> {campaign?.description || <span className="text-muted-foreground">No description</span>}</div>
               {campaign?.attachment && (
-                <div><b>Attachment:</b> <a href={campaign.attachment} className="text-blue-600 underline" target="_blank" rel="noopener noreferrer">Download</a></div>
+                <div className="text-sm sm:text-base"><b>Attachment:</b> <a href={campaign.attachment} className="text-blue-600 underline" target="_blank" rel="noopener noreferrer">Download</a></div>
               )}
             </div>
             {/* Email Options Section */}
             {(campaign?.latest_email_template_id || campaign?.latest_email_content_id) && (
               <div className="mb-6">
-                <div className="mb-2 font-semibold text-lg">Your Email Sending Options</div>
-                <div className="mb-3 text-muted-foreground text-sm">
+                <div className="mb-2 font-semibold text-base sm:text-lg">Your Email Sending Options</div>
+                <div className="mb-3 text-muted-foreground text-xs sm:text-sm">
                   You can view and customize your campaign's emails. Choose between the HTML <b>Template</b> (for styled emails) or the plain <b>Content</b> (for simple text emails).
                 </div>
-                <div className="flex gap-4">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
                   {campaign?.latest_email_template_id && (
-                    <Button variant="outline" onClick={() => handleViewTemplate(campaign.latest_email_template_id)}>
-                      Preview Email Template
+                    <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => handleViewTemplate(campaign.latest_email_template_id)}>
+                      <span className="hidden sm:inline">Preview Email Template</span>
+                      <span className="sm:hidden">Preview Template</span>
                     </Button>
                   )}
                   {campaign?.latest_email_content_id && (
-                    <Button variant="outline" onClick={() => router.push(`/content/${campaign.latest_email_content_id}`)}>
-                      Preview Email Content
+                    <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => router.push(`/content/${campaign.latest_email_content_id}`)}>
+                      <span className="hidden sm:inline">Preview Email Content</span>
+                      <span className="sm:hidden">Preview Content</span>
                     </Button>
                   )}
-
                 </div>
               </div>
             )}
             {/* Email List Header */}
             <div className="flex flex-col space-y-4 mb-6">
-              <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold">{campaign?.name || 'Campaign Details'}</h1>
-                <div className="flex space-x-2">
-                <Button
-                      variant="default"
-                      onClick={() => setShowAddEmailDialog(true)}
-                    >
-                      Add Emails to Campaign
-                    </Button>
-
-                  <Button onClick={() => setSendModalOpen(true)}>
-                    <Send className="mr-2 h-4 w-4" /> Send Campaign
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold break-words">{campaign?.name || 'Campaign Details'}</h1>
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="w-full sm:w-auto"
+                    onClick={() => setShowAddEmailDialog(true)}
+                  >
+                    <span className="hidden sm:inline">Add Emails to Campaign</span>
+                    <span className="sm:hidden">Add Emails</span>
+                  </Button>
+                  <Button size="sm" className="w-full sm:w-auto" onClick={() => setSendModalOpen(true)}>
+                    <Send className="mr-2 h-4 w-4" /> 
+                    <span className="hidden sm:inline">Send Campaign</span>
+                    <span className="sm:hidden">Send</span>
                   </Button>
                 </div>
               </div>
@@ -422,15 +427,15 @@ export default function CampaignDetailPage() {
                     </div>
                   ) : (
                     <>
-                      <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-semibold">Emails</h2>
-                        <div className="relative w-64">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                        <h2 className="text-lg sm:text-xl font-semibold">Emails</h2>
+                        <div className="relative w-full sm:w-64">
                           <input
                             type="text"
                             placeholder="Search emails..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                           {searchQuery && (
                             <button
@@ -443,7 +448,7 @@ export default function CampaignDetailPage() {
                         </div>
                       </div>
                       <div className="space-y-2 mb-4">
-                        <div className="flex items-center gap-4 p-2 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-2 sm:gap-4 p-2 bg-gray-50 rounded-lg">
                           <Checkbox 
                             id="select-all"
                             checked={selectedEmails.length > 0 && selectedEmails.length === filteredEmails.length}
@@ -452,7 +457,7 @@ export default function CampaignDetailPage() {
                           />
                           <label 
                             htmlFor="select-all" 
-                            className="text-sm font-medium text-gray-700 cursor-pointer"
+                            className="text-xs sm:text-sm font-medium text-gray-700 cursor-pointer flex-1"
                           >
                             {selectedEmails.length > 0 
                               ? `Selected ${selectedEmails.length} email(s)`
@@ -461,9 +466,9 @@ export default function CampaignDetailPage() {
                           {selectedEmails.length > 0 && (
                             <button 
                               onClick={() => setSelectedEmails([])}
-                              className="ml-auto text-sm text-blue-600 hover:text-blue-800"
+                              className="text-xs sm:text-sm text-blue-600 hover:text-blue-800"
                             >
-                              Clear selection
+                              Clear
                             </button>
                           )}
                         </div>
@@ -474,14 +479,15 @@ export default function CampaignDetailPage() {
                               size="sm"
                               onClick={handleDisassociateSelected}
                               disabled={isDisassociating}
-                              className="flex items-center gap-2"
+                              className="flex items-center gap-2 text-xs sm:text-sm"
                             >
                               {isDisassociating ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <Trash2 className="h-4 w-4" />
                               )}
-                              Remove {selectedEmails.length} selected email{selectedEmails.length !== 1 ? 's' : ''}
+                              <span className="hidden sm:inline">Remove {selectedEmails.length} selected email{selectedEmails.length !== 1 ? 's' : ''}</span>
+                              <span className="sm:hidden">Remove ({selectedEmails.length})</span>
                             </Button>
                           </div>
                         )}
@@ -495,25 +501,25 @@ export default function CampaignDetailPage() {
                             className={`relative ${selectedEmails.includes(email.id) ? 'ring-2 ring-blue-500' : ''}`}
                           >
                             <Card className={`hover:shadow-md transition-shadow ${selectedEmails.includes(email.id) ? 'border-blue-500' : ''}`}>
-                              <CardContent className="p-4">
-                                <div className="flex items-center space-x-3">
+                              <CardContent className="p-3 sm:p-4">
+                                <div className="flex items-start space-x-2 sm:space-x-3">
                                   <Checkbox 
                                     id={`email-${email.id}`}
                                     checked={selectedEmails.includes(email.id)}
                                     onCheckedChange={() => toggleEmailSelection(email.id)}
-                                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-1"
                                   />
-                  <div className="flex-1 flex items-center justify-between">
-                    <div className="flex flex-col space-y-4 mb-6">
+                                  <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
+                                    <div className="flex flex-col space-y-1 min-w-0">
                                       <div className="flex items-center space-x-2">
-                                        <span className="font-medium">{email.email}</span>
+                                        <span className="font-medium text-sm sm:text-base break-all">{email.email}</span>
                                         <TooltipProvider>
                                           <Tooltip>
                                             <TooltipTrigger asChild>
                                               {email.is_sent ? (
-                                                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                                <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 flex-shrink-0" />
                                               ) : (
-                                                <XCircle className="h-4 w-4 text-red-500" />
+                                                <XCircle className="h-3 w-3 sm:h-4 sm:w-4 text-red-500 flex-shrink-0" />
                                               )}
                                             </TooltipTrigger>
                                             <TooltipContent>
@@ -525,29 +531,30 @@ export default function CampaignDetailPage() {
                                         </TooltipProvider>
                                       </div>
                                       {(email.first_name || email.last_name) && (
-                                        <div className="text-sm text-gray-500">
+                                        <div className="text-xs sm:text-sm text-gray-500">
                                           {email.first_name} {email.last_name}
                                         </div>
                                       )}
                                       {email.organization_name && (
-                                        <div className="text-sm text-gray-500">
+                                        <div className="text-xs sm:text-sm text-gray-500 break-words">
                                           {email.organization_name}
                                         </div>
                                       )}
                                     </div>
-                                    <div className="ml-4 flex-shrink-0">
+                                    <div className="flex-shrink-0">
                                       <TooltipProvider>
                                         <Tooltip>
                                           <TooltipTrigger asChild>
                                             <Button
                                               variant="ghost"
                                               size="sm"
+                                              className="h-8 w-8 sm:h-10 sm:w-10"
                                               onClick={(e) => {
                                                 e.stopPropagation()
                                                 router.push(`/emails/${email.id}`)
                                               }}
                                             >
-                                              <Eye className="h-4 w-4" />
+                                              <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                                             </Button>
                                           </TooltipTrigger>
                                           <TooltipContent>View contact</TooltipContent>
@@ -567,9 +574,9 @@ export default function CampaignDetailPage() {
               </AccordionItem>
             </Accordion>
             <Dialog open={sendModalOpen} onOpenChange={setSendModalOpen}>
-              <DialogContent className="sm:max-w-[560px] rounded-xl border shadow-2xl">
+              <DialogContent className="w-[95vw] max-w-[560px] rounded-xl border shadow-2xl">
                 <DialogHeader>
-                  <DialogTitle className="text-xl">Send Campaign</DialogTitle>
+                  <DialogTitle className="text-lg sm:text-xl">Send Campaign</DialogTitle>
                 </DialogHeader>
                 <div className="flex flex-col gap-4 min-h-[120px]">
                   {!isSending && !sendSuccess && (

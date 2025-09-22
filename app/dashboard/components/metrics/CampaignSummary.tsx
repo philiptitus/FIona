@@ -23,32 +23,67 @@ export const CampaignSummary = ({ data, loading, error }: CampaignSummaryProps) 
       error={error}
       className="col-span-1 md:col-span-3"
     >
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Total Campaigns */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Campaigns</CardTitle>
-            <BarChart2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {loading ? <Skeleton className="h-8 w-16" /> : data?.total_campaigns || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">All time campaigns</p>
-          </CardContent>
-        </Card>
+      <div className="space-y-6">
+        {/* Stats Cards Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Total Campaigns */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Campaigns</CardTitle>
+              <BarChart2 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {loading ? <Skeleton className="h-8 w-16" /> : data?.total_campaigns || 0}
+              </div>
+              <p className="text-xs text-muted-foreground">All time campaigns</p>
+            </CardContent>
+          </Card>
 
-        {/* Active Campaigns Gauge */}
-        <div className="mt-6">
+          {/* Active Campaigns */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Campaigns</CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {loading ? <Skeleton className="h-8 w-16" /> : data?.active_campaigns || 0}
+              </div>
+              <p className="text-xs text-muted-foreground">Currently running</p>
+            </CardContent>
+          </Card>
+
+          {/* Average Emails per Campaign */}
+          <Card className="sm:col-span-2 lg:col-span-1">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Avg. Emails</CardTitle>
+              <PieChartIcon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {loading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  Math.round((data?.avg_emails_per_campaign || 0) * 10) / 10
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">Per campaign</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Campaign Activity Section */}
+        <div>
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-medium flex items-center">
               <Gauge className="h-4 w-4 mr-2 text-emerald-500" />
               Campaign Activity
             </h3>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <DonutChart 
-              title="Active Campaigns"
+              title="Active vs Inactive"
               data={[
                 { 
                   name: 'Active', 
@@ -78,38 +113,6 @@ export const CampaignSummary = ({ data, loading, error }: CampaignSummaryProps) 
             </div>
           </div>
         </div>
-
-        {/* Active Campaigns */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Campaigns</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {loading ? <Skeleton className="h-8 w-16" /> : data?.active_campaigns || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">Currently running</p>
-          </CardContent>
-        </Card>
-
-        {/* Average Emails per Campaign */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Emails</CardTitle>
-            <PieChartIcon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {loading ? (
-                <Skeleton className="h-8 w-16" />
-              ) : (
-                Math.round((data?.avg_emails_per_campaign || 0) * 10) / 10
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">Per campaign</p>
-          </CardContent>
-        </Card>
       </div>
     </BaseChart>
   );

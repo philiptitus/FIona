@@ -166,13 +166,13 @@ export default function LandingPage() {
       )}
       {/* Header */}
       <header className="border-b bg-white/80 dark:bg-background/80 backdrop-blur">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Mail className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">FionaAI</span>
+            <Mail className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+            <span className="text-lg sm:text-xl font-bold">FionaAI</span>
           </div>
-          <div className="flex items-center gap-4">
-            <nav className="hidden md:flex items-center gap-6">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <nav className="hidden lg:flex items-center gap-6">
               <Link href="#features" className="text-sm font-medium hover:text-primary">
                 Features
               </Link>
@@ -183,13 +183,13 @@ export default function LandingPage() {
                 Pricing
               </Link>
             </nav>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <ThemeToggle />
-              <Button variant="outline" asChild>
+              <Button variant="outline" size="sm" className="hidden sm:inline-flex" asChild>
                 <Link href="/auth/login">Sign In</Link>
               </Button>
-              <Button asChild>
-                <Link href="/auth/login">Start Free Trial</Link>
+              <Button size="sm" asChild>
+                <Link href="/auth/login" className="text-xs sm:text-sm">Start Trial</Link>
               </Button>
             </div>
           </div>
@@ -197,43 +197,45 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="py-16 md:py-24 lg:py-32">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-12">
+      <section className="py-12 sm:py-16 md:py-24 lg:py-32">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-12">
           <motion.div
-            className="flex-1 flex flex-col items-start gap-8"
+            className="flex-1 flex flex-col items-center lg:items-start gap-6 lg:gap-8 text-center lg:text-left"
             initial={{ opacity: 0, x: -40 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-tight">
               AI-Powered Email Campaigns, Instantly Delivered
             </h1>
-            <p className="text-xl text-muted-foreground mt-4">
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl">
               Create, automate, and optimize your email campaigns with AI-driven insights and powerful analytics
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 mt-4">
-              <Button size="lg" className="bg-primary text-primary-foreground" asChild>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
+              <Button size="lg" className="bg-primary text-primary-foreground w-full sm:w-auto" asChild>
                 <Link href="/auth/login">Start Free Trial</Link>
               </Button>
-              <Button size="lg" variant="outline" className="bg-secondary text-secondary-foreground" asChild>
+              <Button size="lg" variant="outline" className="bg-secondary text-secondary-foreground w-full sm:w-auto" asChild>
                 <Link href="#demo">View Demo</Link>
               </Button>
             </div>
           </motion.div>
-          <LandingHeroAnimation />
+          <div className="w-full lg:w-auto lg:flex-1 max-w-lg lg:max-w-none">
+            <LandingHeroAnimation />
+          </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-16 md:py-24 bg-muted/30">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Powerful Features</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+      <section id="features" className="py-12 sm:py-16 md:py-24 bg-muted/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">Powerful Features</h2>
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
               Everything you need to launch, automate, and analyze your campaigns in one AI-powered platform.
             </p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {FEATURES.map((feature) => (
               <LandingFeatureCard key={feature.title} {...feature} />
             ))}
@@ -242,27 +244,27 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works Section */}
-      <section id="how-it-works" className="py-16 md:py-24">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">How It Works</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+      <section id="how-it-works" className="py-12 sm:py-16 md:py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">How It Works</h2>
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
               Get up and running in three easy steps.
             </p>
           </div>
-          <div className="flex flex-col md:flex-row justify-center gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
             {HOW_IT_WORKS.map((step) => (
               <motion.div
                 key={step.number}
-                className="flex-1 bg-white dark:bg-card rounded-xl shadow-md p-8 flex flex-col items-center text-center border border-muted"
+                className="bg-white dark:bg-card rounded-xl shadow-md p-6 sm:p-8 flex flex-col items-center text-center border border-muted"
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.7 }}
               >
-                <span className="text-4xl font-bold text-primary mb-2">{step.number}</span>
-                <h3 className="text-lg font-semibold mb-2">{step.title}</h3>
-                <p className="text-base text-muted-foreground">{step.description}</p>
+                <span className="text-3xl sm:text-4xl font-bold text-primary mb-2">{step.number}</span>
+                <h3 className="text-base sm:text-lg font-semibold mb-2">{step.title}</h3>
+                <p className="text-sm sm:text-base text-muted-foreground">{step.description}</p>
               </motion.div>
             ))}
           </div>
@@ -270,20 +272,20 @@ export default function LandingPage() {
       </section>
 
       {/* Social Proof Section */}
-      <section className="py-16 md:py-24 bg-muted/30">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid md:grid-cols-3 gap-8 text-center">
+      <section className="py-12 sm:py-16 md:py-24 bg-muted/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 text-center">
             {SOCIAL_PROOF.map((stat) => (
               <motion.div
                 key={stat.label}
-                className="bg-white dark:bg-card rounded-xl shadow-md p-8 border border-muted"
+                className="bg-white dark:bg-card rounded-xl shadow-md p-6 sm:p-8 border border-muted"
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.7 }}
               >
-                <div className="text-4xl font-bold text-primary mb-2">{stat.number}</div>
-                <div className="text-base text-muted-foreground">{stat.label}</div>
+                <div className="text-3xl sm:text-4xl font-bold text-primary mb-2">{stat.number}</div>
+                <div className="text-sm sm:text-base text-muted-foreground">{stat.label}</div>
               </motion.div>
             ))}
           </div>
@@ -291,31 +293,31 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-16 md:py-24">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Pricing</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+      <section id="pricing" className="py-12 sm:py-16 md:py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">Pricing</h2>
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
               Simple, transparent pricing for teams of all sizes.
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
             {PRICING.map((plan) => (
               <motion.div
                 key={plan.name}
-                className="bg-white dark:bg-card rounded-xl shadow-md p-8 flex flex-col items-center border border-muted"
+                className="bg-white dark:bg-card rounded-xl shadow-md p-6 sm:p-8 flex flex-col items-center border border-muted"
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.7 }}
               >
-                <div className="text-2xl font-bold mb-2">{plan.name}</div>
-                <div className="text-3xl font-extrabold text-primary mb-4">{plan.price}</div>
-                <ul className="mb-6 space-y-2">
+                <div className="text-xl sm:text-2xl font-bold mb-2">{plan.name}</div>
+                <div className="text-2xl sm:text-3xl font-extrabold text-primary mb-4">{plan.price}</div>
+                <ul className="mb-6 space-y-2 w-full">
                   {plan.features.map((f) => (
-                    <li key={f} className="text-base text-muted-foreground flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-primary inline-block"></span>
-                      {f}
+                    <li key={f} className="text-sm sm:text-base text-muted-foreground flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-primary inline-block flex-shrink-0"></span>
+                      <span className="flex-1">{f}</span>
                     </li>
                   ))}
                 </ul>
@@ -328,12 +330,12 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="mt-auto border-t bg-white/80 dark:bg-background/80">
-        <div className="max-w-7xl mx-auto px-4 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Mail className="h-5 w-5 text-primary" />
-            <span className="text-lg font-bold">FionaAI</span>
+            <span className="text-base sm:text-lg font-bold">FionaAI</span>
           </div>
-          <div className="text-sm text-muted-foreground">
+          <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-right">
             &copy; {new Date().getFullYear()} FionaAI. All rights reserved. Built by {" "}
             <a
               href="https://mrphilip.cv"
@@ -342,7 +344,16 @@ export default function LandingPage() {
               className="underline hover:text-primary"
             >
               Philip Titus
-            </a>.
+            </a>
+            {" "} | {" "}
+            <a
+              href="https://www.mrphilip.cv/privacy/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-primary"
+            >
+              Privacy Policy
+            </a>
           </div>
         </div>
       </footer>

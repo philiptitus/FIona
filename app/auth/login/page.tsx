@@ -75,30 +75,30 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <div className="flex h-16 items-center justify-between border-b px-4 md:px-6">
+      <div className="flex h-14 sm:h-16 items-center justify-between border-b px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2">
-          <Mail className="h-6 w-6 text-primary" />
-          <span className="text-xl font-bold">FionaAI</span>
+          <Mail className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+          <span className="text-lg sm:text-xl font-bold">FionaAI</span>
         </Link>
         <ThemeToggle />
       </div>
 
-      <div className="flex flex-1 items-center justify-center p-4 md:p-8">
-        <Card className="mx-auto max-w-md w-full">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">Access FionaAI</CardTitle>
-            <CardDescription className="text-center">Access your account securely with Philip Auth</CardDescription>
+      <div className="flex flex-1 items-center justify-center p-4 sm:p-6 md:p-8">
+        <Card className="mx-auto max-w-sm sm:max-w-md w-full">
+          <CardHeader className="space-y-2 sm:space-y-1 px-4 sm:px-6 pt-6 sm:pt-6">
+            <CardTitle className="text-xl sm:text-2xl font-bold text-center">Access FionaAI</CardTitle>
+            <CardDescription className="text-center text-sm sm:text-base">Access your account securely with Philip Auth</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center space-y-6 py-8">
+          <CardContent className="flex flex-col items-center justify-center space-y-4 sm:space-y-6 py-6 sm:py-8 px-4 sm:px-6">
             <Button
               type="button"
-              className="w-full flex items-center justify-center gap-2 text-lg py-6"
+              className="w-full flex items-center justify-center gap-2 text-base sm:text-lg py-4 sm:py-6 min-h-[48px] sm:min-h-[56px]"
               variant="outline"
               onClick={() => auth.signinRedirect()}
               disabled={auth.isLoading}
             >
-              <span role="img" aria-label="lock">🔒</span>
-              {auth.isLoading ? "Redirecting..." : "Continue with Philip Auth"}
+              <span role="img" aria-label="lock" className="text-base sm:text-lg">🔒</span>
+              <span className="truncate">{auth.isLoading ? "Redirecting..." : "Continue with Philip Auth"}</span>
             </Button>
           </CardContent>
         </Card>
