@@ -70,12 +70,20 @@ export const sendDispatch = createAsyncThunk(
       dispatchId, 
       mailboxId, 
       mailboxIds,
-      type 
+      type,
+      isScheduled,
+      scheduleDay1,
+      scheduleDay2,
+      scheduleDay3
     }: { 
       dispatchId: number; 
       mailboxId?: number; 
       mailboxIds?: number[];
-      type: "content" | "template" 
+      type: "content" | "template";
+      isScheduled?: boolean;
+      scheduleDay1?: string;
+      scheduleDay2?: string;
+      scheduleDay3?: string;
     },
     { rejectWithValue }
   ) => {
@@ -89,6 +97,14 @@ export const sendDispatch = createAsyncThunk(
         payload.mailbox_id = mailboxId
       } else {
         throw new Error('Either mailboxId or mailboxIds must be provided')
+      }
+      
+      // Add scheduling fields if scheduling is enabled
+      if (isScheduled) {
+        payload.is_scheduled = true
+        if (scheduleDay1) payload.schedule_day_1 = scheduleDay1
+        if (scheduleDay2) payload.schedule_day_2 = scheduleDay2
+        if (scheduleDay3) payload.schedule_day_3 = scheduleDay3
       }
       
       const response = await api.post(`/mail/dispatches/${dispatchId}/send/`, payload)
@@ -183,7 +199,11 @@ export const handleSendDispatch = (
   dispatchId: number, 
   mailboxId?: number, 
   mailboxIds?: number[],
-  type?: "content" | "template"
+  type?: "content" | "template",
+  isScheduled?: boolean,
+  scheduleDay1?: string,
+  scheduleDay2?: string,
+  scheduleDay3?: string
 ) => async (dispatch: AppDispatch) => {
   dispatch(sendDispatchStart())
   try {
@@ -196,11 +216,15 @@ export const handleSendDispatch = (
       dispatchId, 
       ...(mailboxId && { mailboxId }),
       ...(mailboxIds && mailboxIds.length > 0 && { mailboxIds }),
-      type: type || 'content' // Default to 'content' if not provided
+      type: type || 'content', // Default to 'content' if not provided
+      ...(isScheduled && { isScheduled }),
+      ...(scheduleDay1 && { scheduleDay1 }),
+      ...(scheduleDay2 && { scheduleDay2 }),
+      ...(scheduleDay3 && { scheduleDay3 })
     } as any))
     
     if (sendDispatch.fulfilled.match(resultAction)) {
-      dispatch(sendDispatchSuccess())
+      dispatch(sendDispatchSuccess(resultAction.payload))
       return { success: true, data: resultAction.payload }
     } else {
       dispatch(sendDispatchFailure(resultAction.payload as string))

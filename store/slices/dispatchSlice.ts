@@ -15,6 +15,9 @@ interface DispatchState {
   currentDispatch: EmailDispatch | null
   isLoading: boolean
   error: string | null
+  isSending: boolean
+  sendError: string | null
+  lastSendResult: any | null
 }
 
 const initialState: DispatchState = {
@@ -22,6 +25,9 @@ const initialState: DispatchState = {
   currentDispatch: null,
   isLoading: false,
   error: null,
+  isSending: false,
+  sendError: null,
+  lastSendResult: null,
 }
 
 const dispatchSlice = createSlice({
@@ -85,19 +91,26 @@ const dispatchSlice = createSlice({
       state.error = action.payload
     },
     sendDispatchStart: (state) => {
-      state.isLoading = true
-      state.error = null
+      state.isSending = true
+      state.sendError = null
+      state.lastSendResult = null
     },
-    sendDispatchSuccess: (state) => {
-      state.isLoading = false
-      state.error = null
+    sendDispatchSuccess: (state, action: PayloadAction<any>) => {
+      state.isSending = false
+      state.sendError = null
+      state.lastSendResult = action.payload
     },
     sendDispatchFailure: (state, action: PayloadAction<string>) => {
-      state.isLoading = false
-      state.error = action.payload
+      state.isSending = false
+      state.sendError = action.payload
+      state.lastSendResult = null
     },
     clearCurrentDispatch: (state) => {
       state.currentDispatch = null
+    },
+    clearSendResult: (state) => {
+      state.lastSendResult = null
+      state.sendError = null
     },
   },
 })
@@ -119,6 +132,7 @@ export const {
   sendDispatchSuccess,
   sendDispatchFailure,
   clearCurrentDispatch,
+  clearSendResult,
 } = dispatchSlice.actions
 
 export default dispatchSlice.reducer
