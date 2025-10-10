@@ -201,12 +201,12 @@ export default function TemplatesPage() {
             <h1 className="text-3xl font-bold tracking-tight">Templates</h1>
             <p className="text-muted-foreground">Create and manage your email templates</p>
           </div>
-          <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ name: "", html_content: "" }); setSelectedCampaign(null) }}>
+          {/* <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ name: "", html_content: "" }); setSelectedCampaign(null) }}>
             <Plus className="mr-2 h-4 w-4" /> New Template
           </Button>
           <Button variant="secondary" onClick={() => { setShowAIForm(true); setShowForm(false); setEditId(null); setForm({ name: "", html_content: "" }); setSelectedCampaign(null) }}>
             🤖 Create with AI
-          </Button>
+          </Button> */}
         </div>
         <Tabs defaultValue="all" className="space-y-4">
           <div className="flex flex-col sm:flex-row justify-between gap-4">

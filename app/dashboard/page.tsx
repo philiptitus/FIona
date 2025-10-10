@@ -32,7 +32,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <Button asChild>
-            <Link href="/campaigns/new">Create New Campaign</Link>
+            <Link href="/campaigns/smart-campaign">Create New Campaign</Link>
           </Button>
         </div>
 

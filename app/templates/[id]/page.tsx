@@ -122,7 +122,7 @@ export default function TemplateDetailPage() {
 
   return (
     <MainLayout>
-      <div className="max-w-2xl mx-auto py-12 px-4">
+      <div className="max-w-2xl mx-auto w-full overflow-x-hidden py-12 px-4 sm:px-6">
         <Button variant="ghost" className="mb-4" onClick={() => router.push("/templates")}>{"<-"} Back to Templates</Button>
         <Card className="shadow-xl border bg-white dark:bg-zinc-900">
           <CardHeader className="border-b pb-4">
@@ -143,7 +143,9 @@ export default function TemplateDetailPage() {
               <div className="mb-2">
                 <span className="block text-lg font-bold text-gray-900 dark:text-gray-100">{template?.name || "(No Subject)"}</span>
               </div>
+              <div className="prose max-w-full break-words overflow-auto">
                 <HtmlPreview html={template?.html_content || ""} />
+              </div>
             </div>
             {/* Metadata Section */}
                   <div className="mb-6 text-sm text-muted-foreground space-y-1">
@@ -151,9 +153,9 @@ export default function TemplateDetailPage() {
                     <div><b>Uploaded:</b> {formatDate(template?.created_at)}</div>
                     <div><b>Updated:</b> {formatDate(template?.updated_at)}</div>
                   </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2 items-center">
               <Button onClick={() => setEditDialogOpen(true)}>Edit</Button>
-              <Button variant="secondary" onClick={() => setAIDialogOpen(true)}>Edit with AI</Button>
+              <Button variant="secondary" onClick={() => setAIDialogOpen(true)}>Edit with AI(Design Changes only!)</Button>
               <Button variant="destructive" onClick={async () => {
                 await dispatch(handleDeleteTemplate(tplId))
                 router.push("/templates")
@@ -199,7 +201,7 @@ export default function TemplateDetailPage() {
                     {/* Live Email Preview */}
                     <div className="flex-1 min-w-0 flex flex-col">
                       <div className="mb-2 font-semibold text-lg">Live Email Preview</div>
-                      <div className="rounded-lg border bg-gray-50 dark:bg-zinc-800 p-6 shadow-inner overflow-auto max-h-[60vh]">
+                        <div className="rounded-lg border bg-gray-50 dark:bg-zinc-800 p-6 shadow-inner overflow-auto max-h-[60vh] max-w-full overflow-x-auto break-words">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="rounded-full bg-blue-200 dark:bg-blue-900 w-10 h-10 flex items-center justify-center font-bold text-lg text-blue-900 dark:text-blue-100">
                             {template?.name?.[0] || "E"}
@@ -212,7 +214,9 @@ export default function TemplateDetailPage() {
                         <div className="mb-2">
                           <span className="block text-lg font-bold text-gray-900 dark:text-gray-100">{template?.name || "(No Subject)"}</span>
                         </div>
-                        <HtmlPreview html={template?.html_content || ""} />
+                        <div className="max-w-full overflow-x-auto break-words">
+                          <HtmlPreview html={template?.html_content || ""} />
+                        </div>
                       </div>
                     </div>
                   </form>
@@ -258,7 +262,7 @@ export default function TemplateDetailPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="mb-2 font-semibold text-lg">Live Email Preview</div>
-                    <div className="rounded-lg border bg-gray-50 dark:bg-zinc-800 p-6 shadow-inner overflow-auto max-h-[60vh]">
+                    <div className="rounded-lg border bg-gray-50 dark:bg-zinc-800 p-6 shadow-inner overflow-auto max-h-[60vh] max-w-full overflow-x-auto break-words">
                       <div className="flex items-center gap-3 mb-4">
                         <div className="rounded-full bg-blue-200 dark:bg-blue-900 w-10 h-10 flex items-center justify-center font-bold text-lg text-blue-900 dark:text-blue-100">
                           {editForm.name?.[0] || "E"}
@@ -271,7 +275,9 @@ export default function TemplateDetailPage() {
                       <div className="mb-2">
                         <span className="block text-lg font-bold text-gray-900 dark:text-gray-100">{editForm.name || "(No Subject)"}</span>
                       </div>
-                      <HtmlPreview html={editForm.html_content || ""} />
+                      <div className="max-w-full overflow-x-auto break-words">
+                        <HtmlPreview html={editForm.html_content || ""} />
+                      </div>
                     </div>
                   </div>
                 </form>

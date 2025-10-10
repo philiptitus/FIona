@@ -155,13 +155,13 @@ export default function CampaignsPage() {
                 <span className="sm:hidden">Smart</span>
               </Link>
             </Button>
-            <Button asChild className="w-full sm:w-auto">
+            {/* <Button asChild className="w-full sm:w-auto">
               <Link href="/campaigns/new">
                 <Plus className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">New Campaign</span>
                 <span className="sm:hidden">New</span>
               </Link>
-            </Button>
+            </Button> */}
           </div>
         </div>
 

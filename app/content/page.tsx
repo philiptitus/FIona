@@ -174,12 +174,12 @@ export default function ContentPage() {
             <h1 className="text-3xl font-bold tracking-tight">Content</h1>
             <p className="text-muted-foreground">Manage your email content blocks</p>
           </div>
-          <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ name: "", content: "" }); setSelectedCampaign(null) }}>
+          {/* <Button onClick={() => { setShowForm(true); setEditId(null); setForm({ name: "", content: "" }); setSelectedCampaign(null) }}>
             <Plus className="mr-2 h-4 w-4" /> New Content
           </Button>
           <Button variant="secondary" onClick={() => { setShowAIForm(true); setShowForm(false); setEditId(null); setForm({ name: "", content: "" }); setSelectedCampaign(null) }}>
             🤖 Create with AI
-          </Button>
+          </Button> */}
         </div>
         <Tabs defaultValue="all" className="space-y-4">
           <div className="flex flex-col sm:flex-row justify-between gap-4">
