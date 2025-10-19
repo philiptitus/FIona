@@ -13,6 +13,8 @@ interface EmailDispatch {
 interface DispatchState {
   dispatches: EmailDispatch[]
   currentDispatch: EmailDispatch | null
+  scheduledEmails: any[]
+  scheduledPagination: { count: number; next: string | null; previous: string | null; page: number }
   isLoading: boolean
   error: string | null
   isSending: boolean
@@ -23,6 +25,8 @@ interface DispatchState {
 const initialState: DispatchState = {
   dispatches: [],
   currentDispatch: null,
+  scheduledEmails: [],
+  scheduledPagination: { count: 0, next: null, previous: null, page: 1 },
   isLoading: false,
   error: null,
   isSending: false,
@@ -37,6 +41,28 @@ const dispatchSlice = createSlice({
     fetchDispatchesStart: (state) => {
       state.isLoading = true
       state.error = null
+    },
+    fetchScheduledStart: (state) => {
+      state.isLoading = true
+      state.error = null
+    },
+    fetchScheduledSuccess: (state, action: PayloadAction<{ data: any; page: number }>) => {
+      state.isLoading = false
+      // DRF pagination returns { results, count, next, previous }
+      const payload = action.payload.data
+      const results = payload.results || []
+      if (action.payload.page && action.payload.page > 1) {
+        // append for subsequent pages
+        state.scheduledEmails = [...state.scheduledEmails, ...results]
+      } else {
+        state.scheduledEmails = results
+      }
+      state.scheduledPagination = { count: payload.count || 0, next: payload.next || null, previous: payload.previous || null, page: action.payload.page }
+      state.error = null
+    },
+    fetchScheduledFailure: (state, action: PayloadAction<string>) => {
+      state.isLoading = false
+      state.error = action.payload
     },
     fetchDispatchesSuccess: (state, action: PayloadAction<EmailDispatch[]>) => {
       state.isLoading = false
@@ -119,6 +145,9 @@ export const {
   fetchDispatchesStart,
   fetchDispatchesSuccess,
   fetchDispatchesFailure,
+  fetchScheduledStart,
+  fetchScheduledSuccess,
+  fetchScheduledFailure,
   fetchDispatchStart,
   fetchDispatchSuccess,
   fetchDispatchFailure,

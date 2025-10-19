@@ -371,6 +371,12 @@ export default function CampaignDetailPage() {
                 <Badge variant="secondary" className="text-xs">ID: {campaign?.id}</Badge>
                 <Badge variant="outline" className="text-xs">Created: {campaign?.created_at ? new Date(campaign.created_at).toLocaleDateString() : "-"}</Badge>
                 <Badge variant="outline" className="text-xs hidden sm:inline-flex">Updated: {campaign?.updated_at ? new Date(campaign.updated_at).toLocaleDateString() : "-"}</Badge>
+                {campaign?.is_finished && (
+                  <Badge variant="secondary" className="text-xs">
+                    <CheckCircle2 className="mr-1 h-3 w-3" />
+                    Finished
+                  </Badge>
+                )}
               </div>
             </div>
             <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => router.push(`/campaigns/${campaignId}/edit`)}>Edit</Button>
@@ -410,20 +416,30 @@ export default function CampaignDetailPage() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold break-words">{campaign?.name || 'Campaign Details'}</h1>
                 <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="w-full sm:w-auto"
-                    onClick={() => setShowAddEmailDialog(true)}
-                  >
-                    <span className="hidden sm:inline">Add Emails to Campaign</span>
-                    <span className="sm:hidden">Add Emails</span>
-                  </Button>
-                  <Button size="sm" className="w-full sm:w-auto" onClick={() => setSendModalOpen(true)}>
-                    <Send className="mr-2 h-4 w-4" /> 
-                    <span className="hidden sm:inline">Send Campaign</span>
-                    <span className="sm:hidden">Send</span>
-                  </Button>
+                  {!campaign?.is_finished && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="w-full sm:w-auto"
+                      onClick={() => setShowAddEmailDialog(true)}
+                    >
+                      <span className="hidden sm:inline">Add Emails to Campaign</span>
+                      <span className="sm:hidden">Add Emails</span>
+                    </Button>
+                  )}
+                  {!campaign?.is_finished && (
+                    <Button size="sm" className="w-full sm:w-auto" onClick={() => setSendModalOpen(true)}>
+                      <Send className="mr-2 h-4 w-4" /> 
+                      <span className="hidden sm:inline">Send Campaign</span>
+                      <span className="sm:hidden">Send</span>
+                    </Button>
+                  )}
+                  {campaign?.is_finished && (
+                    <Badge variant="secondary" className="px-3 py-1">
+                      <CheckCircle2 className="mr-1 h-3 w-3" />
+                      Campaign Finished
+                    </Badge>
+                  )}
                 </div>
               </div>
               
@@ -805,32 +821,16 @@ export default function CampaignDetailPage() {
                               <div className="text-xs text-muted-foreground">Optional</div>
                             </div>
                             {isScheduled && (
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                  <select className="w-full border rounded px-2 py-1" value={scheduleDay1} onChange={e => setScheduleDay1(e.target.value)}>
-                                    <option value="">Select day 1...</option>
-                                    {weekdays.map(d => (
-                                      <option key={d.value} value={d.value}>{d.label}</option>
-                                    ))}
-                                  </select>
-                                <select className="w-full border rounded px-2 py-1" value={scheduleDay2} onChange={e => setScheduleDay2(e.target.value)}>
-                                  <option value="">Select day 2 (optional)...</option>
-                                  {weekdays
-                                    .filter(d => d.value !== scheduleDay1)
-                                    .map(d => (
-                                      <option key={d.value} value={d.value}>{d.label}</option>
-                                    ))}
-                                </select>
-                                <select className="w-full border rounded px-2 py-1" value={scheduleDay3} onChange={e => setScheduleDay3(e.target.value)}>
-                                  <option value="">Select day 3 (optional)...</option>
-                                  {weekdays
-                                    .filter(d => d.value !== scheduleDay1 && d.value !== scheduleDay2)
-                                    .map(d => (
-                                      <option key={d.value} value={d.value}>{d.label}</option>
-                                    ))}
+                              <div className="w-full">
+                                <select className="w-full border rounded px-2 py-1" value={scheduleDay1} onChange={e => setScheduleDay1(e.target.value)}>
+                                  <option value="">Select day...</option>
+                                  {weekdays.map(d => (
+                                    <option key={d.value} value={d.value}>{d.label}</option>
+                                  ))}
                                 </select>
                               </div>
                             )}
-                            <div className="text-xs text-muted-foreground">If scheduled, the send will be queued and dispatched on the chosen weekday(s).</div>
+                            <div className="text-xs text-muted-foreground">If scheduled, the send will be queued and dispatched on the chosen weekday.</div>
                           </div>
                         )}
                       </div>

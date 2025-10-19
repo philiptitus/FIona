@@ -4,6 +4,9 @@ import {
   fetchDispatchesStart,
   fetchDispatchesSuccess,
   fetchDispatchesFailure,
+  fetchScheduledStart,
+  fetchScheduledSuccess,
+  fetchScheduledFailure,
   fetchDispatchStart,
   fetchDispatchSuccess,
   fetchDispatchFailure,
@@ -125,6 +128,19 @@ export const autoSendNextDispatch = createAsyncThunk("dispatches/autoSend", asyn
   }
 })
 
+// Fetch scheduled emails (paginated, page number)
+export const fetchScheduledEmails = createAsyncThunk(
+  "scheduled/fetch",
+  async (page: number = 1, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/mail/scheduled-emails/?page=${page}`)
+      return response.data
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data || { detail: "Failed to fetch scheduled emails" })
+    }
+  },
+)
+
 // Thunk action creators for dispatching regular actions
 export const handleFetchDispatches = () => async (dispatch: AppDispatch) => {
   dispatch(fetchDispatchesStart())
@@ -234,5 +250,25 @@ export const handleSendDispatch = (
     const errorMessage = error.message || "Failed to send dispatch"
     dispatch(sendDispatchFailure(errorMessage))
     return { success: false, error: errorMessage }
+  }
+}
+
+// Thunk action to fetch scheduled emails with pagination (pageNumber)
+export const handleFetchScheduledEmails = (page: number = 1) => async (dispatch: AppDispatch) => {
+  dispatch(fetchScheduledStart())
+  try {
+    const resultAction = await dispatch(fetchScheduledEmails(page) as any)
+    if (fetchScheduledEmails.fulfilled.match(resultAction)) {
+      // payload expected to be DRF style paginated object: { results: [...], count, next, previous }
+      dispatch(fetchScheduledSuccess({ data: resultAction.payload, page }))
+      return { success: true, data: resultAction.payload }
+    } else {
+      dispatch(fetchScheduledFailure(resultAction.payload as string))
+      return { success: false, error: resultAction.payload }
+    }
+  } catch (error: any) {
+    const err = error.message || "Failed to fetch scheduled emails"
+    dispatch(fetchScheduledFailure(err))
+    return { success: false, error: err }
   }
 }

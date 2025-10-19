@@ -4,20 +4,17 @@ import React, { Suspense } from "react";
 
 import MainLayout from "@/components/layout/main-layout"
 import { frontendUrl } from "@/lib/route"
-import { ProtectedRoute } from "@/components/auth/protected-route"
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useDispatch, useSelector } from "react-redux"
-import { Mail, User, Lock, Eye, EyeOff, Shield, Download, Trash2, Edit2 } from "lucide-react"
+import { User, Lock, Eye, EyeOff, Shield, Trash2, Edit2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -38,7 +35,7 @@ import type { RootState, AppDispatch } from "@/store/store"
 import { validatePassword, validateEmail } from "@/lib/utils/validation"
 import { fetchMailboxes, startGmailOAuth, finishGmailOAuth, deleteMailbox } from '@/store/actions/mailboxActions'
 import MailLoader from '@/components/MailLoader'
-import { Dialog, DialogTrigger, DialogContent, DialogHeader as DialogHeaderUI, DialogTitle as DialogTitleUI, DialogDescription as DialogDescriptionUI, DialogFooter as DialogFooterUI, DialogClose } from '@/components/ui/dialog'
+import { Dialog, DialogTrigger, DialogContent, DialogHeader as DialogHeaderUI, DialogTitle as DialogTitleUI, DialogDescription as DialogDescriptionUI, DialogFooter as DialogFooterUI } from '@/components/ui/dialog'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import Cookies from 'js-cookie'
@@ -55,14 +52,15 @@ function getInitials(name: string, email: string) {
 }
 
 function ProfilePageContent() {
-  const { user, isProfileLoading } = useSelector((state: RootState) => state.auth);
+  const { user, isProfileLoading, isLoading } = useSelector((state: RootState) => state.auth);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [name, setName] = useState(user?.first_name || "")
   const [email, setEmail] = useState(user?.email || "")
-  const [bio, setBio] = useState(user?.bio || "")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [formError, setFormError] = useState("")
+  const [updateSuccess, setUpdateSuccess] = useState(false)
+  const [updateError, setUpdateError] = useState("")
   const [activeSection, setActiveSection] = useState<string>("personalInfo")
   const router = useRouter()
   const { toast } = useToast()
@@ -170,16 +168,12 @@ function ProfilePageContent() {
     }
   }, [searchParams, dispatch])
 
+  // (optional) persist user to localStorage for quick access
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const userStr = localStorage.getItem('user')
-      if (userStr) {
-        try {
-          setLocalUser(JSON.parse(userStr))
-        } catch {}
-      }
+    if (typeof window !== 'undefined' && user) {
+      try { localStorage.setItem('user', JSON.stringify(user)) } catch {}
     }
-  }, [])
+  }, [user])
 
   if (searchParams.get("mailbox_code") && (loading || isFinishingMailbox)) {
     return <MailLoader />
@@ -212,10 +206,10 @@ function ProfilePageContent() {
     switch (activeSection) {
       case "personalInfo":
         return (
-          <Card className="mb-6">
+          <Card className="mb-6 shadow-lg">
             <CardHeader>
               <CardTitle>Personal Information</CardTitle>
-              <CardDescription>Update your name and email address</CardDescription>
+              <CardDescription>Manage your account basics.</CardDescription>
             </CardHeader>
             <CardContent>
               <form
@@ -239,77 +233,71 @@ function ProfilePageContent() {
                     }
                   }
                   try {
-                    const success = await handleUpdateProfile({
+                    setUpdateSuccess(false)
+                    setUpdateError("")
+                    const success = await dispatch(handleUpdateProfile({
                       name: name !== user?.first_name ? name : undefined,
                       email: email !== user?.email ? email : undefined,
-                      bio: bio !== user?.bio ? bio : undefined,
                       password: password || undefined,
-                    })(dispatch)
+                    })).unwrap()
                     if (success) {
                       toast({
                         title: "Profile updated",
                         description: "Your profile has been updated successfully.",
                       })
                       setPassword("")
+                      setUpdateSuccess(true)
+                      // clear success after a short delay
+                      setTimeout(() => setUpdateSuccess(false), 3000)
                     }
-                  } catch {
-                    setFormError("Failed to update profile.")
+                  } catch (err: any) {
+                    const msg = err || "Failed to update profile."
+                    setFormError(msg)
+                    setUpdateError(msg)
                   }
                 }}
                 className="space-y-4"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-2xl font-bold">
-                    <User className="h-8 w-8 text-primary" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-lg">{name}</div>
-                    <div className="text-muted-foreground">{email}</div>
-                  </div>
-                </div>
-                {/* Show user info from Redux store */}
-                <div className="mt-2 mb-4 p-4 rounded bg-muted/40 text-sm">
-                  <div><span className="font-semibold">Username:</span> {user?.username || 'N/A'}</div>
-                  <div><span className="font-semibold">Email:</span> {user?.email || 'N/A'}</div>
-                  <div><span className="font-semibold">First Name:</span> {user?.first_name || 'N/A'}</div>
-                  <div><span className="font-semibold">Last Name:</span> {user?.last_name || <span className="italic text-muted-foreground">(none)</span>}</div>
-                  {user?.bio && (
-                    <div className="mt-2">
-                      <p className="font-semibold">Bio:</p>
-                      <p className="text-muted-foreground whitespace-pre-line">{user.bio}</p>
+                <div className="grid md:grid-cols-2 gap-6 items-start">
+                  <div className="flex flex-col items-start gap-4">
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-3xl font-bold text-white">
+                      {getInitials(name, email)}
                     </div>
-                  )}
-                  <div><span className="font-semibold">Account Created:</span> {user?.date_joined ? new Date(user.date_joined).toLocaleDateString() : 'N/A'}</div>
-                  {user?.last_login && (
-                    <div><span className="font-semibold">Last Login:</span> {new Date(user.last_login).toLocaleString()}</div>
-                  )}
-                </div>
-                <div className="grid md:grid-cols-2 gap-4 mt-4">
+                    <div className="text-sm text-muted-foreground">
+                      <div className="font-semibold">{name || user?.username}</div>
+                      <div>{email}</div>
+                    </div>
+                    <div className="mt-2 flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => setActiveSection('personalInfo')}><Edit2 size={14}/> Edit</Button>
+                    </div>
+                  </div>
                   <div>
-                    <Label htmlFor="name">Name</Label>
-                    <Input id="name" value={name} onChange={e => setName(e.target.value)} />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label htmlFor="bio">Bio</Label>
-                    <Textarea
-                      id="bio"
-                      value={bio}
-                      onChange={e => setBio(e.target.value)}
-                      placeholder="Tell us about yourself"
-                      className="min-h-[100px] resize-y"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {bio.length}/500 characters
-                    </p>
-                  </div>
-                </div>
-                <div className="grid md:grid-cols-2 gap-4">
+                    <div className="mb-3">
+                      <Label htmlFor="name">Name</Label>
+                      <Input id="name" value={name} onChange={e => setName(e.target.value)} />
+                    </div>
+                    <div className="mb-3">
+                      <Label htmlFor="email">Email</Label>
+                      <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+                    </div>
 
-                  <div className="flex items-end">
-                    <Button type="submit" className="w-full">Update Profile</Button>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="flex items-center gap-3">
+                        <Button type="submit" disabled={isLoading}>
+                          {isLoading ? (
+                            <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                            </svg>
+                          ) : null}
+                          {isLoading ? 'Saving...' : 'Save changes'}
+                        </Button>
+                      </div>
+                      {updateSuccess && <div className="text-green-600 text-sm">Profile updated successfully.</div>}
+                      {(formError || updateError) && <div className="text-red-500 text-sm">{formError || updateError}</div>}
+                    </div>
                   </div>
                 </div>
-                {formError && <div className="text-red-500 text-sm mt-2">{formError}</div>}
               </form>
             </CardContent>
           </Card>
@@ -447,9 +435,6 @@ function ProfilePageContent() {
 
             {/* Actions row */}
             <div className="flex flex-col md:flex-row gap-4 mt-8">
-              <Button variant="outline" className="flex items-center gap-2" onClick={() => toast({ title: "Export Data", description: "Data export coming soon." })}>
-                <Download size={16} /> Export Data
-              </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" className="flex items-center gap-2"><Trash2 size={16} /> Delete Account</Button>

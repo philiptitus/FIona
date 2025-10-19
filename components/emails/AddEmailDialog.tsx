@@ -162,9 +162,54 @@ export default function AddEmailDialog({
     document.body.removeChild(a)
   }
 
-  const handleBulkFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const validateCSVColumns = (file: File): Promise<{ valid: boolean; error?: string }> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const text = e.target?.result as string
+          const lines = text.split('\n')
+          if (lines.length === 0) {
+            resolve({ valid: false, error: "CSV file is empty" })
+            return
+          }
+          
+          const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''))
+          const requiredColumns = ['email', 'organization_name']
+          const missingColumns = requiredColumns.filter(col => !headers.includes(col))
+          
+          if (missingColumns.length > 0) {
+            resolve({ 
+              valid: false, 
+              error: `Missing required columns: ${missingColumns.join(', ')}. Required columns are: ${requiredColumns.join(', ')}` 
+            })
+            return
+          }
+          
+          resolve({ valid: true })
+        } catch (error) {
+          resolve({ valid: false, error: "Error reading CSV file" })
+        }
+      }
+      reader.readAsText(file)
+    })
+  }
+
+  const handleBulkFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setBulkFile(e.target.files[0])
+      const file = e.target.files[0]
+      
+      // Only validate CSV files
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        const validation = await validateCSVColumns(file)
+        if (!validation.valid) {
+          setBulkError(validation.error || "Invalid CSV file")
+          e.target.value = '' // Clear the file input
+          return
+        }
+      }
+      
+      setBulkFile(file)
       setBulkError("")
     }
   }
@@ -387,7 +432,7 @@ export default function AddEmailDialog({
               <p className="text-sm text-muted-foreground mb-1">
                 Upload a CSV or JSON file to add many emails at once.
                 <span className="block mt-1">
-                  <b>Required columns:</b> <code>email</code>, <code>first_name</code>, <code>last_name</code>
+                  <b>Required columns:</b> <code>email</code>, <code>organization_name</code>
                 </span>
               </p>
 
@@ -406,7 +451,7 @@ export default function AddEmailDialog({
                   </p>
                 </div>
                 <p className="mt-2 text-xs text-gray-500">
-                  CSV or JSON up to 10MB
+                  'CSV or JSON up to 10MB'
                 </p>
                 {bulkFile && (
                   <p className="mt-2 text-sm text-green-600">
