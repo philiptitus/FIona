@@ -313,13 +313,13 @@ export default function AddEmailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Add Emails</DialogTitle>
           <p className="text-sm text-muted-foreground">Choose how you want to add emails to your campaign</p>
         </DialogHeader>
 
-        <Tabs defaultValue="manual" className="w-full">
+        <Tabs defaultValue="manual" className="w-full flex-1 flex flex-col overflow-hidden">
           <TabsList className="grid grid-cols-3 mb-4">
             <TabsTrigger value="manual"><Edit className="w-4 h-4 mr-1" /> Manual</TabsTrigger>
             <TabsTrigger value="bulk"><Upload className="w-4 h-4 mr-1" /> Bulk Upload</TabsTrigger>
@@ -512,8 +512,8 @@ export default function AddEmailDialog({
           </TabsContent>
 
           {/* Add Existing Tab */}
-          <TabsContent value="existing">
-            <form onSubmit={handleAddExistingSubmit} className="space-y-4">
+          <TabsContent value="existing" className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 flex flex-col space-y-4 overflow-hidden">
               {existingError && (
                 <Alert variant="destructive">
                   <XCircle className="h-4 w-4" />
@@ -539,7 +539,31 @@ export default function AddEmailDialog({
                 className="mb-2"
               />
 
-              <div className="border rounded-md h-64 overflow-y-auto p-2 space-y-2">
+              {/* Select All for Current Page */}
+              {(emailsFromStore?.length || 0) > 0 && (
+                <div className="flex items-center space-x-2 p-2 bg-gray-50 rounded mb-2">
+                  <Checkbox
+                    id="select-all-page"
+                    checked={emailsFromStore?.length > 0 && emailsFromStore.every(email => selectedEmailIds.includes(email.id))}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        // Add all current page emails to selection
+                        const currentPageIds = emailsFromStore?.map(email => email.id) || []
+                        setSelectedEmailIds(prev => [...new Set([...prev, ...currentPageIds])])
+                      } else {
+                        // Remove all current page emails from selection
+                        const currentPageIds = emailsFromStore?.map(email => email.id) || []
+                        setSelectedEmailIds(prev => prev.filter(id => !currentPageIds.includes(id)))
+                      }
+                    }}
+                  />
+                  <label htmlFor="select-all-page" className="text-sm font-medium cursor-pointer">
+                    Select all on this page ({emailsFromStore?.length || 0})
+                  </label>
+                </div>
+              )}
+
+              <div className="border rounded-md flex-1 min-h-[300px] overflow-y-auto p-2 space-y-2">
                 {isEmailsLoading ? (
                   <div className="flex items-center justify-center h-full">
                     <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
@@ -581,8 +605,11 @@ export default function AddEmailDialog({
                     ))
                 )}
               </div>
+            </div>
 
-              <div className="flex items-center justify-between pt-2">
+            {/* Pagination and controls - outside scrollable area */}
+            <div className="flex-shrink-0 space-y-3 pt-2">
+              <div className="flex items-center justify-between">
                 <div className="text-xs text-gray-600">
                   Showing {(emailsFromStore?.length || 0)} of {pagination?.count || 0}
                 </div>
@@ -624,29 +651,29 @@ export default function AddEmailDialog({
                   </label>
                 </div>
               </div>
+            </div>
 
-              <DialogFooter className="pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  disabled={isAddingExisting}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={selectedEmailIds.length === 0 || isAddingExisting}
-                >
-                  {isAddingExisting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Adding...
-                    </>
-                  ) : `Add ${selectedEmailIds.length} email${selectedEmailIds.length !== 1 ? 's' : ''}`}
-                </Button>
-              </DialogFooter>
-            </form>
+            <DialogFooter className="pt-4 flex-shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isAddingExisting}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddExistingSubmit}
+                disabled={selectedEmailIds.length === 0 || isAddingExisting}
+              >
+                {isAddingExisting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Adding...
+                  </>
+                ) : `Add ${selectedEmailIds.length} email${selectedEmailIds.length !== 1 ? 's' : ''}`}
+              </Button>
+            </DialogFooter>
           </TabsContent>
         </Tabs>
       </DialogContent>

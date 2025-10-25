@@ -26,7 +26,7 @@ import Link from "next/link"
 export default function SmartCampaignPage() {
   const [campaignName, setCampaignName] = useState("")
   const [campaignType, setCampaignType] = useState("")
-  const [contentPreference, setContentPreference] = useState("both")
+  const [contentPreference, setContentPreference] = useState("content")
   const [generateEmailLists, setGenerateEmailLists] = useState(false)
   const [attachment, setAttachment] = useState<File | null>(null)
   const [image, setImage] = useState<File | null>(null)
