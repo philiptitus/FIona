@@ -268,6 +268,7 @@ export default function CampaignsPage() {
                               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 flex-1 min-w-0">
                                 <CardTitle className="text-sm sm:text-base truncate" title={campaign.name}>{campaign.name}</CardTitle>
                                 {isLatest && <Badge variant="default" className="text-xs w-fit">Latest</Badge>}
+                                {campaign.is_sequence && <Badge className="text-xs w-fit bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 border-green-300">Sequence</Badge>}
                               </div>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>

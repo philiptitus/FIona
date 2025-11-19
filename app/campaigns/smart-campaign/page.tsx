@@ -35,6 +35,7 @@ export default function SmartCampaignPage() {
   const [placeholderText, setPlaceholderText] = useState("")
   const [isTextareaFocused, setIsTextareaFocused] = useState(false)
   const [selectedLinks, setSelectedLinks] = useState<string[]>([])
+  const [allowSequence, setAllowSequence] = useState(false)
   
   const { links } = useSelector((state: RootState) => state.links)
 
@@ -119,6 +120,7 @@ export default function SmartCampaignPage() {
       formData.append("campaign_type", campaignType)
       formData.append("content_preference", contentPreference)
       formData.append("generate_email_lists", generateEmailLists ? "true" : "false")
+      formData.append("allow_sequence", allowSequence ? "true" : "false")
 
       if (attachment) {
         formData.append("attachment", attachment)
@@ -297,6 +299,16 @@ export default function SmartCampaignPage() {
                     <div className="flex items-center space-x-2">
                       <Switch id="generateEmailLists" checked={generateEmailLists} onCheckedChange={setGenerateEmailLists} />
                       <Label htmlFor="generateEmailLists">Allow Fiona to find potential leads relevant for this campaign</Label>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Switch id="allowSequence" checked={allowSequence} onCheckedChange={setAllowSequence} />
+                        <Label htmlFor="allowSequence">Generate Email Sequence</Label>
+                      </div>
+                      <p className="text-sm text-muted-foreground ml-6">
+                        Create a 3-email sequence: an initial outreach, follow-up, and final reminder. This increases engagement by giving recipients multiple touchpoints.
+                      </p>
                     </div>
                     
                     <div className="space-y-2">
