@@ -36,8 +36,28 @@ export default function SmartCampaignPage() {
   const [isTextareaFocused, setIsTextareaFocused] = useState(false)
   const [selectedLinks, setSelectedLinks] = useState<string[]>([])
   const [allowSequence, setAllowSequence] = useState(false)
+  const [selectedDynamicVariables, setSelectedDynamicVariables] = useState<string[]>([])
   
   const { links } = useSelector((state: RootState) => state.links)
+
+  const AVAILABLE_DYNAMIC_VARIABLES = [
+    { value: 'organization_name', label: 'Organization Name' },
+    { value: 'first_name', label: 'First Name' },
+    { value: 'last_name', label: 'Last Name' },
+    { value: 'title', label: 'Job Title' },
+    { value: 'industry', label: 'Industry' },
+    { value: 'keywords', label: 'Keywords' },
+    { value: 'city', label: 'City' },
+    { value: 'state', label: 'State' },
+    { value: 'country', label: 'Country' },
+    { value: 'company_name_for_emails', label: 'Company Name (for emails)' },
+    { value: 'seniority', label: 'Seniority Level' },
+    { value: 'departments', label: 'Departments' },
+    { value: 'website', label: 'Website' },
+    { value: 'num_employees', label: 'Number of Employees' },
+    { value: 'annual_revenue', label: 'Annual Revenue' },
+    { value: 'technologies', label: 'Technologies' }
+  ]
 
   // Rotating, typed placeholders to guide users
   useEffect(() => {
@@ -121,6 +141,10 @@ export default function SmartCampaignPage() {
       formData.append("content_preference", contentPreference)
       formData.append("generate_email_lists", generateEmailLists ? "true" : "false")
       formData.append("allow_sequence", allowSequence ? "true" : "false")
+      
+      if (selectedDynamicVariables.length > 0) {
+        formData.append("selected_dynamic_variables", JSON.stringify(selectedDynamicVariables))
+      }
 
       if (attachment) {
         formData.append("attachment", attachment)
@@ -309,6 +333,85 @@ export default function SmartCampaignPage() {
                       <p className="text-sm text-muted-foreground ml-6">
                         Create a 3-email sequence: an initial outreach, follow-up, and final reminder. This increases engagement by giving recipients multiple touchpoints.
                       </p>
+                    </div>
+                    
+                    <div className="space-y-3 p-4 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <div className="h-6 w-6 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <Label className="text-base font-semibold text-purple-900 dark:text-purple-200">
+                            AI Dynamic Variables (Optional)
+                          </Label>
+                          <p className="text-xs text-purple-700 dark:text-purple-300 mt-1">
+                            Let AI personalize each email by automatically inserting recipient-specific information like their name, company, or job title. This makes your outreach feel more personal and increases engagement.
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-white dark:bg-gray-900 rounded-md p-3 border border-purple-200 dark:border-purple-700">
+                        <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          ✨ How it works: Select fields below, and AI will naturally weave them into your emails
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                          Example: "Hi [first_name], I noticed [organization_name] is in the [industry] space..."
+                        </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          {AVAILABLE_DYNAMIC_VARIABLES.map(({ value, label }) => (
+                            <div key={value} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`dynamic-${value}`}
+                                checked={selectedDynamicVariables.includes(value)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedDynamicVariables([...selectedDynamicVariables, value])
+                                  } else {
+                                    setSelectedDynamicVariables(selectedDynamicVariables.filter(v => v !== value))
+                                  }
+                                }}
+                              />
+                              <Label 
+                                htmlFor={`dynamic-${value}`} 
+                                className="text-xs font-medium cursor-pointer hover:text-purple-700 dark:hover:text-purple-300"
+                              >
+                                {label}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {selectedDynamicVariables.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                            <div className="text-xs font-medium text-green-700 dark:text-green-400 mb-1">
+                              ✓ Selected ({selectedDynamicVariables.length})
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {selectedDynamicVariables.map(varValue => {
+                                const varLabel = AVAILABLE_DYNAMIC_VARIABLES.find(v => v.value === varValue)?.label
+                                return (
+                                  <span 
+                                    key={varValue} 
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full text-xs"
+                                  >
+                                    {varLabel}
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedDynamicVariables(selectedDynamicVariables.filter(v => v !== varValue))}
+                                      className="hover:text-purple-900 dark:hover:text-purple-100"
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     
                     <div className="space-y-2">
