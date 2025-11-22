@@ -1085,6 +1085,7 @@ export default function CampaignDetailPage() {
         open={showAddEmailDialog} 
         onOpenChange={setShowAddEmailDialog} 
         initialCampaignId={campaignId}
+        campaign={campaign}
         emails={availableEmails}
         onAddExistingEmails={handleAddExistingEmailsToCampaign}
         isLoadingEmails={emailsLoading}

@@ -27,10 +27,17 @@ interface Email {
   campaigns?: Array<{ id: number }>
 }
 
+interface Campaign {
+  id: number
+  name: string
+  required_dynamic_variables?: string[]
+}
+
 interface AddEmailDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   initialCampaignId?: number | null
+  campaign?: Campaign | null
   emails?: Email[]
   onAddExistingEmails?: (emailIds: number[], skipDuplicates: boolean) => Promise<{ success: boolean; error?: string }>
   isLoadingEmails?: boolean
@@ -41,6 +48,7 @@ export default function AddEmailDialog({
   open,
   onOpenChange,
   initialCampaignId,
+  campaign,
   emails = [],
   onAddExistingEmails,
   isLoadingEmails = false,
@@ -313,13 +321,48 @@ export default function AddEmailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Add Emails</DialogTitle>
           <p className="text-sm text-muted-foreground">Choose how you want to add emails to your campaign</p>
         </DialogHeader>
 
-        <Tabs defaultValue="manual" className="w-full flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+          {/* Dynamic Variables Alert */}
+          {campaign?.required_dynamic_variables && campaign.required_dynamic_variables.length > 0 && (
+            <Alert className="bg-purple-50 border-purple-300 dark:bg-purple-950/30 dark:border-purple-800 mb-4">
+              <div className="flex items-start gap-2">
+                <div className="h-5 w-5 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <AlertTitle className="text-purple-900 dark:text-purple-200 font-semibold mb-1">
+                    Dynamic Variables Required
+                  </AlertTitle>
+                  <AlertDescription className="text-purple-800 dark:text-purple-300 text-sm">
+                    This campaign uses AI personalization. When uploading emails, please ensure you include these fields:
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {campaign.required_dynamic_variables.map((variable) => (
+                        <span
+                          key={variable}
+                          className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-200 text-purple-900 dark:bg-purple-900 dark:text-purple-200"
+                        >
+                          {variable.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-xs text-purple-700 dark:text-purple-400">
+                      💡 These fields enable AI to personalize each email for better engagement.
+                    </p>
+                  </AlertDescription>
+                </div>
+              </div>
+            </Alert>
+          )}
+
+          <Tabs defaultValue="manual" className="w-full flex-1 flex flex-col">
           <TabsList className="grid grid-cols-3 mb-4">
             <TabsTrigger value="manual"><Edit className="w-4 h-4 mr-1" /> Manual</TabsTrigger>
             <TabsTrigger value="bulk"><Upload className="w-4 h-4 mr-1" /> Bulk Upload</TabsTrigger>
@@ -676,6 +719,7 @@ export default function AddEmailDialog({
             </DialogFooter>
           </TabsContent>
         </Tabs>
+        </div>
       </DialogContent>
     </Dialog>
   )
