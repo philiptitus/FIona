@@ -94,12 +94,17 @@ function ProfilePageContent() {
 
   useEffect(() => {
     // Fetch user profile when component mounts
+    // Always fetch fresh data to avoid caching issues
     const loadProfile = async () => {
       try {
-        await dispatch(fetchUserProfile() as any).unwrap();
+        // Always fetch to get the latest data from backend
+        const result = await dispatch(fetchUserProfile() as any).unwrap();
+        // Force re-render by ensuring state updates
+        if (result) {
+          setIsInitialLoad(false);
+        }
       } catch (error) {
         console.error('Failed to fetch user profile:', error);
-      } finally {
         setIsInitialLoad(false);
       }
     };
@@ -112,9 +117,16 @@ function ProfilePageContent() {
   }, [dispatch]);
   
   // Update form fields when user data changes
+  // Always combine first_name and last_name for display
   useEffect(() => {
     if (user) {
-      setName(user.first_name || '');
+      // Combine first_name and last_name for proper full name display
+      const fullName = [
+        user.first_name || '',
+        user.last_name || ''
+      ].filter(Boolean).join(' ').trim();
+      
+      setName(fullName);
       setEmail(user.email || '');
       
       // Save user data to localStorage for persistence
@@ -235,8 +247,22 @@ function ProfilePageContent() {
                   try {
                     setUpdateSuccess(false)
                     setUpdateError("")
+                    
+                    // Check if name has actually changed
+                    const currentFullName = [
+                      user?.first_name || '',
+                      user?.last_name || ''
+                    ].filter(Boolean).join(' ').trim();
+                    
+                    const nameChanged = name !== currentFullName;
+                    
+                    // Split the full name into first and last name
+                    const nameParts = name.trim().split(/\s+/);
+                    const firstName = nameParts[0] || '';
+                    const lastName = nameParts.slice(1).join(' ') || '';
+                    
                     const success = await dispatch(handleUpdateProfile({
-                      name: name !== user?.first_name ? name : undefined,
+                      name: nameChanged ? firstName : undefined,
                       email: email !== user?.email ? email : undefined,
                       password: password || undefined,
                     })).unwrap()
@@ -264,7 +290,7 @@ function ProfilePageContent() {
                       {getInitials(name, email)}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      <div className="font-semibold">{name || user?.username}</div>
+                      <div className="font-semibold">{name || `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || user?.username}</div>
                       <div>{email}</div>
                     </div>
                     <div className="mt-2 flex gap-2">

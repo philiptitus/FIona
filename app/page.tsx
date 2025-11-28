@@ -142,7 +142,6 @@ export default function LandingPage() {
           // Only send name and email as per backend expectations
           const name = auth.user.profile.given_name || auth.user.profile.email?.split('@')[0] || 'User';
           const email = auth.user.profile.email;
-          // dispatch(handleUpdateProfile({ name, email }));
           // --- End background sync ---
           
           // Redirect to dashboard

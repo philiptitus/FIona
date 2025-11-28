@@ -7,6 +7,7 @@ import contentReducer from "./slices/contentSlice"
 import dispatchReducer from "./slices/dispatchSlice"
 import settingsReducer from "./settingsSlice"
 import metricsReducer from "./slices/metricsSlice"
+import analyticsReducer from "./slices/analyticsSlice"
 import notificationsReducer from "./slices/notificationsSlice"
 import tasksReducer from "./slices/tasksSlice"
 import sentEmailReducer from "./slices/sentEmailSlice"
@@ -26,6 +27,7 @@ type RootState = {
   dispatch: ReturnType<typeof dispatchReducer>
   settings: ReturnType<typeof settingsReducer>
   metrics: ReturnType<typeof metricsReducer>
+  analytics: ReturnType<typeof analyticsReducer>
   notifications: ReturnType<typeof notificationsReducer>
   tasks: ReturnType<typeof tasksReducer>
   mailbox: ReturnType<typeof mailboxReducer>
@@ -45,6 +47,7 @@ const rootReducer: ReducersMapObject<RootState> = {
   dispatch: dispatchReducer,
   settings: settingsReducer,
   metrics: metricsReducer,
+  analytics: analyticsReducer,
   notifications: notificationsReducer,
   tasks: tasksReducer,
   mailbox: mailboxReducer,
