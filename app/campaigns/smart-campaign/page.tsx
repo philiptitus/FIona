@@ -37,6 +37,7 @@ export default function SmartCampaignPage() {
   const [selectedLinks, setSelectedLinks] = useState<string[]>([])
   const [allowSequence, setAllowSequence] = useState(false)
   const [selectedDynamicVariables, setSelectedDynamicVariables] = useState<string[]>([])
+  const [copies, setCopies] = useState(1)
   
   const { links } = useSelector((state: RootState) => state.links)
 
@@ -141,6 +142,7 @@ export default function SmartCampaignPage() {
       formData.append("content_preference", contentPreference)
       formData.append("generate_email_lists", generateEmailLists ? "true" : "false")
       formData.append("allow_sequence", allowSequence ? "true" : "false")
+      formData.append("copies", copies.toString())
       
       if (selectedDynamicVariables.length > 0) {
         formData.append("selected_dynamic_variables", JSON.stringify(selectedDynamicVariables))
@@ -333,6 +335,51 @@ export default function SmartCampaignPage() {
                       <p className="text-sm text-muted-foreground ml-6">
                         Create a 3-email sequence: an initial outreach, follow-up, and final reminder. This increases engagement by giving recipients multiple touchpoints.
                       </p>
+                    </div>
+
+                    <div className="space-y-3 p-4 bg-gradient-to-br from-indigo-50 to-cyan-50 dark:from-indigo-950/20 dark:to-cyan-950/20 border border-indigo-200 dark:border-indigo-800 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <div className="h-6 w-6 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <Label className="text-base font-semibold text-indigo-900 dark:text-indigo-200">
+                            Generate Multiple Copies
+                          </Label>
+                          <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-1">
+                            AI will generate multiple variations of your email content with different messaging approaches and angles. This significantly reduces spam detection rates by ensuring each recipient receives a unique, contextually-relevant message rather than identical copy.
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-white dark:bg-gray-900 rounded-md p-4 border border-indigo-200 dark:border-indigo-700">
+                        <div className="flex items-center justify-between mb-3">
+                          <Label htmlFor="copies" className="text-sm font-medium">
+                            Number of Copies
+                          </Label>
+                          <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">{copies}</span>
+                        </div>
+                        <input
+                          id="copies"
+                          type="range"
+                          min="1"
+                          max="10"
+                          value={copies}
+                          onChange={(e) => setCopies(parseInt(e.target.value))}
+                          className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                        />
+                        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          <span>1 copy</span>
+                          <span>10 copies</span>
+                        </div>
+                        <div className="mt-3 p-2 bg-indigo-50 dark:bg-indigo-950/30 rounded border border-indigo-100 dark:border-indigo-800">
+                          <p className="text-xs text-indigo-800 dark:text-indigo-300">
+                            💡 <strong>Tip:</strong> Start with 3-5 copies to balance personalization with authenticity. More copies = better deliverability but may take longer to generate.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                     
                     <div className="space-y-3 p-4 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 border border-purple-200 dark:border-purple-800 rounded-lg">

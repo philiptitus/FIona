@@ -56,6 +56,9 @@ function ProfilePageContent() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [name, setName] = useState(user?.first_name || "")
   const [email, setEmail] = useState(user?.email || "")
+  const [bio, setBio] = useState(user?.bio || "")
+  const [careerField, setCareerField] = useState(user?.career_field || "")
+  const [careerDescription, setCareerDescription] = useState(user?.career_description || "")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [formError, setFormError] = useState("")
@@ -128,6 +131,9 @@ function ProfilePageContent() {
       
       setName(fullName);
       setEmail(user.email || '');
+      setBio(user?.bio || '');
+      setCareerField(user?.career_field || '');
+      setCareerDescription(user?.career_description || '');
       
       // Save user data to localStorage for persistence
       localStorage.setItem('user', JSON.stringify(user));
@@ -265,6 +271,9 @@ function ProfilePageContent() {
                       name: nameChanged ? firstName : undefined,
                       email: email !== user?.email ? email : undefined,
                       password: password || undefined,
+                      bio: bio || undefined,
+                      career_field: careerField || undefined,
+                      career_description: careerDescription || undefined,
                     })).unwrap()
                     if (success) {
                       toast({
@@ -305,6 +314,18 @@ function ProfilePageContent() {
                     <div className="mb-3">
                       <Label htmlFor="email">Email</Label>
                       <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+                    </div>
+                    <div className="mb-3">
+                      <Label htmlFor="bio">Bio</Label>
+                      <Input id="bio" value={bio} onChange={e => setBio(e.target.value)} placeholder="Tell us about yourself" />
+                    </div>
+                    <div className="mb-3">
+                      <Label htmlFor="careerField">Career Field</Label>
+                      <Input id="careerField" value={careerField} onChange={e => setCareerField(e.target.value)} placeholder="e.g., Software Engineering" />
+                    </div>
+                    <div className="mb-3">
+                      <Label htmlFor="careerDescription">Career Description</Label>
+                      <Input id="careerDescription" value={careerDescription} onChange={e => setCareerDescription(e.target.value)} placeholder="e.g., Full-stack developer with 5+ years experience" />
                     </div>
 
                     <div className="flex flex-col items-end gap-2">

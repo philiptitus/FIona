@@ -17,6 +17,7 @@ import { handleFetchTemplates } from '@/store/actions/templateActions';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import React from "react"
 import AddEmailDialog from "@/components/emails/AddEmailDialog"
+import CampaignCopiesPreview from "@/components/campaigns/CampaignCopiesPreview"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Send, Loader2, CheckCircle2, XCircle, Trash2, AlertTriangle, CheckCircle, X, Loader, Eye } from "lucide-react"
 import { handleSendDispatch } from "@/store/actions/dispatchActions"
@@ -394,187 +395,11 @@ export default function CampaignDetailPage() {
                 <div className="text-sm sm:text-base"><b>Attachment:</b> <a href={campaign.attachment} className="text-blue-600 underline" target="_blank" rel="noopener noreferrer">Download</a></div>
               )}
             </div>
-            {/* Email Options Section - Normal Campaign */}
-            {!campaign?.is_sequence && (campaign?.latest_email_template_id || campaign?.latest_email_content_id) && (
-              <div className="mb-6">
-                <div className="mb-2 font-semibold text-base sm:text-lg">Your Email Sending Options</div>
-                <div className="mb-3 text-muted-foreground text-xs sm:text-sm">
-                  You can view and customize your campaign's emails. Choose between the HTML <b>Template</b> (for styled emails) or the plain <b>Content</b> (for simple text emails).
-                </div>
-                <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-                  {campaign?.latest_email_template_id && (
-                    <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => handleViewTemplate(campaign.latest_email_template_id)}>
-                      <span className="hidden sm:inline">Preview Email Template</span>
-                      <span className="sm:hidden">Preview Template</span>
-                    </Button>
-                  )}
-                  {campaign?.latest_email_content_id && (
-                    <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => router.push(`/content/${campaign.latest_email_content_id}`)}>
-                      <span className="hidden sm:inline">Preview Email Content</span>
-                      <span className="sm:hidden">Preview Content</span>
-                    </Button>
-                  )}
-                </div>
-              </div>
+            {/* Email Preview Section - Handles both single and multi-copy campaigns */}
+            {campaign && (
+              <CampaignCopiesPreview campaign={campaign} copies={campaign?.copies || 1} />
             )}
             
-            {/* Email Options Section - Sequence Campaign */}
-            {campaign?.is_sequence && (campaign?.initial_template_id || campaign?.initial_content_id || campaign?.followup_template_id || campaign?.followup_content_id || campaign?.final_template_id || campaign?.final_content_id) && (
-              <div className="mb-6">
-                <div className="mb-2 font-semibold text-base sm:text-lg">Your Email Sequence</div>
-                <div className="mb-3 text-muted-foreground text-xs sm:text-sm">
-                  View and customize the 3-part email sequence: initial outreach, follow-up, and final reminder.
-                </div>
-                
-                {/* Sequence Status Indicator */}
-                {(campaign?.followup_schedule_days || campaign?.final_schedule_days) && (
-                  <div className="mb-4 bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-700 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="font-medium text-sm text-green-800 dark:text-green-300">Sequence Active</span>
-                    </div>
-                    <div className="text-xs text-green-700 dark:text-green-400">
-                      Initial email has been sent. Upcoming stages:
-                    </div>
-                    <div className="mt-2 space-y-1 text-xs">
-                      {campaign?.followup_schedule_days && !campaign?.followup_sent && (
-                        <div className="flex items-center gap-2">
-                          <Loader className="h-3 w-3 text-amber-600" />
-                          <span>Follow-up scheduled for: <b>{campaign.followup_schedule_days.join(', ')}</b></span>
-                        </div>
-                      )}
-                      {campaign?.followup_sent && (
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-3 w-3 text-green-600" />
-                          <span className="text-green-700 dark:text-green-400">Follow-up sent</span>
-                        </div>
-                      )}
-                      {campaign?.final_schedule_days && !campaign?.final_sent && (
-                        <div className="flex items-center gap-2">
-                          <Loader className="h-3 w-3 text-amber-600" />
-                          <span>Final reminder scheduled for: <b>{campaign.final_schedule_days.join(', ')}</b></span>
-                        </div>
-                      )}
-                      {campaign?.final_sent && (
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-3 w-3 text-green-600" />
-                          <span className="text-green-700 dark:text-green-400">Final reminder sent</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-                
-                <div className="space-y-3">
-                  {/* Initial Email */}
-                  {(campaign?.initial_template_id || campaign?.initial_content_id) && (
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="font-medium text-sm">Initial Outreach</div>
-                        {(campaign?.followup_schedule_days || campaign?.final_schedule_days) && (
-                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 border-green-300">
-                            <CheckCircle2 className="mr-1 h-3 w-3" />
-                            Sent
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        {campaign?.initial_template_id && (
-                          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => handleViewTemplate(campaign.initial_template_id)}>
-                            <span className="hidden sm:inline">Preview Template</span>
-                            <span className="sm:hidden">Template</span>
-                          </Button>
-                        )}
-                        {campaign?.initial_content_id && (
-                          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => router.push(`/content/${campaign.initial_content_id}`)}>
-                            <span className="hidden sm:inline">Preview Content</span>
-                            <span className="sm:hidden">Content</span>
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Follow-up Email */}
-                  {(campaign?.followup_template_id || campaign?.followup_content_id) && (
-                    <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="font-medium text-sm">Follow-up</div>
-                        {campaign?.followup_sent ? (
-                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 border-green-300">
-                            <CheckCircle2 className="mr-1 h-3 w-3" />
-                            Sent
-                          </Badge>
-                        ) : campaign?.followup_schedule_days ? (
-                          <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300 border-amber-300">
-                            <Loader className="mr-1 h-3 w-3" />
-                            Scheduled
-                          </Badge>
-                        ) : null}
-                      </div>
-                      {campaign?.followup_schedule_days && !campaign?.followup_sent && (
-                        <div className="text-xs text-purple-700 dark:text-purple-400 mb-2">
-                          Scheduled for: {campaign.followup_schedule_days.join(', ')}
-                        </div>
-                      )}
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        {campaign?.followup_template_id && (
-                          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => handleViewTemplate(campaign.followup_template_id)}>
-                            <span className="hidden sm:inline">Preview Template</span>
-                            <span className="sm:hidden">Template</span>
-                          </Button>
-                        )}
-                        {campaign?.followup_content_id && (
-                          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => router.push(`/content/${campaign.followup_content_id}`)}>
-                            <span className="hidden sm:inline">Preview Content</span>
-                            <span className="sm:hidden">Content</span>
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Final Reminder Email */}
-                  {(campaign?.final_template_id || campaign?.final_content_id) && (
-                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="font-medium text-sm">Final Reminder</div>
-                        {campaign?.final_sent ? (
-                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 border-green-300">
-                            <CheckCircle2 className="mr-1 h-3 w-3" />
-                            Sent
-                          </Badge>
-                        ) : campaign?.final_schedule_days ? (
-                          <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300 border-amber-300">
-                            <Loader className="mr-1 h-3 w-3" />
-                            Scheduled
-                          </Badge>
-                        ) : null}
-                      </div>
-                      {campaign?.final_schedule_days && !campaign?.final_sent && (
-                        <div className="text-xs text-amber-700 dark:text-amber-400 mb-2">
-                          Scheduled for: {campaign.final_schedule_days.join(', ')}
-                        </div>
-                      )}
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        {campaign?.final_template_id && (
-                          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => handleViewTemplate(campaign.final_template_id)}>
-                            <span className="hidden sm:inline">Preview Template</span>
-                            <span className="sm:hidden">Template</span>
-                          </Button>
-                        )}
-                        {campaign?.final_content_id && (
-                          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => router.push(`/content/${campaign.final_content_id}`)}>
-                            <span className="hidden sm:inline">Preview Content</span>
-                            <span className="sm:hidden">Content</span>
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
             {/* Email List Header */}
             <div className="flex flex-col space-y-4 mb-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
