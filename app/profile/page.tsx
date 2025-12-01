@@ -35,6 +35,7 @@ import type { RootState, AppDispatch } from "@/store/store"
 import { validatePassword, validateEmail } from "@/lib/utils/validation"
 import { fetchMailboxes, startGmailOAuth, finishGmailOAuth, deleteMailbox } from '@/store/actions/mailboxActions'
 import MailLoader from '@/components/MailLoader'
+import MailboxStatistics from '@/components/mailbox/MailboxStatistics'
 import { Dialog, DialogTrigger, DialogContent, DialogHeader as DialogHeaderUI, DialogTitle as DialogTitleUI, DialogDescription as DialogDescriptionUI, DialogFooter as DialogFooterUI } from '@/components/ui/dialog'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -455,6 +456,16 @@ function ProfilePageContent() {
             </Button>
           </div>
         )
+      case "statistics":
+        return (
+          <div className="mt-8">
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-1">Mailbox Statistics</h3>
+              <p className="text-sm text-muted-foreground">Real-time sending performance and analytics for your connected mailboxes</p>
+            </div>
+            <MailboxStatistics />
+          </div>
+        )
       default:
         return null
     }
@@ -475,6 +486,7 @@ function ProfilePageContent() {
           <nav className="md:w-1/4 flex flex-row md:flex-col gap-2 md:gap-4 mb-4 md:mb-0">
             <Button variant={activeSection === "personalInfo" ? "default" : "outline"} onClick={() => setActiveSection("personalInfo")}>Personal Info</Button>
             <Button variant={activeSection === "mailboxes" ? "default" : "outline"} onClick={() => setActiveSection("mailboxes")}>Mailboxes</Button>
+            <Button variant={activeSection === "statistics" ? "default" : "outline"} onClick={() => setActiveSection("statistics")}>Statistics</Button>
           </nav>
           {/* Main section */}
           <div className="flex-1">

@@ -77,6 +77,32 @@ export const sendEmail = createAsyncThunk(
   }
 )
 
+// Fetch overall mailbox sending statistics
+export const fetchSendingStats = createAsyncThunk(
+  "mailbox/fetchSendingStats",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get("/mail/mailbox-sending-stats/")
+      return response.data
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error || "Failed to fetch sending stats")
+    }
+  }
+)
+
+// Fetch detailed statistics for a specific mailbox
+export const fetchDetailedStats = createAsyncThunk(
+  "mailbox/fetchDetailedStats",
+  async (mailboxId: number, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/mail/mailbox-sending-stats/${mailboxId}/`)
+      return response.data
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error || "Failed to fetch detailed stats")
+    }
+  }
+)
+
 // Thunk action creators for dispatching async thunks directly
 export const handleFetchMailboxes = () => async (dispatch: AppDispatch) => {
   try {

@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit"
-import { fetchMailboxes, startGmailOAuth, finishGmailOAuth, deleteMailbox, sendEmail } from "../actions/mailboxActions"
+import { fetchMailboxes, startGmailOAuth, finishGmailOAuth, deleteMailbox, sendEmail, fetchSendingStats, fetchDetailedStats } from "../actions/mailboxActions"
 
 interface Mailbox {
   id: number
@@ -19,6 +19,32 @@ interface MailboxState {
   error: string | null
   gmailAuthUrl: string | null
   sendResult?: any
+  sendingStats?: {
+    total: number
+    date: string
+    mailbox_count: number
+    by_mailbox: Array<{
+      mailbox__email: string
+      mailbox__id: number
+      count: number
+      success: number
+      failed: number
+    }>
+  }
+  detailedStats?: {
+    mailbox: string
+    total: number
+    success: number
+    failed: number
+    by_status: Array<{
+      status: string
+      count: number
+    }>
+    campaigns: Array<{
+      dispatch__campaign__name: string
+    }>
+    date: string
+  }
 }
 
 const initialState: MailboxState = {
@@ -28,6 +54,8 @@ const initialState: MailboxState = {
   error: null,
   gmailAuthUrl: null,
   sendResult: null,
+  sendingStats: undefined,
+  detailedStats: undefined,
 }
 
 const mailboxSlice = createSlice({
@@ -130,6 +158,36 @@ const mailboxSlice = createSlice({
         state.isLoading = false
         state.error = action.payload as string
         state.sendResult = { error: action.payload }
+      })
+      // fetchSendingStats
+      .addCase(fetchSendingStats.pending, (state) => {
+        state.isLoading = true
+        state.error = null
+      })
+      .addCase(fetchSendingStats.fulfilled, (state, action) => {
+        state.isLoading = false
+        state.error = null
+        state.sendingStats = action.payload
+      })
+      .addCase(fetchSendingStats.rejected, (state, action) => {
+        state.isLoading = false
+        state.error = action.payload as string
+        state.sendingStats = undefined
+      })
+      // fetchDetailedStats
+      .addCase(fetchDetailedStats.pending, (state) => {
+        state.isLoading = true
+        state.error = null
+      })
+      .addCase(fetchDetailedStats.fulfilled, (state, action) => {
+        state.isLoading = false
+        state.error = null
+        state.detailedStats = action.payload
+      })
+      .addCase(fetchDetailedStats.rejected, (state, action) => {
+        state.isLoading = false
+        state.error = action.payload as string
+        state.detailedStats = undefined
       })
   },
 })
