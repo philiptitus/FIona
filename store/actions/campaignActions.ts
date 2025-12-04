@@ -26,12 +26,13 @@ import type { AppDispatch } from "../store"
 export const fetchCampaigns = createAsyncThunk(
   "campaigns/fetchAll", 
   async (
-    { search = "", page = 1 }: { search?: string; page?: number } = {},
+    { search = "", page = 1, recipientType = "" }: { search?: string; page?: number; recipientType?: string } = {},
     { rejectWithValue }
   ) => {
     try {
       const params = new URLSearchParams()
       if (search) params.append("search", search)
+      if (recipientType && recipientType !== "all") params.append("recipient_type", recipientType)
       if (page > 1) params.append("page", page.toString())
       
       const url = `/mail/campaigns/${params.toString() ? `?${params.toString()}` : ""}`
@@ -218,11 +219,11 @@ export const fetchCompletedCampaigns = createAsyncThunk(
 
 // Thunk action creators for dispatching regular actions
 export const handleFetchCampaigns = (
-  { search = "", page = 1 }: { search?: string; page?: number } = {}
+  { search = "", page = 1, recipientType = "" }: { search?: string; page?: number; recipientType?: string } = {}
 ) => async (dispatch: AppDispatch) => {
   dispatch(fetchCampaignsStart())
   try {
-    const resultAction = await dispatch(fetchCampaigns({ search, page }))
+    const resultAction = await dispatch(fetchCampaigns({ search, page, recipientType }))
     if (fetchCampaigns.fulfilled.match(resultAction)) {
       dispatch(fetchCampaignsSuccess(resultAction.payload))
       return true

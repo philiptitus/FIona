@@ -249,10 +249,12 @@ export default function AddEmailDialog({
 
       if (result?.error) {
         setBulkError(result.error)
+        setBulkSuccess(false)
         return
       }
 
       setBulkSuccess(true)
+      setBulkError("")
       setBulkFile(null)
 
       // Reset file input
@@ -299,10 +301,12 @@ export default function AddEmailDialog({
 
       if (result?.error) {
         setError(result.error)
+        setSuccess(false)
         return
       }
 
       setSuccess(true)
+      setError("")
       setEmail("")
       setOrganization("")
 

@@ -16,7 +16,7 @@ import { format } from "date-fns"
 import { CalendarIcon, Copy, Edit, Eye, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react"
 import { useDispatch, useSelector } from "react-redux"
 import { handleFetchCampaigns, handleDeleteCampaign, bulkDeleteCampaigns } from "@/store/actions/campaignActions"
-import { setCurrentPage, setSearchQuery } from "@/store/slices/campaignSlice"
+import { setCurrentPage, setSearchQuery, setRecipientTypeFilter } from "@/store/slices/campaignSlice"
 import { useToast } from "@/components/ui/use-toast"
 import type { RootState, AppDispatch } from "@/store/store"
 import { useRouter } from "next/navigation"
@@ -31,12 +31,12 @@ export default function CampaignsPage() {
   const { toast } = useToast()
   const router = useRouter()
 
-  const { campaigns, isLoading, error, pagination, searchQuery } = useSelector((state: RootState) => state.campaigns)
+  const { campaigns, isLoading, error, pagination, searchQuery, recipientTypeFilter } = useSelector((state: RootState) => state.campaigns)
 
-  // Fetch campaigns on component mount and when search/pagination changes
+  // Fetch campaigns on component mount and when search/pagination/filter changes
   useEffect(() => {
-    dispatch(handleFetchCampaigns({ search: searchQuery, page: pagination.currentPage }))
-  }, [dispatch, searchQuery, pagination.currentPage])
+    dispatch(handleFetchCampaigns({ search: searchQuery, page: pagination.currentPage, recipientType: recipientTypeFilter }))
+  }, [dispatch, searchQuery, pagination.currentPage, recipientTypeFilter])
 
   // Debounced search effect
   useEffect(() => {
@@ -125,6 +125,17 @@ export default function CampaignsPage() {
     }
   }
 
+  const getRecipientTypeBadge = (recipientType?: string) => {
+    switch (recipientType) {
+      case "email":
+        return { label: "Email", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300" }
+      case "company":
+        return { label: "Company", className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300" }
+      default:
+        return { label: "Email", className: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300" }
+    }
+  }
+
   // Mock function to determine campaign status - in a real app, this would come from the API
   const getCampaignStatus = (campaign: any) => {
     // This is a placeholder - in a real app, you'd use actual data from the API
@@ -203,6 +214,25 @@ export default function CampaignsPage() {
                   />
                 </PopoverContent>
               </Popover>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-full sm:w-auto justify-start text-left font-normal">
+                    <span className="hidden sm:inline">Recipient Type: {recipientTypeFilter === "all" ? "All" : recipientTypeFilter === "email" ? "Email" : "Company"}</span>
+                    <span className="sm:hidden">Type: {recipientTypeFilter === "all" ? "All" : recipientTypeFilter === "email" ? "Email" : "Co."}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => dispatch(setRecipientTypeFilter("all"))}>
+                    All Recipients
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => dispatch(setRecipientTypeFilter("email"))}>
+                    Email Recipients
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => dispatch(setRecipientTypeFilter("company"))}>
+                    Company Recipients
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
@@ -269,6 +299,11 @@ export default function CampaignsPage() {
                                 <CardTitle className="text-sm sm:text-base truncate" title={campaign.name}>{campaign.name}</CardTitle>
                                 {isLatest && <Badge variant="default" className="text-xs w-fit">Latest</Badge>}
                                 {campaign.is_sequence && <Badge className="text-xs w-fit bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 border-green-300">Sequence</Badge>}
+                                {campaign.recipient_type && (
+                                  <Badge className={`text-xs w-fit ${getRecipientTypeBadge(campaign.recipient_type).className}`}>
+                                    {getRecipientTypeBadge(campaign.recipient_type).label}
+                                  </Badge>
+                                )}
                               </div>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>

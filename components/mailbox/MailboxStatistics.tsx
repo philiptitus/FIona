@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { AlertCircle, TrendingUp, Mail, CheckCircle2, AlertTriangle, BarChart3 } from "lucide-react"
+import { AlertCircle, TrendingUp, Mail, CheckCircle2, AlertTriangle, BarChart3, Zap } from "lucide-react"
 import { fetchSendingStats, fetchDetailedStats } from "@/store/actions/mailboxActions"
 import { RootState, AppDispatch } from "@/store/store"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+
+const DAILY_LIMIT = 500
 
 export default function MailboxStatistics() {
   const dispatch = useDispatch<AppDispatch>()
@@ -51,6 +53,19 @@ export default function MailboxStatistics() {
   const successRate = sendingStats.total > 0 
     ? Math.round((sendingStats.by_mailbox.reduce((sum, mb) => sum + mb.success, 0) / sendingStats.total) * 100)
     : 0
+
+  // Helper function to get limit status
+  const getLimitStatus = (sent: number) => {
+    const remaining = DAILY_LIMIT - sent
+    const percentage = (sent / DAILY_LIMIT) * 100
+    
+    return {
+      remaining: Math.max(0, remaining),
+      percentage: Math.min(100, percentage),
+      status: percentage >= 95 ? 'critical' : percentage >= 80 ? 'warning' : 'normal',
+      isLimitReached: remaining <= 0
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -129,9 +144,63 @@ export default function MailboxStatistics() {
               const successRate = mailbox.count > 0 
                 ? Math.round((mailbox.success / mailbox.count) * 100)
                 : 0
+              
+              const limitStatus = getLimitStatus(mailbox.count)
 
               return (
                 <TabsContent key={`content-${mailbox.mailbox__id}`} value={`mailbox-${mailbox.mailbox__id}`} className="space-y-4 mt-6">
+                  {/* Daily Limit Warning */}
+                  {limitStatus.status !== 'normal' && (
+                    <Alert variant={limitStatus.status === 'critical' ? 'destructive' : 'default'} className={limitStatus.status === 'warning' ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20' : ''}>
+                      <AlertTriangle className={`h-4 w-4 ${limitStatus.status === 'critical' ? '' : 'text-yellow-600'}`} />
+                      <AlertDescription className={limitStatus.status === 'critical' ? '' : 'text-yellow-800 dark:text-yellow-200'}>
+                        {limitStatus.isLimitReached 
+                          ? `Daily limit of ${DAILY_LIMIT} emails reached for this mailbox. You cannot send more today.`
+                          : `⚠️ Approaching daily limit! Only ${limitStatus.remaining} emails remaining out of ${DAILY_LIMIT}.`
+                        }
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Daily Limit Progress */}
+                  <div className="bg-muted/50 rounded-lg p-4 border space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold flex items-center gap-2">
+                          <Zap className="h-4 w-4" />
+                          Daily Sending Limit
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {limitStatus.isLimitReached 
+                            ? 'Limit reached - reset tomorrow' 
+                            : `${limitStatus.remaining} of ${DAILY_LIMIT} emails available today`
+                          }
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold">{mailbox.count}</p>
+                        <p className="text-xs text-muted-foreground">sent today</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Progress 
+                        value={limitStatus.percentage} 
+                        className={`h-3 ${
+                          limitStatus.status === 'critical' 
+                            ? '[&>*]:bg-red-500' 
+                            : limitStatus.status === 'warning'
+                            ? '[&>*]:bg-yellow-500'
+                            : '[&>*]:bg-green-500'
+                        }`}
+                      />
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>0</span>
+                        <span className="font-medium">{Math.round(limitStatus.percentage)}%</span>
+                        <span>{DAILY_LIMIT}</span>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="bg-muted/50 rounded-lg p-4 border">
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                       <div>

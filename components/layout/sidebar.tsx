@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, FileText, Home, LayoutTemplate, Mail, MailPlus, Send, Settings, Users } from "lucide-react"
+import { BarChart3, FileText, Home, LayoutTemplate, Mail, MailPlus, Send, Settings, Users, Building2, Workflow } from "lucide-react"
 
 interface SidebarProps {
   isMobile?: boolean
@@ -32,6 +32,11 @@ export default function Sidebar({ isMobile, onNavClick }: SidebarProps) {
       dataTour: "sidebar-campaigns",
     },
     {
+      name: "Companies",
+      href: "/companies",
+      icon: Building2,
+    },
+    {
       name: "Templates",
       href: "/templates",
       icon: LayoutTemplate,
@@ -52,6 +57,11 @@ export default function Sidebar({ isMobile, onNavClick }: SidebarProps) {
       href: "/content",
       icon: FileText,
       dataTour: "sidebar-content",
+    },
+    {
+      name: "Workflows",
+      href: "/workflows",
+      icon: Workflow,
     },
     {
       name: "Sent",

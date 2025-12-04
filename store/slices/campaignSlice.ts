@@ -9,6 +9,10 @@ interface Campaign {
   created_at: string
   updated_at: string
   is_sequence?: boolean
+  campaign_type?: string
+  content_preference?: string
+  recipient_type?: "email" | "company"
+  copies?: number
 }
 
 interface PaginatedResponse {
@@ -31,6 +35,7 @@ interface CampaignState {
     totalPages: number
   }
   searchQuery: string
+  recipientTypeFilter: "all" | "email" | "company"
 }
 
 const initialState: CampaignState = {
@@ -46,6 +51,7 @@ const initialState: CampaignState = {
     totalPages: 0,
   },
   searchQuery: "",
+  recipientTypeFilter: "all",
 }
 
 const campaignSlice = createSlice({
@@ -151,6 +157,10 @@ const campaignSlice = createSlice({
       state.searchQuery = action.payload
       state.pagination.currentPage = 1 // Reset to first page when searching
     },
+    setRecipientTypeFilter: (state, action: PayloadAction<"all" | "email" | "company">) => {
+      state.recipientTypeFilter = action.payload
+      state.pagination.currentPage = 1 // Reset to first page when filtering
+    },
   },
 })
 
@@ -176,6 +186,7 @@ export const {
   clearCurrentCampaign,
   setCurrentPage,
   setSearchQuery,
+  setRecipientTypeFilter,
 } = campaignSlice.actions
 
 export default campaignSlice.reducer

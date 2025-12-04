@@ -27,6 +27,7 @@ export default function SmartCampaignPage() {
   const [campaignName, setCampaignName] = useState("")
   const [campaignType, setCampaignType] = useState("")
   const [contentPreference, setContentPreference] = useState("content")
+  const [recipientType, setRecipientType] = useState("email")
   const [generateEmailLists, setGenerateEmailLists] = useState(false)
   const [attachment, setAttachment] = useState<File | null>(null)
   const [image, setImage] = useState<File | null>(null)
@@ -58,6 +59,25 @@ export default function SmartCampaignPage() {
     { value: 'num_employees', label: 'Number of Employees' },
     { value: 'annual_revenue', label: 'Annual Revenue' },
     { value: 'technologies', label: 'Technologies' }
+  ]
+
+  const COMPANY_DYNAMIC_VARIABLES = [
+    { value: 'company_name', label: 'Company Name' },
+    { value: 'company_email', label: 'Company Email' },
+    { value: 'company_phone', label: 'Company Phone' },
+    { value: 'industry', label: 'Industry' },
+    { value: 'company_city', label: 'City' },
+    { value: 'company_state', label: 'State' },
+    { value: 'company_country', label: 'Country' },
+    { value: 'website', label: 'Website' },
+    { value: 'number_of_employees', label: 'Number of Employees' },
+    { value: 'annual_revenue', label: 'Annual Revenue' },
+    { value: 'founded_year', label: 'Founded Year' },
+    { value: 'technologies', label: 'Technologies' },
+    { value: 'account_stage', label: 'Account Stage' },
+    { value: 'total_funding', label: 'Total Funding' },
+    { value: 'latest_funding', label: 'Latest Funding' },
+    { value: 'sic_codes', label: 'SIC Codes' }
   ]
 
   // Rotating, typed placeholders to guide users
@@ -139,6 +159,7 @@ export default function SmartCampaignPage() {
       const formData = new FormData()
       formData.append("name", campaignName)
       formData.append("campaign_type", campaignType)
+      formData.append("recipient_type", recipientType)
       formData.append("content_preference", contentPreference)
       formData.append("generate_email_lists", generateEmailLists ? "true" : "false")
       formData.append("allow_sequence", allowSequence ? "true" : "false")
@@ -304,6 +325,24 @@ export default function SmartCampaignPage() {
                 </RadioGroup>
               </div>
 
+              <div className="space-y-2">
+                <Label>Recipient Type *</Label>
+                <RadioGroup
+                  value={recipientType}
+                  onValueChange={setRecipientType}
+                  className="flex flex-col space-y-1"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="email" id="email-recipient" />
+                    <Label htmlFor="email-recipient" className="font-normal">Email - Send to individual email addresses</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="company" id="company-recipient" />
+                    <Label htmlFor="company-recipient" className="font-normal">Company - Send to company email addresses</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
               {/* 'Generate email lists' option moved into 'More tools' collapsible for a cleaner UI */}
 
               <div className="space-y-2">
@@ -394,7 +433,9 @@ export default function SmartCampaignPage() {
                             AI Dynamic Variables (Optional)
                           </Label>
                           <p className="text-xs text-purple-700 dark:text-purple-300 mt-1">
-                            Let AI personalize each email by automatically inserting recipient-specific information like their name, company, or job title. This makes your outreach feel more personal and increases engagement.
+                            {recipientType === "email" 
+                              ? "Let AI personalize each email by automatically inserting recipient-specific information like their name, company, or job title. This makes your outreach feel more personal and increases engagement."
+                              : "Let AI personalize each email by automatically inserting company-specific information like company name, industry, or funding. This makes your outreach feel more personal and increases engagement."}
                           </p>
                         </div>
                       </div>
@@ -404,11 +445,14 @@ export default function SmartCampaignPage() {
                           ✨ How it works: Select fields below, and AI will naturally weave them into your emails
                         </div>
                         <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                          Example: "Hi [first_name], I noticed [organization_name] is in the [industry] space..."
+                          {recipientType === "email"
+                            ? "Example: \"Hi [first_name], I noticed [organization_name] is in the [industry] space...\""
+                            : "Example: \"Hi, I've been following [company_name]'s growth in the [industry] space. With [number_of_employees] employees and...\""
+                          }
                         </div>
                         
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                          {AVAILABLE_DYNAMIC_VARIABLES.map(({ value, label }) => (
+                          {(recipientType === "email" ? AVAILABLE_DYNAMIC_VARIABLES : COMPANY_DYNAMIC_VARIABLES).map(({ value, label }) => (
                             <div key={value} className="flex items-center space-x-2">
                               <Checkbox
                                 id={`dynamic-${value}`}
@@ -438,7 +482,8 @@ export default function SmartCampaignPage() {
                             </div>
                             <div className="flex flex-wrap gap-1">
                               {selectedDynamicVariables.map(varValue => {
-                                const varLabel = AVAILABLE_DYNAMIC_VARIABLES.find(v => v.value === varValue)?.label
+                                const allVars = recipientType === "email" ? AVAILABLE_DYNAMIC_VARIABLES : COMPANY_DYNAMIC_VARIABLES
+                                const varLabel = allVars.find(v => v.value === varValue)?.label
                                 return (
                                   <span 
                                     key={varValue} 

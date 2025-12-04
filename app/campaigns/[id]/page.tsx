@@ -9,6 +9,7 @@ import { RootState, AppDispatch } from "@/store/store"
 import { useEffect } from "react"
 import { handleFetchCampaignById } from "@/store/actions/campaignActions"
 import { handleFetchEmails } from "@/store/actions/emailActions"
+import { handleFetchCompanies } from "@/store/actions/companyActions"
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -17,12 +18,14 @@ import { handleFetchTemplates } from '@/store/actions/templateActions';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import React from "react"
 import AddEmailDialog from "@/components/emails/AddEmailDialog"
+import AddCompanyDialog from "@/components/companies/AddCompanyDialog"
 import CampaignCopiesPreview from "@/components/campaigns/CampaignCopiesPreview"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Send, Loader2, CheckCircle2, XCircle, Trash2, AlertTriangle, CheckCircle, X, Loader, Eye } from "lucide-react"
+import { Send, Loader2, CheckCircle2, XCircle, Trash2, AlertTriangle, CheckCircle, X, Loader, Eye, Building2 } from "lucide-react"
 import { handleSendDispatch } from "@/store/actions/dispatchActions"
 import { handleFetchMailboxes } from "@/store/actions/mailboxActions"
 import { handleDisassociateEmails } from "@/store/actions/emailActions"
+import { handleDisassociateCompanies } from "@/store/actions/companyActions"
 import { Checkbox } from "@/components/ui/checkbox"
 import { motion, AnimatePresence } from "framer-motion"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -35,11 +38,13 @@ export default function CampaignDetailPage() {
   // Always use currentCampaign from the store (fresh from backend) as the source of truth
   const { isLoading, currentCampaign } = useSelector((state: RootState) => state.campaigns)
   const { emails: allEmails, isLoading: emailsLoading, pagination } = useSelector((state: RootState) => state.emails)
+  const { companies: allCompanies, isLoading: companiesLoading, pagination: companiesPagination } = useSelector((state: RootState) => state.companies)
   const { dispatches } = useSelector((state: RootState) => state.dispatch);
   const campaignId = Number(params.id)
   // Use currentCampaign only when it matches the route id
   const campaign = currentCampaign && currentCampaign.id === campaignId ? currentCampaign : null
   const [triedFetch, setTriedFetch] = React.useState(false)
+  const [showAddCompanyDialog, setShowAddCompanyDialog] = React.useState(false)
   const [showAddEmailDialog, setShowAddEmailDialog] = React.useState(false)
   const [sendModalOpen, setSendModalOpen] = React.useState(false)
   const [selectedMailboxIds, setSelectedMailboxIds] = React.useState<number[]>([])
@@ -93,12 +98,16 @@ export default function CampaignDetailPage() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const selectorRef = React.useRef<HTMLDivElement>(null)
   const [selectedEmails, setSelectedEmails] = React.useState<number[]>([])
+  const [selectedCompanies, setSelectedCompanies] = React.useState<number[]>([])
   const [isDisassociating, setIsDisassociating] = React.useState(false)
+  const [isDisassociatingCompanies, setIsDisassociatingCompanies] = React.useState(false)
   const [notification, setNotification] = React.useState<{ type: 'success' | 'error' | ''; message: string }>({ type: '', message: '' })
   const [isLoadingEmails, setIsLoadingEmails] = React.useState(false)
   const [allEmailsList, setAllEmailsList] = React.useState<any[]>([])
   const [availableEmails, setAvailableEmails] = React.useState<any[]>([])
+  const [availableCompanies, setAvailableCompanies] = React.useState<any[]>([])
   const [currentPage, setCurrentPage] = React.useState(1)
+  const [currentCompanyPage, setCurrentCompanyPage] = React.useState(1)
   
   // Filter emails that are not already in the campaign
   React.useEffect(() => {
@@ -150,9 +159,10 @@ export default function CampaignDetailPage() {
     // Always fetch emails for the current campaign id
     if (campaignId) {
       dispatch(handleFetchEmails({ campaignId, page: currentPage }) as any)
+      dispatch(handleFetchCompanies({ campaignId, page: currentCompanyPage }) as any)
     }
     // We intentionally do not depend on `campaign` here because we always want to re-query by id
-  }, [dispatch, campaignId, currentPage])
+  }, [dispatch, campaignId, currentPage, currentCompanyPage])
 
   // Show notification with auto-dismiss
   const showNotification = (type: 'success' | 'error', message: string) => {
@@ -209,6 +219,57 @@ export default function CampaignDetailPage() {
     (email.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
     (email.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
     (email.organization_name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
+  )
+
+  // Handle company selection
+  const toggleCompanySelection = (companyId: number) => {
+    setSelectedCompanies(prev => 
+      prev.includes(companyId) 
+        ? prev.filter(id => id !== companyId)
+        : [...prev, companyId]
+    )
+  }
+
+  // Handle select all/none for companies
+  const toggleSelectAllCompanies = () => {
+    if (selectedCompanies.length === filteredCompanies.length) {
+      setSelectedCompanies([])
+    } else {
+      setSelectedCompanies(filteredCompanies.map(company => company.id))
+    }
+  }
+
+  // Handle disassociating companies
+  const handleDisassociateSelectedCompanies = async () => {
+    if (selectedCompanies.length === 0 || !campaignId) return
+    
+    try {
+      setIsDisassociatingCompanies(true)
+      const result = await dispatch(handleDisassociateCompanies({ campaignId, companyIds: selectedCompanies }) as any)
+      
+      if (result) {
+        showNotification('success', `Removed ${selectedCompanies.length} company(ies) from campaign`)
+        setSelectedCompanies([])
+        // Refresh the companies list
+        await dispatch(handleFetchCompanies({ campaignId }) as any)
+      } else {
+        throw new Error('Failed to remove companies')
+      }
+    } catch (error) {
+      showNotification('error', error instanceof Error ? error.message : 'Failed to remove companies')
+    } finally {
+      setIsDisassociatingCompanies(false)
+    }
+  }
+
+  // Filter companies to only show those in the current campaign and match search
+  const campaignCompanies = allCompanies.filter(company => company.campaign === campaignId)
+  
+  const filteredCompanies = campaignCompanies.filter(company => 
+    company.company_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    company.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (company.industry?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+    (company.company_city?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
   )
 
   // Close selector when clicking outside
@@ -384,6 +445,15 @@ export default function CampaignDetailPage() {
                     Finished
                   </Badge>
                 )}
+                {campaign?.recipient_type && (
+                  <Badge className={`text-xs ${
+                    campaign.recipient_type === 'email' 
+                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' 
+                      : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300'
+                  }`}>
+                    {campaign.recipient_type === 'email' ? 'Email Recipients' : 'Company Recipients'}
+                  </Badge>
+                )}
               </div>
             </div>
             <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => router.push(`/campaigns/${campaignId}/edit`)}>Edit</Button>
@@ -405,7 +475,7 @@ export default function CampaignDetailPage() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold break-words">{campaign?.name || 'Campaign Details'}</h1>
                 <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
-                  {!campaign?.is_finished && (
+                  {!campaign?.is_finished && campaign?.recipient_type === "email" && (
                     <Button
                       variant="default"
                       size="sm"
@@ -414,6 +484,18 @@ export default function CampaignDetailPage() {
                     >
                       <span className="hidden sm:inline">Add Emails to Campaign</span>
                       <span className="sm:hidden">Add Emails</span>
+                    </Button>
+                  )}
+                  {!campaign?.is_finished && campaign?.recipient_type === "company" && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="w-full sm:w-auto"
+                      onClick={() => setShowAddCompanyDialog(true)}
+                    >
+                      <Building2 className="mr-2 h-4 w-4" />
+                      <span className="hidden sm:inline">Add Companies to Campaign</span>
+                      <span className="sm:hidden">Add Companies</span>
                     </Button>
                   )}
                   {!campaign?.is_finished && (
@@ -432,12 +514,20 @@ export default function CampaignDetailPage() {
                 </div>
               </div>
               
-              {/* Inline alert/banner if no emails */}
-              {!emailsLoading && campaignEmails.length === 0 && (
+              {/* Inline alert/banner if no recipients */}
+              {!emailsLoading && !companiesLoading && campaign?.recipient_type === "email" && campaignEmails.length === 0 && (
                 <Alert variant="destructive">
                   <AlertTitle>No Emails Attached</AlertTitle>
                   <AlertDescription>
                     This campaign doesn't have any emails attached yet.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {!emailsLoading && !companiesLoading && campaign?.recipient_type === "company" && campaignCompanies.length === 0 && (
+                <Alert variant="destructive">
+                  <AlertTitle>No Companies Attached</AlertTitle>
+                  <AlertDescription>
+                    This campaign doesn't have any companies attached yet.
                   </AlertDescription>
                 </Alert>
               )}
@@ -481,7 +571,8 @@ export default function CampaignDetailPage() {
                 )}
               </div> */}
             </div>
-            {/* Collapsible Associated Emails Section */}
+            {/* Collapsible Associated Recipients Section - Emails or Companies */}
+            {campaign?.recipient_type === "email" && (
             <Accordion type="single" collapsible defaultValue="emails">
               <AccordionItem value="emails">
                 <AccordionTrigger className="text-lg font-semibold">Associated Emails ({pagination?.count || campaignEmails.length})</AccordionTrigger>
@@ -666,6 +757,198 @@ export default function CampaignDetailPage() {
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
+            )}
+
+            {/* Collapsible Associated Companies Section */}
+            {campaign?.recipient_type === "company" && (
+            <Accordion type="single" collapsible defaultValue="companies">
+              <AccordionItem value="companies">
+                <AccordionTrigger className="text-lg font-semibold">Associated Companies ({companiesPagination?.count || campaignCompanies.length})</AccordionTrigger>
+                <AccordionContent>
+                  {companiesLoading ? (
+                    <div>Loading companies...</div>
+                  ) : campaignCompanies.length === 0 ? (
+                    <div className="flex flex-col items-center gap-4 py-8">
+                      <div className="text-muted-foreground mb-2">No companies associated with this campaign.</div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                        <h2 className="text-lg sm:text-xl font-semibold">Companies</h2>
+                        <div className="relative w-full sm:w-64">
+                          <input
+                            type="text"
+                            placeholder="Search companies..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                          {searchQuery && (
+                            <button
+                              onClick={() => setSearchQuery('')}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center gap-2 sm:gap-4 p-2 bg-gray-50 rounded-lg">
+                          <Checkbox 
+                            id="select-all-companies"
+                            checked={selectedCompanies.length > 0 && selectedCompanies.length === filteredCompanies.length}
+                            onCheckedChange={toggleSelectAllCompanies}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <label 
+                            htmlFor="select-all-companies" 
+                            className="text-xs sm:text-sm font-medium text-gray-700 cursor-pointer flex-1"
+                          >
+                            {selectedCompanies.length > 0 
+                              ? `Selected ${selectedCompanies.length} company(ies)`
+                              : 'Select all'}
+                          </label>
+                          {selectedCompanies.length > 0 && (
+                            <button 
+                              onClick={() => setSelectedCompanies([])}
+                              className="text-xs sm:text-sm text-blue-600 hover:text-blue-800"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                        {selectedCompanies.length > 0 && (
+                          <div className="flex justify-end">
+                            <Button 
+                              variant="destructive"
+                              size="sm"
+                              onClick={handleDisassociateSelectedCompanies}
+                              disabled={isDisassociatingCompanies}
+                              className="flex items-center gap-2 text-xs sm:text-sm"
+                            >
+                              {isDisassociatingCompanies ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                              <span className="hidden sm:inline">Remove {selectedCompanies.length} selected company(ies)</span>
+                              <span className="sm:hidden">Remove ({selectedCompanies.length})</span>
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        {filteredCompanies.map((company) => (
+                          <motion.div
+                            key={company.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className={`relative ${selectedCompanies.includes(company.id) ? 'ring-2 ring-blue-500' : ''}`}
+                          >
+                            <Card className={`hover:shadow-md transition-shadow ${selectedCompanies.includes(company.id) ? 'border-blue-500' : ''}`}>
+                              <CardContent className="p-3 sm:p-4">
+                                <div className="flex items-start space-x-2 sm:space-x-3">
+                                  <Checkbox 
+                                    id={`company-${company.id}`}
+                                    checked={selectedCompanies.includes(company.id)}
+                                    onCheckedChange={() => toggleCompanySelection(company.id)}
+                                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-1"
+                                  />
+                                  <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
+                                    <div className="flex flex-col space-y-1 min-w-0">
+                                      <div className="flex items-center space-x-2">
+                                        <span className="font-medium text-sm sm:text-base break-all">{company.company_email}</span>
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              {company.email_sent ? (
+                                                <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 flex-shrink-0" />
+                                              ) : (
+                                                <XCircle className="h-3 w-3 sm:h-4 sm:w-4 text-red-500 flex-shrink-0" />
+                                              )}
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              {company.email_sent 
+                                                ? "Email has been sent successfully" 
+                                                : "Email has not been sent yet"}
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      </div>
+                                      <div className="text-xs sm:text-sm text-gray-500 font-medium break-words">
+                                        {company.company_name}
+                                      </div>
+                                      {company.industry && (
+                                        <div className="text-xs sm:text-sm text-gray-500 break-words">
+                                          {company.industry}
+                                        </div>
+                                      )}
+                                      {company.company_city && (
+                                        <div className="text-xs text-gray-400">
+                                          {company.company_city}{company.company_country ? `, ${company.company_country}` : ''}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex-shrink-0">
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-8 w-8 sm:h-10 sm:w-10"
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                router.push(`/companies/${company.id}`)
+                                              }}
+                                            >
+                                              <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>View company</TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </motion.div>
+                        ))}
+                      </div>
+                      {/* Pagination Controls */}
+                      {companiesPagination && companiesPagination.totalPages > 1 && (
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
+                          <div className="text-sm text-muted-foreground">
+                            Page {companiesPagination.currentPage} of {companiesPagination.totalPages} • {companiesPagination.count} total companies
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCurrentCompanyPage(prev => Math.max(1, prev - 1))}
+                              disabled={!companiesPagination.previous || currentCompanyPage === 1}
+                            >
+                              Previous
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCurrentCompanyPage(prev => prev + 1)}
+                              disabled={!companiesPagination.next || currentCompanyPage === companiesPagination.totalPages}
+                            >
+                              Next
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+            )}
             <Dialog open={sendModalOpen} onOpenChange={setSendModalOpen}>
               <DialogContent className="w-[95vw] max-w-[560px] rounded-xl border shadow-2xl flex flex-col max-h-[85vh]">
                   <DialogHeader>
@@ -915,6 +1198,15 @@ export default function CampaignDetailPage() {
         onAddExistingEmails={handleAddExistingEmailsToCampaign}
         isLoadingEmails={emailsLoading}
         onSuccess={() => dispatch(handleFetchEmails({ campaignId }) as any)}
+      />
+      <AddCompanyDialog 
+        open={showAddCompanyDialog} 
+        onOpenChange={setShowAddCompanyDialog} 
+        initialCampaignId={campaignId}
+        campaign={campaign}
+        companies={availableCompanies}
+        isLoadingCompanies={companiesLoading}
+        onSuccess={() => dispatch(handleFetchCompanies({ campaignId }) as any)}
       />
     </MainLayout>
   );

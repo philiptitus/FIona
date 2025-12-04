@@ -16,6 +16,7 @@ import mailboxReducer from "./slices/mailboxSlice"
 import contactListReducer from "./slices/contactListSlice"
 import workflowReducer from "./slices/workflowSlice"
 import linksReducer from "./slices/linksSlice"
+import companyReducer from "./slices/companySlice"
 
 // Define root state type
 type RootState = {
@@ -35,6 +36,7 @@ type RootState = {
   contactList: ReturnType<typeof contactListReducer>
   workflows: ReturnType<typeof workflowReducer>
   links: ReturnType<typeof linksReducer>
+  companies: ReturnType<typeof companyReducer>
 }
 
 // Create root reducer with proper typing
@@ -55,6 +57,7 @@ const rootReducer: ReducersMapObject<RootState> = {
   contactList: contactListReducer,
   workflows: workflowReducer,
   links: linksReducer,
+  companies: companyReducer,
 }
 
 // Define app dispatch type with thunk support
