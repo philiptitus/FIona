@@ -1,5 +1,18 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit"
-import { fetchMailboxes, startGmailOAuth, finishGmailOAuth, deleteMailbox, sendEmail, fetchSendingStats, fetchDetailedStats } from "../actions/mailboxActions"
+import { 
+  fetchMailboxes, 
+  startGmailOAuth, 
+  finishGmailOAuth, 
+  deleteMailbox, 
+  sendEmail, 
+  fetchSendingStats, 
+  fetchDetailedStats,
+  fetchMailboxInbox,
+  fetchMailboxLabels,
+  fetchMessageDetails,
+  fetchThreadDetails,
+  fetchMailboxProfile
+} from "../actions/mailboxActions"
 
 interface Mailbox {
   id: number
@@ -10,6 +23,61 @@ interface Mailbox {
   token_expiry?: string
   created_at: string
   updated_at: string
+}
+
+interface GmailMessage {
+  id: string
+  threadId: string
+  labelIds: string[]
+  snippet?: string
+  payload?: any
+  sizeEstimate?: number
+  historyId?: string
+  internalDate?: string
+}
+
+interface GmailLabel {
+  id: string
+  name: string
+  messageListVisibility: string
+  labelListVisibility: string
+  type: string
+}
+
+interface MailboxInbox {
+  messages: GmailMessage[]
+  nextPageToken?: string
+  total: number
+  mailbox: string
+}
+
+interface MailboxLabels {
+  labels: GmailLabel[]
+  mailbox: string
+  total: number
+}
+
+interface MessageDetails {
+  message: GmailMessage
+  mailbox: string
+}
+
+interface ThreadDetails {
+  thread: {
+    id: string
+    historyId: string
+    messages: GmailMessage[]
+  }
+  mailbox: string
+  message_count: number
+}
+
+interface MailboxProfile {
+  email: string
+  messages_total: number
+  threads_total: number
+  history_id: string
+  mailbox_linked_at: string
 }
 
 interface MailboxState {
@@ -45,6 +113,11 @@ interface MailboxState {
     }>
     date: string
   }
+  inbox?: MailboxInbox
+  labels?: MailboxLabels
+  currentMessage?: MessageDetails
+  currentThread?: ThreadDetails
+  mailboxProfile?: MailboxProfile
 }
 
 const initialState: MailboxState = {
@@ -56,6 +129,11 @@ const initialState: MailboxState = {
   sendResult: null,
   sendingStats: undefined,
   detailedStats: undefined,
+  inbox: undefined,
+  labels: undefined,
+  currentMessage: undefined,
+  currentThread: undefined,
+  mailboxProfile: undefined,
 }
 
 const mailboxSlice = createSlice({
@@ -189,9 +267,93 @@ const mailboxSlice = createSlice({
         state.error = action.payload as string
         state.detailedStats = undefined
       })
+      // fetchMailboxInbox
+      .addCase(fetchMailboxInbox.pending, (state) => {
+        state.isLoading = true
+        state.error = null
+      })
+      .addCase(fetchMailboxInbox.fulfilled, (state, action) => {
+        state.isLoading = false
+        state.error = null
+        state.inbox = action.payload
+      })
+      .addCase(fetchMailboxInbox.rejected, (state, action) => {
+        state.isLoading = false
+        state.error = action.payload as string
+        state.inbox = undefined
+      })
+      // fetchMailboxLabels
+      .addCase(fetchMailboxLabels.pending, (state) => {
+        state.isLoading = true
+        state.error = null
+      })
+      .addCase(fetchMailboxLabels.fulfilled, (state, action) => {
+        state.isLoading = false
+        state.error = null
+        state.labels = action.payload
+      })
+      .addCase(fetchMailboxLabels.rejected, (state, action) => {
+        state.isLoading = false
+        state.error = action.payload as string
+        state.labels = undefined
+      })
+      // fetchMessageDetails
+      .addCase(fetchMessageDetails.pending, (state) => {
+        state.isLoading = true
+        state.error = null
+      })
+      .addCase(fetchMessageDetails.fulfilled, (state, action) => {
+        state.isLoading = false
+        state.error = null
+        state.currentMessage = action.payload
+      })
+      .addCase(fetchMessageDetails.rejected, (state, action) => {
+        state.isLoading = false
+        state.error = action.payload as string
+        state.currentMessage = undefined
+      })
+      // fetchThreadDetails
+      .addCase(fetchThreadDetails.pending, (state) => {
+        state.isLoading = true
+        state.error = null
+      })
+      .addCase(fetchThreadDetails.fulfilled, (state, action) => {
+        state.isLoading = false
+        state.error = null
+        state.currentThread = action.payload
+      })
+      .addCase(fetchThreadDetails.rejected, (state, action) => {
+        state.isLoading = false
+        state.error = action.payload as string
+        state.currentThread = undefined
+      })
+      // fetchMailboxProfile
+      .addCase(fetchMailboxProfile.pending, (state) => {
+        state.isLoading = true
+        state.error = null
+      })
+      .addCase(fetchMailboxProfile.fulfilled, (state, action) => {
+        state.isLoading = false
+        state.error = null
+        state.mailboxProfile = action.payload
+      })
+      .addCase(fetchMailboxProfile.rejected, (state, action) => {
+        state.isLoading = false
+        state.error = action.payload as string
+        state.mailboxProfile = undefined
+      })
   },
 })
 
 export const { setSelectedMailboxes, toggleMailboxSelection, clearSelectedMailboxes } = mailboxSlice.actions
-export type { Mailbox }
+export type { 
+  Mailbox, 
+  GmailMessage, 
+  GmailLabel, 
+  MailboxInbox, 
+  MailboxLabels, 
+  MessageDetails, 
+  ThreadDetails, 
+  MailboxProfile 
+}
 export default mailboxSlice.reducer
