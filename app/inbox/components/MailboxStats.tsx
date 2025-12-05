@@ -44,10 +44,29 @@ export default function MailboxStats({ mailboxId }: MailboxStatsProps) {
 
   if (isLoading || !mailboxProfile) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <Skeleton key={i} className="h-32 w-full" />
-        ))}
+      <div className="space-y-4">
+        {isLoading && (
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg">
+            <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <span className="animate-pulse">Loading mailbox statistics...</span>
+          </div>
+        )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="overflow-hidden">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-8 w-8 rounded-lg" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-3/4 mb-2" />
+                <Skeleton className="h-3 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     )
   }

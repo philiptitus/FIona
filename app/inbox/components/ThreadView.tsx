@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Progress } from "@/components/ui/progress"
 import {
   ArrowLeft,
   Calendar,
@@ -19,6 +20,7 @@ import {
   MessagesSquare,
   ChevronDown,
   ChevronUp,
+  Loader2,
 } from "lucide-react"
 import { GmailMessage } from "@/store/slices/mailboxSlice"
 
@@ -36,12 +38,32 @@ export default function ThreadView({
   const dispatch = useAppDispatch()
   const { currentThread, isLoading, error } = useAppSelector((state) => state.mailbox)
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set())
+  const [loadingProgress, setLoadingProgress] = useState(0)
 
   useEffect(() => {
     if (mailboxId && threadId) {
+      setLoadingProgress(0)
       dispatch(fetchThreadDetails({ mailboxId, threadId }))
     }
   }, [dispatch, mailboxId, threadId])
+
+  // Progress simulation
+  useEffect(() => {
+    if (isLoading) {
+      setLoadingProgress(0)
+      const interval = setInterval(() => {
+        setLoadingProgress((prev) => {
+          if (prev >= 90) return prev
+          return prev + 12
+        })
+      }, 250)
+      return () => clearInterval(interval)
+    } else {
+      setLoadingProgress(100)
+      const timeout = setTimeout(() => setLoadingProgress(0), 500)
+      return () => clearTimeout(timeout)
+    }
+  }, [isLoading])
 
   useEffect(() => {
     // Auto-expand the last message in the thread
@@ -117,17 +139,37 @@ export default function ThreadView({
   if (isLoading || !currentThread) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={onBack}>
+        <Button variant="ghost" size="sm" onClick={onBack} disabled={isLoading}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Inbox
         </Button>
         <Card>
-          <CardHeader>
+          <CardHeader className="space-y-4">
+            {isLoading && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="animate-pulse">Loading conversation thread from Gmail API...</span>
+                </div>
+                <Progress value={loadingProgress} className="h-1" />
+              </div>
+            )}
             <Skeleton className="h-8 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
           </CardHeader>
           <CardContent className="space-y-4">
             {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-32 w-full" />
+              <Card key={i} className="border-2">
+                <CardHeader>
+                  <div className="flex items-start gap-3">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-1/3" />
+                      <Skeleton className="h-3 w-full" />
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
             ))}
           </CardContent>
         </Card>

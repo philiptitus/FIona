@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
+import { Progress } from "@/components/ui/progress"
 import {
   ChevronLeft,
   ChevronRight,
@@ -17,6 +18,7 @@ import {
   MailOpen,
   Search,
   Star,
+  Loader2,
 } from "lucide-react"
 import { GmailMessage } from "@/store/slices/mailboxSlice"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -37,12 +39,32 @@ export default function InboxMessageList({
   const [limit, setLimit] = useState(25)
   const [currentPageToken, setCurrentPageToken] = useState<string | undefined>(undefined)
   const [searchQuery, setSearchQuery] = useState("")
+  const [loadingProgress, setLoadingProgress] = useState(0)
 
   useEffect(() => {
     if (mailboxId) {
+      setLoadingProgress(0)
       dispatch(fetchMailboxInbox({ mailboxId, limit, pageToken: currentPageToken }))
     }
   }, [dispatch, mailboxId, limit, currentPageToken])
+
+  // Simulate progress for better UX during Gmail API calls
+  useEffect(() => {
+    if (isLoading) {
+      setLoadingProgress(0)
+      const interval = setInterval(() => {
+        setLoadingProgress((prev) => {
+          if (prev >= 90) return prev
+          return prev + 10
+        })
+      }, 300)
+      return () => clearInterval(interval)
+    } else {
+      setLoadingProgress(100)
+      const timeout = setTimeout(() => setLoadingProgress(0), 500)
+      return () => clearTimeout(timeout)
+    }
+  }, [isLoading])
 
   const handleNextPage = () => {
     if (inbox?.nextPageToken) {
@@ -83,7 +105,11 @@ export default function InboxMessageList({
       <CardHeader className="space-y-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Inbox className="h-5 w-5" />
+            {isLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            ) : (
+              <Inbox className="h-5 w-5" />
+            )}
             <span className="hidden sm:inline">Inbox</span>
             {inbox?.total !== undefined && (
               <Badge variant="secondary" className="ml-2">
@@ -110,6 +136,17 @@ export default function InboxMessageList({
             </Button>
           </div>
         </div>
+        
+        {/* Loading Progress Bar */}
+        {isLoading && (
+          <div className="space-y-2">
+            <Progress value={loadingProgress} className="h-1" />
+            <p className="text-xs text-muted-foreground text-center animate-pulse">
+              Fetching messages from Gmail API...
+            </p>
+          </div>
+        )}
+        
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -117,19 +154,38 @@ export default function InboxMessageList({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
+            disabled={isLoading}
           />
         </div>
       </CardHeader>
 
       <CardContent className="p-0">
         {isLoading ? (
-          <div className="space-y-2 p-4">
+          <div className="space-y-3 p-4">
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center space-y-3">
+                <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Loading messages...</p>
+                  <p className="text-xs text-muted-foreground">
+                    This may take a few moments as we fetch data from Gmail
+                  </p>
+                </div>
+              </div>
+            </div>
             {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-20 w-full" />
+              <div key={i} className="flex items-start gap-3 p-4 border rounded-lg">
+                <Skeleton className="h-5 w-5 rounded-full flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-2/3" />
+                </div>
+              </div>
             ))}
           </div>
         ) : (
-          <ScrollArea className="h-[calc(100vh-420px)] md:h-[calc(100vh-390px)]">
+          <ScrollArea className="h-[calc(100vh-460px)] md:h-[calc(100vh-430px)]">
             {filteredMessages && filteredMessages.length > 0 ? (
               <div className="divide-y">
                 {filteredMessages.map((message) => (

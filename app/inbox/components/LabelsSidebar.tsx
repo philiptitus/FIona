@@ -71,9 +71,18 @@ export default function LabelsSidebar({ mailboxId }: LabelsSidebarProps) {
 
       <CardContent className="p-0">
         {isLoading ? (
-          <div className="space-y-2 p-4">
+          <div className="space-y-3 p-4">
+            <div className="text-center py-4">
+              <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <span className="animate-pulse">Loading labels...</span>
+              </div>
+            </div>
             {[...Array(8)].map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full" />
+              <div key={i} className="flex items-center gap-2 p-2">
+                <Skeleton className="h-4 w-4 rounded-sm" />
+                <Skeleton className="h-4 flex-1" />
+              </div>
             ))}
           </div>
         ) : (
