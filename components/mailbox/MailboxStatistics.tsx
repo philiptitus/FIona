@@ -120,27 +120,42 @@ export default function MailboxStatistics() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue={`mailbox-${sendingStats.by_mailbox[0]?.mailbox__id}`} className="w-full">
-            <TabsList className="grid w-full gap-1" style={{ gridTemplateColumns: `repeat(auto-fit, minmax(100px, 1fr))` }}>
-              {sendingStats.by_mailbox.map((mailbox) => (
-                <TabsTrigger
-                  key={`mailbox-${mailbox.mailbox__id}`}
-                  value={`mailbox-${mailbox.mailbox__id}`}
-                  onClick={() => setSelectedMailboxId(mailbox.mailbox__id)}
-                  className="text-xs sm:text-sm"
-                >
-                  <div className="flex items-center gap-1">
-                    <span className="hidden sm:inline">
-                      {mailbox.mailbox__email ? mailbox.mailbox__email.split('@')[0] : `Mailbox ${mailbox.mailbox__id}`}
-                    </span>
-                    <span className="sm:hidden">MB {mailbox.mailbox__id}</span>
-                    <Badge variant="secondary" className="ml-1 text-xs">
-                      {mailbox.count}
-                    </Badge>
-                  </div>
-                </TabsTrigger>
-              ))}
-            </TabsList>
+          <Tabs defaultValue={`mailbox-${sendingStats.by_mailbox[0]?.mailbox_id}`} className="w-full">
+            <div className="relative mb-6">
+              <div className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
+                <TabsList className="inline-flex w-auto gap-2 h-auto p-1">
+                  {sendingStats.by_mailbox.map((mailbox) => {
+                    const emailParts = mailbox.mailbox_email?.split('@') || []
+                    const username = emailParts[0] || `Mailbox ${mailbox.mailbox_id}`
+                    const domain = emailParts[1] || ''
+                    
+                    return (
+                      <TabsTrigger
+                        key={`mailbox-${mailbox.mailbox_id}`}
+                        value={`mailbox-${mailbox.mailbox_id}`}
+                        onClick={() => setSelectedMailboxId(mailbox.mailbox_id)}
+                        className="flex-shrink-0 px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      >
+                        <div className="flex flex-col items-start gap-0.5 min-w-[140px] max-w-[200px]">
+                          <div className="flex items-center gap-1.5 w-full">
+                            <span className="font-medium text-sm truncate">{username}</span>
+                            <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 flex-shrink-0">
+                              {mailbox.count}
+                            </Badge>
+                          </div>
+                          {domain && (
+                            <span className="text-[10px] text-muted-foreground truncate w-full">
+                              @{domain}
+                            </span>
+                          )}
+                        </div>
+                      </TabsTrigger>
+                    )
+                  })}
+                </TabsList>
+              </div>
+              <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none" />
+            </div>
 
             {sendingStats.by_mailbox.map((mailbox) => {
               const successRate = mailbox.count > 0 
@@ -150,7 +165,7 @@ export default function MailboxStatistics() {
               const limitStatus = getLimitStatus(mailbox.count)
 
               return (
-                <TabsContent key={`content-${mailbox.mailbox__id}`} value={`mailbox-${mailbox.mailbox__id}`} className="space-y-4 mt-6">
+                <TabsContent key={`content-${mailbox.mailbox_id}`} value={`mailbox-${mailbox.mailbox_id}`} className="space-y-4 mt-6">
                   {/* Daily Limit Warning */}
                   {limitStatus.status !== 'normal' && (
                     <Alert variant={limitStatus.status === 'critical' ? 'destructive' : 'default'} className={limitStatus.status === 'warning' ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20' : ''}>
@@ -225,7 +240,7 @@ export default function MailboxStatistics() {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Email</p>
-                        <p className="text-xs font-mono truncate">{mailbox.mailbox__email || 'N/A'}</p>
+                        <p className="text-xs font-mono truncate">{mailbox.mailbox_email || 'N/A'}</p>
                       </div>
                     </div>
 
@@ -239,7 +254,7 @@ export default function MailboxStatistics() {
                   </div>
 
                   {/* Detailed Stats if available */}
-                  {detailedStats && selectedMailboxId === mailbox.mailbox__id && (
+                  {detailedStats && selectedMailboxId === mailbox.mailbox_id && (
                     <div className="border-t pt-4 mt-4">
                       <h4 className="font-semibold mb-3 text-sm">Status Breakdown</h4>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -280,9 +295,9 @@ export default function MailboxStatistics() {
                   : 0
 
                 return (
-                  <div key={mailbox.mailbox__id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setSelectedMailboxId(mailbox.mailbox__id)}>
+                  <div key={mailbox.mailbox_id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setSelectedMailboxId(mailbox.mailbox_id)}>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{mailbox.mailbox__email || `Mailbox ${mailbox.mailbox__id}`}</p>
+                      <p className="font-medium text-sm truncate">{mailbox.mailbox_email || `Mailbox ${mailbox.mailbox_id}`}</p>
                       <p className="text-xs text-muted-foreground mt-1">
                         {mailbox.success} succeeded · {mailbox.failed} failed
                       </p>

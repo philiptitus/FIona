@@ -253,13 +253,16 @@ export default function MessageDetails({
         <Separator />
 
         <CardContent className="pt-6">
-          <ScrollArea className="h-[calc(100vh-600px)] md:h-[calc(100vh-550px)] pr-4">
-            <div className="prose prose-sm max-w-none dark:prose-invert">
-              <pre className="whitespace-pre-wrap break-words font-sans text-sm">
-                {decodedBody || message.snippet || "No content available"}
-              </pre>
-            </div>
-          </ScrollArea>
+          {/* Message Body with Better Height */}
+          <div className="mb-6">
+            <ScrollArea className="h-[60vh] md:h-[calc(100vh-420px)] min-h-[400px] rounded-md border bg-muted/30 p-4">
+              <div className="prose prose-sm max-w-none dark:prose-invert">
+                <div className="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed">
+                  {decodedBody || message.snippet || "No content available"}
+                </div>
+              </div>
+            </ScrollArea>
+          </div>
 
           {/* Technical Details Accordion */}
           <Accordion type="single" collapsible className="mt-6">

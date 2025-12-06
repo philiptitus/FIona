@@ -18,7 +18,7 @@ import {
   selectNotifications, 
   selectUnreadCount, 
   selectIsLoading,
-  Notification
+  type Notification
 } from "@/store/slices/notificationsSlice"
 import { useEffect } from "react"
 import { formatDistanceToNow } from "date-fns"
@@ -33,6 +33,13 @@ export function NotificationDropdown() {
   useEffect(() => {
     // Fetch notifications when the component mounts
     dispatch(fetchNotifications())
+    
+    // Set up auto-refresh polling every 10 seconds
+    const pollInterval = setInterval(() => {
+      dispatch(fetchNotifications())
+    }, 10000)
+    
+    return () => clearInterval(pollInterval)
   }, [dispatch])
 
   const handleMarkAsRead = async (notificationId: string, e: React.MouseEvent) => {

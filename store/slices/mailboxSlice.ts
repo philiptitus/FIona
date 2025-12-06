@@ -30,6 +30,9 @@ interface GmailMessage {
   threadId: string
   labelIds: string[]
   snippet?: string
+  subject?: string
+  from?: string
+  date?: string
   payload?: any
   sizeEstimate?: number
   historyId?: string

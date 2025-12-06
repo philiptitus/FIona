@@ -5,6 +5,7 @@ import Sidebar from "./sidebar"
 import Header from "./header"
 import { useState } from "react"
 import { useIsMobileOrTablet } from "@/lib/useIsMobileOrTablet"
+import { GlobalCampaignProcessingBanner } from "@/components/campaigns/GlobalCampaignProcessingBanner"
 
 interface MainLayoutProps {
   children: ReactNode
@@ -38,6 +39,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden transition-all duration-300">
         {/* Header with sidebar toggle */}
         <Header />
+        {/* Global Campaign Processing Banner */}
+        <GlobalCampaignProcessingBanner />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-muted/30">{children}</main>
       </div>
       {/* Mobile+tablet sidebar toggle button */}

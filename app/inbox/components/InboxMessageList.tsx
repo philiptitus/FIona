@@ -84,6 +84,18 @@ export default function InboxMessageList({
     return message.snippet || "No preview available"
   }
 
+  const getSubject = (message: GmailMessage) => {
+    // Check if subject is directly available (from API response)
+    if (message.subject) {
+      return message.subject
+    }
+    // Fall back to checking headers
+    const subjectHeader = message.payload?.headers?.find(
+      (h: any) => h.name.toLowerCase() === 'subject'
+    )
+    return subjectHeader?.value || "(No Subject)"
+  }
+
   const hasImportantLabel = (message: GmailMessage) => {
     return message.labelIds?.includes("IMPORTANT") || false
   }
@@ -212,7 +224,7 @@ export default function InboxMessageList({
                                 isUnread(message) ? "font-semibold" : "font-normal"
                               }`}
                             >
-                              Message ID: {message.id.substring(0, 12)}...
+                              {getSubject(message)}
                             </span>
                             {hasImportantLabel(message) && (
                               <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 flex-shrink-0" />

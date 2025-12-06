@@ -22,6 +22,7 @@ import MailLoader from '@/components/MailLoader'
 import WorkflowPicker from '@/components/WorkflowPicker'
 import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
+import { addProcessingCampaign } from "@/store/slices/processingCampaignsSlice"
 
 export default function SmartCampaignPage() {
   const [campaignName, setCampaignName] = useState("")
@@ -185,7 +186,37 @@ export default function SmartCampaignPage() {
 
       if (createSmartCampaign.fulfilled.match(resultAction)) {
         const payload: any = resultAction.payload
-        // Try multiple known shapes for the response to pick up the campaign id
+        
+        // Check if this is an async response (202 Accepted)
+        if (payload?.status === "processing" && payload?.token && payload?.campaign_id) {
+          // Async campaign creation
+          const campaignId = payload.campaign_id
+          const token = payload.token
+          const campaignName = payload.campaign?.name || campaignName
+          
+          // Add to processing campaigns tracker
+          dispatch(addProcessingCampaign({
+            campaignId,
+            token,
+            name: campaignName,
+            status: "processing",
+            startedAt: Date.now(),
+            lastPolled: Date.now(),
+            retryCount: 0,
+          }))
+          
+          // Show success toast for starting the process
+          toast({
+            title: "✨ Campaign Creation Started!",
+            description: "AI is generating your campaign content. You'll be notified when it's ready (30-60 seconds).",
+          })
+          
+          // Redirect to dashboard
+          router.push("/dashboard")
+          return
+        }
+        
+        // Legacy synchronous response (fallback for old behavior)
         let campaignId: number | string | undefined = undefined
         if (payload?.dispatch?.campaign?.id) campaignId = payload.dispatch.campaign.id
         else if (payload?.campaign?.id) campaignId = payload.campaign.id
