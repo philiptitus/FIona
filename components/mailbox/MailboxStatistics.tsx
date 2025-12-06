@@ -130,7 +130,9 @@ export default function MailboxStatistics() {
                   className="text-xs sm:text-sm"
                 >
                   <div className="flex items-center gap-1">
-                    <span className="hidden sm:inline">{mailbox.mailbox__email.split('@')[0]}</span>
+                    <span className="hidden sm:inline">
+                      {mailbox.mailbox__email ? mailbox.mailbox__email.split('@')[0] : `Mailbox ${mailbox.mailbox__id}`}
+                    </span>
                     <span className="sm:hidden">MB {mailbox.mailbox__id}</span>
                     <Badge variant="secondary" className="ml-1 text-xs">
                       {mailbox.count}
@@ -223,7 +225,7 @@ export default function MailboxStatistics() {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Email</p>
-                        <p className="text-xs font-mono truncate">{mailbox.mailbox__email}</p>
+                        <p className="text-xs font-mono truncate">{mailbox.mailbox__email || 'N/A'}</p>
                       </div>
                     </div>
 
@@ -280,7 +282,7 @@ export default function MailboxStatistics() {
                 return (
                   <div key={mailbox.mailbox__id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setSelectedMailboxId(mailbox.mailbox__id)}>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{mailbox.mailbox__email}</p>
+                      <p className="font-medium text-sm truncate">{mailbox.mailbox__email || `Mailbox ${mailbox.mailbox__id}`}</p>
                       <p className="text-xs text-muted-foreground mt-1">
                         {mailbox.success} succeeded · {mailbox.failed} failed
                       </p>
