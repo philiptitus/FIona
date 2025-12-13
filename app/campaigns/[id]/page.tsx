@@ -24,8 +24,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Send, Loader2, CheckCircle2, XCircle, Trash2, AlertTriangle, CheckCircle, X, Loader, Eye, Building2 } from "lucide-react"
 import { handleSendDispatch } from "@/store/actions/dispatchActions"
 import { handleFetchMailboxes } from "@/store/actions/mailboxActions"
+import SendCampaignDialog from "@/components/campaigns/SendCampaignDialog"
 import { handleDisassociateEmails } from "@/store/actions/emailActions"
 import { handleDisassociateCompanies } from "@/store/actions/companyActions"
+import { addDispatch } from "@/store/slices/processingDispatchesSlice"
+import { pollDispatchStatus } from "@/store/actions/processingDispatchesActions"
 import { Checkbox } from "@/components/ui/checkbox"
 import { motion, AnimatePresence } from "framer-motion"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -53,50 +56,20 @@ export default function CampaignDetailPage() {
   const { mailboxes, isLoading: isMailboxesLoading } = useSelector((state: RootState) => state.mailbox)
   const [isSending, setIsSending] = React.useState(false)
   const [sendSuccess, setSendSuccess] = React.useState(false)
-  const [showMoreOptions, setShowMoreOptions] = React.useState(false)
   const [isScheduled, setIsScheduled] = React.useState(false)
-  const [scheduleDay1, setScheduleDay1] = React.useState<string>("")
-  const [scheduleDay2, setScheduleDay2] = React.useState<string>("")
-  const [scheduleDay3, setScheduleDay3] = React.useState<string>("")
-  // Weekday options and helper to ensure uniqueness across selects
-  const weekdays = [
-    { value: 'monday', label: 'Monday' },
-    { value: 'tuesday', label: 'Tuesday' },
-    { value: 'wednesday', label: 'Wednesday' },
-    { value: 'thursday', label: 'Thursday' },
-    { value: 'friday', label: 'Friday' },
-    { value: 'saturday', label: 'Saturday' },
-    { value: 'sunday', label: 'Sunday' },
-  ]
-
-  // Keep selections unique: if a change causes duplicates, clear the later fields
-  React.useEffect(() => {
-    // If day2 equals day1, clear day2
-    if (scheduleDay1 && scheduleDay2 && scheduleDay1 === scheduleDay2) {
-      setScheduleDay2("")
-    }
-    // If day3 equals day1 or day2, clear day3
-    if (scheduleDay3 && (scheduleDay3 === scheduleDay1 || scheduleDay3 === scheduleDay2)) {
-      setScheduleDay3("")
-    }
-    // Also if day2 equals day3 after changes, clear day3
-    if (scheduleDay2 && scheduleDay3 && scheduleDay2 === scheduleDay3) {
-      setScheduleDay3("")
-    }
-  }, [scheduleDay1, scheduleDay2, scheduleDay3])
+  const [scheduledDate, setScheduledDate] = React.useState<string>("")
 
   // Compute disabled state and tooltip reason for the Send button
-  const sendDisabled = isSending || selectedMailboxIds.length === 0 || !selectedType || (showMoreOptions && isScheduled && !(scheduleDay1 || scheduleDay2 || scheduleDay3))
+  const sendDisabled = isSending || selectedMailboxIds.length === 0 || !selectedType || (isScheduled && !scheduledDate)
   const sendDisabledReason = (() => {
     if (isSending) return ''
     if (selectedMailboxIds.length === 0) return 'Please select at least one mailbox.'
     if (!selectedType) return 'Please select a type (content or template).'
-    if (showMoreOptions && isScheduled && !(scheduleDay1 || scheduleDay2 || scheduleDay3)) return 'Please select at least one day to schedule the send.'
+    if (isScheduled && !scheduledDate) return 'Please select a date to schedule the send.'
     return ''
   })()
   const [showMailboxSelector, setShowMailboxSelector] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
-  const selectorRef = React.useRef<HTMLDivElement>(null)
   const [selectedEmails, setSelectedEmails] = React.useState<number[]>([])
   const [selectedCompanies, setSelectedCompanies] = React.useState<number[]>([])
   const [isDisassociating, setIsDisassociating] = React.useState(false)
@@ -108,6 +81,7 @@ export default function CampaignDetailPage() {
   const [availableCompanies, setAvailableCompanies] = React.useState<any[]>([])
   const [currentPage, setCurrentPage] = React.useState(1)
   const [currentCompanyPage, setCurrentCompanyPage] = React.useState(1)
+  const processingDispatches = useSelector((state: RootState) => state.processingDispatches.dispatches)
   
   // Filter emails that are not already in the campaign
   React.useEffect(() => {
@@ -291,11 +265,8 @@ export default function CampaignDetailPage() {
       setSendError("")
       setShowMailboxSelector(false)
       // reset scheduling UI when modal opens
-      setShowMoreOptions(false)
       setIsScheduled(false)
-      setScheduleDay1("")
-      setScheduleDay2("")
-      setScheduleDay3("")
+      setScheduledDate("")
       setSearchQuery("")
     }
   }, [sendModalOpen, dispatch])
@@ -312,28 +283,57 @@ export default function CampaignDetailPage() {
     setSendError("")
     setIsSending(true)
     setSendSuccess(false)
-    // If scheduling is enabled, ensure at least one day is selected
-    if (isScheduled && !(scheduleDay1 || scheduleDay2 || scheduleDay3)) {
+    // If scheduling is enabled, ensure a date is selected
+    if (isScheduled && !scheduledDate) {
       setIsSending(false)
-      setSendError("Please select at least one day to schedule the send.")
+      setSendError("Please select a date to schedule the send.")
       return
     }
     const result = await dispatch(handleSendDispatch(
       campaign.dispatch_id,
-      undefined,
       selectedMailboxIds,
-      selectedType,
+      selectedType as "content" | "template",
       isScheduled,
-      scheduleDay1 || undefined,
-      scheduleDay2 || undefined,
-      scheduleDay3 || undefined,
+      scheduledDate || undefined
     ) as any)
+    
     setIsSending(false)
-    if (result && result.success) {
+    
+    // Check if response has token (async processing)
+    if (result && result.data && result.data.token) {
+      // Async dispatch sending - add to processing queue
+      const processingDispatch = {
+        id: campaign.dispatch_id,
+        campaignId: campaignId,
+        token: result.data.token,
+        status: isScheduled ? "scheduled" as const : "processing" as const,
+        startedAt: Date.now(),
+        mailboxIds: selectedMailboxIds,
+        dispatchType: selectedType as "content" | "template",
+        isScheduled,
+        scheduledDate: scheduledDate,
+        recipientsCount: result.data.recipients_count
+      }
+      
+      dispatch(addDispatch(processingDispatch))
+      dispatch(pollDispatchStatus(campaignId) as any)
+      
+      // Show success toast for starting the dispatch
+      const message = isScheduled 
+        ? `📅 Campaign scheduled for ${scheduledDate}! Sending to ${result.data.recipients_count || selectedMailboxIds.length} recipient(s)...`
+        : `✉️ Email dispatch started! Sending emails from ${selectedMailboxIds.length} mailbox${selectedMailboxIds.length !== 1 ? 'es' : ''}...`
+      showNotification('success', message)
+      
+      // Close modal immediately - no loading state
+      setSendModalOpen(false)
+      // Banner will handle polling and redirect when backend is done
+    } else if (result && result.success) {
+      // Sync response (200 OK) - show success and redirect
       setSendSuccess(true)
       setTimeout(() => {
         setSendModalOpen(false)
         setSendSuccess(false)
+        router.push("/sent-emails")
       }, 1800)
     } else {
       setSendError(result?.error || "Failed to send dispatch.")
@@ -949,225 +949,27 @@ export default function CampaignDetailPage() {
               </AccordionItem>
             </Accordion>
             )}
-            <Dialog open={sendModalOpen} onOpenChange={setSendModalOpen}>
-              <DialogContent className="w-[95vw] max-w-[560px] rounded-xl border shadow-2xl flex flex-col max-h-[85vh]">
-                  <DialogHeader>
-                  <DialogTitle className="text-lg sm:text-xl">Send Campaign</DialogTitle>
-                </DialogHeader>
-                  <div className="flex-1 overflow-auto flex flex-col gap-4 min-h-[120px]">
-                  {!isSending && !sendSuccess && (
-                    <div className="rounded-lg bg-gradient-to-r from-primary/10 to-purple-200/20 p-4 border">
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center">
-                          <Send className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="text-sm font-semibold">Finalize and send your campaign</div>
-                          <div className="text-xs text-muted-foreground">Choose mailboxes, select content type, and launch</div>
-                        </div>
-                        <div className="hidden sm:flex items-center gap-2 text-xs">
-                          <span className="px-2 py-1 rounded-full bg-background border">1. Mailboxes</span>
-                          <span className="px-2 py-1 rounded-full bg-background border">2. Type</span>
-                          <span className="px-2 py-1 rounded-full bg-background border">3. Send</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {isSending ? (
-                    <div className="flex flex-col items-center justify-center py-8">
-                      <Loader2 className="animate-spin w-10 h-10 text-primary mb-2" />
-                      <div className="text-primary font-semibold">{isScheduled ? 'Scheduling your campaign…' : 'Sending your campaign…'}</div>
-                      <div className="text-xs text-muted-foreground">{isScheduled ? 'Queueing the send according to selected weekday(s).' : 'Distributing messages across selected mailboxes'}</div>
-                    </div>
-                  ) : sendSuccess ? (
-                    <div className="flex flex-col items-center justify-center py-8 animate-fade-in">
-                      <CheckCircle2 className="w-12 h-12 text-green-500 mb-2 animate-pop" />
-                      <div className="text-green-600 font-semibold text-lg">{isScheduled ? 'Send scheduled' : 'Emails sent successfully!'}</div>
-                      {isScheduled && (
-                        <div className="text-sm text-muted-foreground mt-1">Your campaign was scheduled for the selected weekday(s).</div>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      <div className="bg-muted/40 rounded-lg p-3 border">
-                        <label className="block mb-1 font-medium">Select Mailboxes</label>
-                        {isMailboxesLoading ? (
-                          <div>Loading mailboxes...</div>
-                        ) : (
-                          <div className="relative" ref={selectorRef}>
-                            <div 
-                              className="w-full border rounded px-3 py-2 min-h-10 flex flex-wrap gap-2 cursor-pointer items-center"
-                              onClick={() => setShowMailboxSelector(!showMailboxSelector)}
-                            >
-                              {selectedMailboxIds.length === 0 ? (
-                                <span className="text-muted-foreground">Select mailboxes...</span>
-                              ) : (
-                                selectedMailboxIds.slice(0, 2).map(mailboxId => {
-                                  const mailbox = mailboxes.find((mb: any) => mb.id === mailboxId)
-                                  return mailbox ? (
-                                    <Badge key={mailbox.id} className="flex items-center gap-1">
-                                      {mailbox.email} ({mailbox.provider})
-                                      <button 
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          setSelectedMailboxIds(selectedMailboxIds.filter(id => id !== mailbox.id))
-                                        }}
-                                        className="ml-1 hover:text-destructive"
-                                      >
-                                        ×
-                                      </button>
-                                    </Badge>
-                                  ) : null
-                                })
-                              )}
-                              {selectedMailboxIds.length > 2 && (
-                                <Badge variant="outline" className="text-xs">
-                                  +{selectedMailboxIds.length - 2} more
-                                </Badge>
-                              )}
-                            </div>
-                            
-                            {showMailboxSelector && (
-                              <div className="absolute z-10 mt-1 w-full bg-card border rounded shadow-lg p-2 max-h-60 overflow-y-auto">
-                                <input
-                                  type="text"
-                                  placeholder="Search mailboxes..."
-                                  className="w-full p-2 mb-2 border rounded"
-                                  value={searchQuery}
-                                  onChange={(e) => setSearchQuery(e.target.value)}
-                                  onClick={(e) => e.stopPropagation()}
-                                />
-                                <div className="space-y-1">
-                                  {mailboxes
-                                    .filter((mb: any) => 
-                                      mb.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                      mb.provider.toLowerCase().includes(searchQuery.toLowerCase())
-                                    )
-                                    .map((mb: any) => (
-                                      <div 
-                                        key={mb.id} 
-                                        className="flex items-center p-2 hover:bg-accent rounded cursor-pointer"
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          setSelectedMailboxIds(prev => 
-                                            prev.includes(mb.id)
-                                              ? prev.filter(id => id !== mb.id)
-                                              : [...prev, mb.id]
-                                          )
-                                        }}
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={selectedMailboxIds.includes(mb.id)}
-                                          className="mr-2 h-4 w-4"
-                                          onChange={() => {}} // Required for React controlled component
-                                        />
-                                        <span>{mb.email} ({mb.provider})</span>
-                                      </div>
-                                    ))}
-                                </div>
-                              </div>
-                            )}
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {selectedMailboxIds.length} mailbox{selectedMailboxIds.length !== 1 ? 'es' : ''} selected · Load-balanced sending for deliverability
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      {campaign?.latest_email_content_id || campaign?.latest_email_template_id ? (
-                        <div className="bg-muted/40 rounded-lg p-3 border">
-                          <label className="block mb-1 font-medium">Type</label>
-                          <select
-                            className="w-full border rounded px-3 py-2"
-                            value={selectedType}
-                            onChange={e => setSelectedType(e.target.value as "content" | "template")}
-                          >
-                            <option value="">Select type...</option>
-                            {campaign?.latest_email_content_id && (
-                              <option value="content">Content (plain text)</option>
-                            )}
-                            {campaign?.latest_email_template_id && (
-                              <option value="template">Template (HTML)</option>
-                            )}
-                          </select>
-                          <p className="text-xs text-muted-foreground mt-1">Templates are styled HTML; content is simple, personal text.</p>
-                        </div>
-                      ) : (
-                        <Alert variant="destructive">
-                          <AlertTriangle className="h-4 w-4" />
-                          <AlertTitle>No content available</AlertTitle>
-                          <AlertDescription>
-                            Please create or assign content or a template to this campaign before sending.
-                          </AlertDescription>
-                        </Alert>
-                      )}
-                      {/* More options: scheduling - only for non-sequence campaigns */}
-                      {!campaign?.is_sequence && (
-                        <div className="mt-3">
-                          <button
-                            className="text-sm text-primary hover:underline"
-                            onClick={() => setShowMoreOptions(prev => !prev)}
-                          >
-                            {showMoreOptions ? 'Hide more options' : 'More options'}
-                          </button>
-                          {showMoreOptions && (
-                            <div className="mt-2 bg-muted/30 border rounded p-3 space-y-2">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <input type="checkbox" id="schedule-toggle" checked={isScheduled} onChange={e => setIsScheduled(e.target.checked)} />
-                                  <label htmlFor="schedule-toggle" className="text-sm font-medium">Schedule this send</label>
-                                </div>
-                                <div className="text-xs text-muted-foreground">Optional</div>
-                              </div>
-                              {isScheduled && (
-                                <div className="w-full">
-                                  <select className="w-full border rounded px-2 py-1" value={scheduleDay1} onChange={e => setScheduleDay1(e.target.value)}>
-                                    <option value="">Select day...</option>
-                                    {weekdays.map(d => (
-                                      <option key={d.value} value={d.value}>{d.label}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              )}
-                              <div className="text-xs text-muted-foreground">If scheduled, the send will be queued and dispatched on the chosen weekday.</div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {sendError && (
-                        <div className="flex items-center gap-2 text-red-600 text-sm mt-2 animate-fade-in">
-                          <XCircle className="w-5 h-5" />
-                          <span>{sendError}</span>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-                {!isSending && !sendSuccess && (
-                  <DialogFooter className="mt-2">
-                    <Button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSendModal();
-                      }} 
-                      disabled={sendDisabled}
-                      title={sendDisabledReason}
-                      className="gap-2"
-                    >
-                      <Send className="h-4 w-4" />
-                      {showMoreOptions && isScheduled ? 'Schedule Send' : 'Send Campaign Now'}
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setSendModalOpen(false)} 
-                      disabled={isSending}
-                    >
-                      Cancel
-                    </Button>
-                  </DialogFooter>
-                )}
-              </DialogContent>
-            </Dialog>
+            <SendCampaignDialog
+              open={sendModalOpen}
+              onOpenChange={setSendModalOpen}
+              campaign={campaign}
+              selectedMailboxIds={selectedMailboxIds}
+              onMailboxChange={setSelectedMailboxIds}
+              selectedType={selectedType}
+              onTypeChange={setSelectedType}
+              isScheduled={isScheduled}
+              onScheduledChange={setIsScheduled}
+              scheduledDate={scheduledDate}
+              onScheduledDateChange={setScheduledDate}
+              isSending={isSending}
+              sendSuccess={sendSuccess}
+              sendError={sendError}
+              mailboxes={mailboxes}
+              isMailboxesLoading={isMailboxesLoading}
+              onSend={handleSendModal}
+              sendDisabled={sendDisabled}
+              sendDisabledReason={sendDisabledReason}
+            />
           </CardContent>
         </Card>
       </div>

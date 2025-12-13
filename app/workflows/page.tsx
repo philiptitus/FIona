@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useCallback } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import MainLayout from "@/components/layout/main-layout"
 import type { AppDispatch } from "@/store/store"
@@ -19,7 +19,16 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/components/ui/use-toast"
 import MailLoader from "@/components/MailLoader"
-import { Trash2, Edit, Plus, AlertCircle, CheckCircle2, Copy } from "lucide-react"
+import { Trash2, Edit, Plus, AlertCircle, CheckCircle2, Copy, Search } from "lucide-react"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import WorkflowForm from "./components/WorkflowForm"
 import WorkflowList from "./components/WorkflowList"
 import TagManager from "./components/TagManager"
@@ -35,10 +44,28 @@ export default function WorkflowsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(10)
+
+  const fetchWorkflowsWithParams = useCallback(async () => {
+    await dispatch(
+      handleFetchWorkflows({
+        page: currentPage,
+        pageSize,
+        search: searchQuery || undefined,
+      })
+    )
+  }, [dispatch, currentPage, pageSize, searchQuery])
 
   useEffect(() => {
-    dispatch(handleFetchWorkflows())
-  }, [dispatch])
+    fetchWorkflowsWithParams()
+  }, [fetchWorkflowsWithParams])
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query)
+    setCurrentPage(1) // Reset to first page when searching
+  }
 
   const handleCreateWorkflowSubmit = async (data: any) => {
     const result = await dispatch(handleCreateWorkflow(data))
@@ -162,6 +189,19 @@ export default function WorkflowsPage() {
         <p className="text-muted-foreground">Create and manage AI workflows for smart campaigns. Use tags like name to personalize prompts.</p>
       </div>
 
+      {/* Search Bar */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search workflows by name..."
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
+
       {/* Action Bar */}
       <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
         <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
@@ -191,16 +231,76 @@ export default function WorkflowsPage() {
           <MailLoader />
         </div>
       ) : workflowsState.workflows.length > 0 ? (
-        <div className="bg-card rounded-lg border">
-          <WorkflowList
-            workflows={workflowsState.workflows}
-            selectedWorkflows={selectedWorkflows}
-            onToggleSelect={toggleWorkflowSelection}
-            onToggleSelectAll={toggleSelectAll}
-            onEdit={setEditingWorkflow}
-            onDelete={handleDeleteSingle}
-          />
-        </div>
+        <>
+          <div className="bg-card rounded-lg border">
+            <WorkflowList
+              workflows={workflowsState.workflows}
+              selectedWorkflows={selectedWorkflows}
+              onToggleSelect={toggleWorkflowSelection}
+              onToggleSelectAll={toggleSelectAll}
+              onEdit={setEditingWorkflow}
+              onDelete={handleDeleteSingle}
+            />
+          </div>
+
+          {/* Pagination */}
+          {workflowsState.totalCount > pageSize && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, workflowsState.totalCount)} of {workflowsState.totalCount} workflows
+              </p>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+
+                  {Array.from({ length: Math.ceil(workflowsState.totalCount / pageSize) }, (_, i) => i + 1).map((page) => {
+                    const totalPages = Math.ceil(workflowsState.totalCount / pageSize)
+                    const isNearCurrent = Math.abs(page - currentPage) <= 1
+                    const isFirstOrLast = page === 1 || page === totalPages
+
+                    if (!isNearCurrent && !isFirstOrLast) {
+                      if (page === 2 && currentPage > 3) return <PaginationEllipsis key={page} />
+                      if (page === totalPages - 1 && currentPage < totalPages - 2) return <PaginationEllipsis key={page} />
+                      return null
+                    }
+
+                    return (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(page)}
+                          isActive={currentPage === page}
+                          className="cursor-pointer"
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    )
+                  })}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() =>
+                        setCurrentPage((prev) =>
+                          Math.min(prev + 1, Math.ceil(workflowsState.totalCount / pageSize))
+                        )
+                      }
+                      className={
+                        currentPage >= Math.ceil(workflowsState.totalCount / pageSize)
+                          ? "pointer-events-none opacity-50"
+                          : "cursor-pointer"
+                      }
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
+        </>
       ) : (
         <div className="flex flex-col items-center justify-center p-12 bg-card rounded-lg border border-dashed gap-4">
           <div className="text-center">

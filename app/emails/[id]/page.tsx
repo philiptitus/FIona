@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RootState, AppDispatch } from "@/store/store"
 import { handleDeleteEmail, handleFetchEmails } from "@/store/actions/emailActions"
+import { handleStartResearch } from "@/store/actions/researchActions"
 import React, { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -15,19 +16,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Mail, Phone, Building2, Globe, Linkedin, Facebook, Twitter, User, MapPin, CheckCircle2, Eye, XCircle, Reply, Sparkles } from "lucide-react"
 import EditEmailDialog from "@/components/emails/EditEmailDialog"
+import ResearchConfirmationModal from "@/components/research/ResearchConfirmationModal"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function EmailDetailPage() {
   const params = useParams()
   const router = useRouter()
   const dispatch = useDispatch<AppDispatch>()
+  const { toast } = useToast()
   const { emails, isLoading } = useSelector((state: RootState) => state.emails)
   const emailId = Number(params.id)
   const email = emails.find(e => e.id === emailId)
   const [showEditDialog, setShowEditDialog] = useState(false)
+  const [showResearchModal, setShowResearchModal] = useState(false)
+  const [researchLoading, setResearchLoading] = useState(false)
 
   useEffect(() => {
     if (!email) {
       dispatch(handleFetchEmails())
+
     }
   }, [email, dispatch])
 
@@ -133,6 +140,23 @@ export default function EmailDetailPage() {
               </TabsContent>
             </Tabs>
             <div className="flex gap-2 mt-8 justify-end">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => setShowResearchModal(true)}
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      Generate Research & Email
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Use AI to research this contact and generate a personalized email
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <Button onClick={() => setShowEditDialog(true)}>Edit</Button>
               <Button variant="destructive" onClick={async () => {
                 await dispatch(handleDeleteEmail(emailId))
@@ -140,6 +164,48 @@ export default function EmailDetailPage() {
               }}>Delete</Button>
             </div>
             <EditEmailDialog open={showEditDialog} onOpenChange={setShowEditDialog} email={email} onSuccess={() => dispatch(handleFetchEmails())} />
+
+            <ResearchConfirmationModal
+              open={showResearchModal}
+              onOpenChange={setShowResearchModal}
+              contactName={email?.first_name ? `${email.first_name} ${email.last_name || ""}` : email?.organization_name || "Contact"}
+              contactType="emaillist"
+              isLoading={researchLoading}
+              onConfirm={async () => {
+                setResearchLoading(true)
+                try {
+                  const result = await dispatch(
+                    handleStartResearch({
+                      contact_id: emailId,
+                      contact_type: "emaillist",
+                    })
+                  )
+                  if (result.success) {
+                    setShowResearchModal(false)
+                    toast({
+                      title: "✨ Research Started!",
+                      description: `AI is researching ${email?.first_name || "this contact"}. You'll be notified when ready.`,
+                    })
+                    router.push("/dashboard")
+                  } else {
+                    toast({
+                      title: "Error",
+                      description: result.error || "Failed to start research",
+                      variant: "destructive",
+                    })
+                  }
+                } catch (error: any) {
+                  toast({
+                    title: "Error",
+                    description: error.message || "Failed to start research",
+                    variant: "destructive",
+                  })
+                } finally {
+                  setResearchLoading(false)
+                }
+              }}
+            />
+
           </CardContent>
         </Card>
       </div>

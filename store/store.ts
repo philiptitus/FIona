@@ -18,6 +18,8 @@ import workflowReducer from "./slices/workflowSlice"
 import linksReducer from "./slices/linksSlice"
 import companyReducer from "./slices/companySlice"
 import processingCampaignsReducer from "./slices/processingCampaignsSlice"
+import processingDispatchesReducer from "./slices/processingDispatchesSlice"
+import researchReducer from "./slices/researchSlice"
 
 // Define root state type
 type RootState = {
@@ -39,6 +41,8 @@ type RootState = {
   links: ReturnType<typeof linksReducer>
   companies: ReturnType<typeof companyReducer>
   processingCampaigns: ReturnType<typeof processingCampaignsReducer>
+  processingDispatches: ReturnType<typeof processingDispatchesReducer>
+  research: ReturnType<typeof researchReducer>
 }
 
 // Create root reducer with proper typing
@@ -61,6 +65,8 @@ const rootReducer: ReducersMapObject<RootState> = {
   links: linksReducer,
   companies: companyReducer,
   processingCampaigns: processingCampaignsReducer,
+  processingDispatches: processingDispatchesReducer,
+  research: researchReducer,
 }
 
 // Define app dispatch type with thunk support

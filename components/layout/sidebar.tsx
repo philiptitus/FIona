@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, FileText, Home, LayoutTemplate, Mail, MailPlus, Send, Settings, Users, Building2, Workflow, Inbox } from "lucide-react"
+import { BarChart3, FileText, Home, LayoutTemplate, Mail, MailPlus, Send, Settings, Users, Building2, Workflow, Inbox, Sparkles } from "lucide-react"
 
 interface SidebarProps {
   isMobile?: boolean
@@ -68,6 +68,11 @@ export default function Sidebar({ isMobile, onNavClick }: SidebarProps) {
       name: "Workflows",
       href: "/workflows",
       icon: Workflow,
+    },
+    {
+      name: "Research",
+      href: "/research",
+      icon: Sparkles,
     },
     {
       name: "Sent",

@@ -71,46 +71,33 @@ export const sendDispatch = createAsyncThunk(
   async (
     { 
       dispatchId, 
-      mailboxId, 
       mailboxIds,
       type,
       isScheduled,
-      scheduleDay1,
-      scheduleDay2,
-      scheduleDay3
+      scheduledDate
     }: { 
       dispatchId: number; 
-      mailboxId?: number; 
-      mailboxIds?: number[];
+      mailboxIds: number[];
       type: "content" | "template";
       isScheduled?: boolean;
-      scheduleDay1?: string;
-      scheduleDay2?: string;
-      scheduleDay3?: string;
+      scheduledDate?: string;
     },
     { rejectWithValue }
   ) => {
     try {
-      const payload: any = { type }
-      
-      // Support both single mailbox_id and mailbox_ids for backward compatibility
-      if (mailboxIds && mailboxIds.length > 0) {
-        payload.mailbox_ids = mailboxIds
-      } else if (mailboxId) {
-        payload.mailbox_id = mailboxId
-      } else {
-        throw new Error('Either mailboxId or mailboxIds must be provided')
+      const payload: any = {
+        mailbox_ids: mailboxIds,
+        type
       }
       
       // Add scheduling fields if scheduling is enabled
-      if (isScheduled) {
+      if (isScheduled && scheduledDate) {
         payload.is_scheduled = true
-        if (scheduleDay1) payload.schedule_day_1 = scheduleDay1
-        if (scheduleDay2) payload.schedule_day_2 = scheduleDay2
-        if (scheduleDay3) payload.schedule_day_3 = scheduleDay3
+        payload.scheduled_date = scheduledDate
       }
       
       const response = await api.post(`/mail/dispatches/${dispatchId}/send/`, payload)
+      // Return response data which includes token, status, dispatch_id, recipients_count
       return response.data
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error || error.message || "Failed to send dispatch")
@@ -213,34 +200,28 @@ export const handleVerifyDispatch = (dispatchId: number) => async (dispatch: App
 
 export const handleSendDispatch = (
   dispatchId: number, 
-  mailboxId?: number, 
-  mailboxIds?: number[],
-  type?: "content" | "template",
+  mailboxIds: number[],
+  type: "content" | "template",
   isScheduled?: boolean,
-  scheduleDay1?: string,
-  scheduleDay2?: string,
-  scheduleDay3?: string
+  scheduledDate?: string
 ) => async (dispatch: AppDispatch) => {
   dispatch(sendDispatchStart())
   try {
-    // Ensure either mailboxId or mailboxIds is provided
-    if (!mailboxId && (!mailboxIds || mailboxIds.length === 0)) {
-      throw new Error('Either mailboxId or mailboxIds must be provided')
+    if (!mailboxIds || mailboxIds.length === 0) {
+      throw new Error('mailboxIds must be provided')
     }
     
     const resultAction = await dispatch(sendDispatch({ 
       dispatchId, 
-      ...(mailboxId && { mailboxId }),
-      ...(mailboxIds && mailboxIds.length > 0 && { mailboxIds }),
-      type: type || 'content', // Default to 'content' if not provided
-      ...(isScheduled && { isScheduled }),
-      ...(scheduleDay1 && { scheduleDay1 }),
-      ...(scheduleDay2 && { scheduleDay2 }),
-      ...(scheduleDay3 && { scheduleDay3 })
+      mailboxIds,
+      type,
+      isScheduled,
+      scheduledDate
     } as any))
     
     if (sendDispatch.fulfilled.match(resultAction)) {
       dispatch(sendDispatchSuccess(resultAction.payload))
+      // Return the full response which includes token, dispatch_id, status, recipients_count
       return { success: true, data: resultAction.payload }
     } else {
       dispatch(sendDispatchFailure(resultAction.payload as string))

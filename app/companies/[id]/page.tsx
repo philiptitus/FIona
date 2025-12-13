@@ -13,14 +13,19 @@ import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, Building2, CheckCircle2, AlertCircle, Loader2, XCircle } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { ArrowLeft, Building2, CheckCircle2, AlertCircle, Loader2, XCircle, Sparkles } from "lucide-react"
 import type { RootState, AppDispatch } from "@/store/store"
 import { handleFetchCompanyById, handleUpdateCompany, handleDeleteCompany } from "@/store/actions/companyActions"
+import { handleStartResearch } from "@/store/actions/researchActions"
+import { useToast } from "@/components/ui/use-toast"
+import ResearchConfirmationModal from "@/components/research/ResearchConfirmationModal"
 
 export default function CompanyDetailPage() {
   const dispatch = useDispatch<AppDispatch>()
   const router = useRouter()
   const params = useParams()
+  const { toast } = useToast()
   const companyId = Number(params.id)
 
   const currentCompany = useSelector((state: RootState) => state.companies.currentCompany)
@@ -32,6 +37,8 @@ export default function CompanyDetailPage() {
   const [updateSuccess, setUpdateSuccess] = useState(false)
   const [updateError, setUpdateError] = useState("")
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [showResearchModal, setShowResearchModal] = useState(false)
+  const [researchLoading, setResearchLoading] = useState(false)
 
   const [form, setForm] = useState<any>({
     company_name: "",
@@ -222,6 +229,23 @@ export default function CompanyDetailPage() {
           <div className="flex gap-2">
             {!isEditing && (
               <>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={() => setShowResearchModal(true)}
+                        variant="outline"
+                        className="gap-2"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        Generate Research & Email
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Use AI to research this company and generate a personalized email
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 <Button variant="outline" onClick={() => setIsEditing(true)}>
                   Edit
                 </Button>
@@ -760,7 +784,49 @@ export default function CompanyDetailPage() {
             </TabsContent>
           </Tabs>
         )}
+
+        <ResearchConfirmationModal
+          open={showResearchModal}
+          onOpenChange={setShowResearchModal}
+          contactName={currentCompany.company_name}
+          contactType="company"
+          isLoading={researchLoading}
+          onConfirm={async () => {
+            setResearchLoading(true)
+            try {
+              const result = await dispatch(
+                handleStartResearch({
+                  contact_id: companyId,
+                  contact_type: "company",
+                })
+              )
+              if (result.success) {
+                setShowResearchModal(false)
+                toast({
+                  title: "✨ Research Started!",
+                  description: `AI is researching ${currentCompany.company_name}. You'll be notified when ready.`,
+                })
+                router.push("/dashboard")
+              } else {
+                toast({
+                  title: "Error",
+                  description: result.error || "Failed to start research",
+                  variant: "destructive",
+                })
+              }
+            } catch (error: any) {
+              toast({
+                title: "Error",
+                description: error.message || "Failed to start research",
+                variant: "destructive",
+              })
+            } finally {
+              setResearchLoading(false)
+            }
+          }}
+        />
       </div>
     </MainLayout>
   )
 }
+
