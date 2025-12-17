@@ -2,8 +2,8 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useRef } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import MainLayout from "@/components/layout/main-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,12 +17,14 @@ import { useToast } from "@/components/ui/use-toast"
 import { useDispatch, useSelector } from "react-redux"
 import { createSmartCampaign } from "@/store/actions/campaignActions"
 import { handleFetchLinks } from "@/store/actions/linksActions"
+import { handleFetchWorkflows } from "@/store/actions/workflowActions"
 import type { AppDispatch, RootState } from "@/store/store"
 import MailLoader from '@/components/MailLoader'
 import WorkflowPicker from '@/components/WorkflowPicker'
 import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
 import { addProcessingCampaign } from "@/store/slices/processingCampaignsSlice"
+import { useDraftCampaign } from "@/hooks/use-draft-campaign"
 
 export default function SmartCampaignPage() {
   const [campaignName, setCampaignName] = useState("")
@@ -40,8 +42,20 @@ export default function SmartCampaignPage() {
   const [allowSequence, setAllowSequence] = useState(false)
   const [selectedDynamicVariables, setSelectedDynamicVariables] = useState<string[]>([])
   const [copies, setCopies] = useState(1)
+  const [isLoadingDraft, setIsLoadingDraft] = useState(true)
+  const [isLoadingInitial, setIsLoadingInitial] = useState(true)
+  
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const saveDebounceRef = useRef<NodeJS.Timeout | null>(null)
+  const draftLoadedRef = useRef<boolean>(false)
   
   const { links } = useSelector((state: RootState) => state.links)
+  const workflowsState = useSelector((state: any) => state.workflows)
+  const auth = useSelector((state: RootState) => state.auth)
+  const userId = auth.user?.id?.toString()
+  
+  const draftCampaign = useDraftCampaign({ userId })
 
   const AVAILABLE_DYNAMIC_VARIABLES = [
     { value: 'organization_name', label: 'Organization Name' },
@@ -127,13 +141,44 @@ export default function SmartCampaignPage() {
     }
   }, [isTextareaFocused])
 
-  const router = useRouter()
+  // Load draft on page mount if draftId provided in search params
+  useEffect(() => {
+    if (!userId || draftLoadedRef.current) {
+      setIsLoadingDraft(false)
+      setIsLoadingInitial(false)
+      return
+    }
+
+    const draftId = searchParams.get("draftId")
+    
+    if (draftId) {
+      // Load existing draft
+      const draft = draftCampaign.loadDraft(draftId)
+      if (draft) {
+        draftLoadedRef.current = true
+        setCampaignName(draft.campaignName)
+        setCampaignType(draft.campaignType)
+        setContentPreference(draft.contentPreference)
+        setRecipientType(draft.recipientType)
+        setGenerateEmailLists(draft.generateEmailLists)
+        setAllowSequence(draft.allowSequence)
+        setCopies(draft.copies)
+        setSelectedLinks(draft.selectedLinks)
+        setSelectedDynamicVariables(draft.selectedDynamicVariables)
+      }
+    }
+    
+    setIsLoadingDraft(false)
+    setIsLoadingInitial(false)
+  }, [userId])
+
   const { toast } = useToast()
   const dispatch = useDispatch<AppDispatch>()
   
   useEffect(() => {
     dispatch(handleFetchLinks() as any)
-  }, [])
+    dispatch(handleFetchWorkflows() as any)
+  }, [dispatch])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -205,6 +250,9 @@ export default function SmartCampaignPage() {
             retryCount: 0,
           }))
           
+          // Delete draft after successful submission
+          handleDeleteDraftAfterSuccess()
+          
           // Show success toast for starting the process
           toast({
             title: "✨ Campaign Creation Started!",
@@ -238,6 +286,9 @@ export default function SmartCampaignPage() {
           title: "Smart campaign created",
           description: "Your AI-powered campaign has been created successfully. You can click on 'View Template' or 'View Content' to visit your email and customize.",
         })
+
+        // Delete draft after successful submission
+        handleDeleteDraftAfterSuccess()
 
         if (campaignId) {
           // Navigate to the newly created campaign's detail page when id is available
@@ -274,6 +325,41 @@ export default function SmartCampaignPage() {
     if (e.target.files && e.target.files[0]) {
       setImage(e.target.files[0])
     }
+  }
+
+  /**
+   * Auto-save draft to localStorage with debouncing
+   * Called on field blur to persist form state
+   */
+  const handleAutoSaveDraft = () => {
+    if (!userId || isLoadingInitial) return
+
+    // Clear existing debounce timer
+    if (saveDebounceRef.current) {
+      clearTimeout(saveDebounceRef.current)
+    }
+
+    // Set new debounce timer - save immediately after user leaves field
+    saveDebounceRef.current = setTimeout(() => {
+      draftCampaign.saveDraftData({
+        campaignName,
+        campaignType,
+        contentPreference: contentPreference as any,
+        recipientType: recipientType as any,
+        generateEmailLists,
+        allowSequence,
+        copies,
+        selectedLinks,
+        selectedDynamicVariables,
+      })
+    }, 300) // Small debounce to catch rapid field changes
+  }
+
+  /**
+   * Handle successful submit - delete draft after backend confirms
+   */
+  const handleDeleteDraftAfterSuccess = () => {
+    draftCampaign.deleteDraftData()
   }
 
   return (
@@ -313,6 +399,7 @@ export default function SmartCampaignPage() {
                   placeholder="Enter a name for your campaign"
                   value={campaignName}
                   onChange={(e) => setCampaignName(e.target.value)}
+                  onBlur={handleAutoSaveDraft}
                   required
                 />
               </div>
@@ -325,20 +412,42 @@ export default function SmartCampaignPage() {
                   value={campaignType}
                   onChange={(e) => setCampaignType(e.target.value)}
                   onFocus={() => setIsTextareaFocused(true)}
-                  onBlur={() => setIsTextareaFocused(false)}
+                  onBlur={() => {
+                    setIsTextareaFocused(false)
+                    handleAutoSaveDraft()
+                  }}
                   rows={3}
                   required
                 />
-                <p className="text-sm text-muted-foreground">
-                  Be specific about your campaign goals and target audience for better AI-generated content.
-                </p>
+                {workflowsState?.workflows?.length === 0 ? (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <p className="text-sm text-amber-900 dark:text-amber-200 mb-2">
+                      💡 <strong>Tip:</strong> Create reusable workflows to save time on future campaigns. Workflows let you define prompt templates that can be applied instantly.
+                    </p>
+                    <Link href="/workflows" className="text-sm text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200 underline font-medium">
+                      Create your first workflow →
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <p className="text-sm text-blue-900 dark:text-blue-200 mb-2">
+                      ✨ You have workflows available! Click <strong>"Suggested workflows"</strong> above to apply one of your saved templates, or describe your campaign goals below for a custom prompt.
+                    </p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
+                      Be specific about your campaign goals and target audience for better AI-generated content.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label>Content Preference</Label>
                 <RadioGroup
                   value={contentPreference}
-                  onValueChange={setContentPreference}
+                  onValueChange={(value) => {
+                    setContentPreference(value)
+                    handleAutoSaveDraft()
+                  }}
                   className="flex flex-col space-y-1"
                 >
                   <div className="flex items-center space-x-2">
@@ -360,7 +469,10 @@ export default function SmartCampaignPage() {
                 <Label>Recipient Type *</Label>
                 <RadioGroup
                   value={recipientType}
-                  onValueChange={setRecipientType}
+                  onValueChange={(value) => {
+                    setRecipientType(value)
+                    handleAutoSaveDraft()
+                  }}
                   className="flex flex-col space-y-1"
                 >
                   <div className="flex items-center space-x-2">
@@ -393,13 +505,27 @@ export default function SmartCampaignPage() {
                       {image && <p className="text-sm text-muted-foreground">Selected: {image.name}</p>}
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Switch id="generateEmailLists" checked={generateEmailLists} onCheckedChange={setGenerateEmailLists} />
+                      <Switch 
+                        id="generateEmailLists" 
+                        checked={generateEmailLists} 
+                        onCheckedChange={(value) => {
+                          setGenerateEmailLists(value)
+                          handleAutoSaveDraft()
+                        }} 
+                      />
                       <Label htmlFor="generateEmailLists">Allow Fiona to find potential leads relevant for this campaign</Label>
                     </div>
                     
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
-                        <Switch id="allowSequence" checked={allowSequence} onCheckedChange={setAllowSequence} />
+                        <Switch 
+                          id="allowSequence" 
+                          checked={allowSequence} 
+                          onCheckedChange={(value) => {
+                            setAllowSequence(value)
+                            handleAutoSaveDraft()
+                          }} 
+                        />
                         <Label htmlFor="allowSequence">Generate Email Sequence</Label>
                       </div>
                       <p className="text-sm text-muted-foreground ml-6">
@@ -437,7 +563,11 @@ export default function SmartCampaignPage() {
                           min="1"
                           max="10"
                           value={copies}
-                          onChange={(e) => setCopies(parseInt(e.target.value))}
+                          onChange={(e) => {
+                            setCopies(parseInt(e.target.value))
+                          }}
+                          onMouseUp={handleAutoSaveDraft}
+                          onTouchEnd={handleAutoSaveDraft}
                           className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                         />
                         <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-2">

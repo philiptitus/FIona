@@ -8,6 +8,7 @@ import { useIsMobileOrTablet } from "@/lib/useIsMobileOrTablet"
 import { GlobalCampaignProcessingBanner } from "@/components/campaigns/GlobalCampaignProcessingBanner"
 import GlobalDispatchProcessingBanner from "@/components/dispatches/GlobalDispatchProcessingBanner"
 import { GlobalResearchNotificationsBanner } from "@/components/research/GlobalResearchNotificationsBanner"
+import { GlobalResearchProcessingBanner } from "@/components/research/GlobalResearchProcessingBanner"
 
 interface MainLayoutProps {
   children: ReactNode
@@ -45,6 +46,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <GlobalCampaignProcessingBanner />
         {/* Global Dispatch Processing Banner */}
         <GlobalDispatchProcessingBanner />
+        {/* Global Research Processing Banner */}
+        <GlobalResearchProcessingBanner />
         {/* Global Research Notifications Banner */}
         <GlobalResearchNotificationsBanner />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-muted/30">{children}</main>

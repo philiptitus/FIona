@@ -19,6 +19,7 @@ import linksReducer from "./slices/linksSlice"
 import companyReducer from "./slices/companySlice"
 import processingCampaignsReducer from "./slices/processingCampaignsSlice"
 import processingDispatchesReducer from "./slices/processingDispatchesSlice"
+import processingResearchesReducer from "./slices/processingResearchesSlice"
 import researchReducer from "./slices/researchSlice"
 
 // Define root state type
@@ -42,6 +43,7 @@ type RootState = {
   companies: ReturnType<typeof companyReducer>
   processingCampaigns: ReturnType<typeof processingCampaignsReducer>
   processingDispatches: ReturnType<typeof processingDispatchesReducer>
+  processingResearches: ReturnType<typeof processingResearchesReducer>
   research: ReturnType<typeof researchReducer>
 }
 
@@ -66,6 +68,7 @@ const rootReducer: ReducersMapObject<RootState> = {
   companies: companyReducer,
   processingCampaigns: processingCampaignsReducer,
   processingDispatches: processingDispatchesReducer,
+  processingResearches: processingResearchesReducer,
   research: researchReducer,
 }
 

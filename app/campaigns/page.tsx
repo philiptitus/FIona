@@ -20,18 +20,37 @@ import { setCurrentPage, setSearchQuery, setRecipientTypeFilter } from "@/store/
 import { useToast } from "@/components/ui/use-toast"
 import type { RootState, AppDispatch } from "@/store/store"
 import { useRouter } from "next/navigation"
+import { deleteExpiredDrafts, getUserDrafts, deleteDraft, type DraftCampaign } from "@/lib/draftStorage"
 
 export default function CampaignsPage() {
   const [selectedCampaigns, setSelectedCampaigns] = useState<number[]>([])
   const [date, setDate] = useState<Date | undefined>(undefined)
   const [activeTab, setActiveTab] = useState("all")
   const [searchInput, setSearchInput] = useState("")
+  const [drafts, setDrafts] = useState<DraftCampaign[]>([])
 
   const dispatch = useDispatch<AppDispatch>()
   const { toast } = useToast()
   const router = useRouter()
 
   const { campaigns, isLoading, error, pagination, searchQuery, recipientTypeFilter } = useSelector((state: RootState) => state.campaigns)
+  const auth = useSelector((state: RootState) => state.auth)
+  const userId = auth.user?.id?.toString()
+
+  // Load and cleanup drafts on mount
+  useEffect(() => {
+    if (!userId) return
+
+    // Delete expired drafts first
+    const deletedCount = deleteExpiredDrafts(userId)
+    if (deletedCount > 0) {
+      console.log(`Cleaned up ${deletedCount} expired draft(s)`)
+    }
+
+    // Load remaining drafts
+    const userDrafts = getUserDrafts(userId)
+    setDrafts(userDrafts)
+  }, [userId])
 
   // Fetch campaigns on component mount and when search/pagination/filter changes
   useEffect(() => {
@@ -102,6 +121,21 @@ export default function CampaignsPage() {
         description: error || "Failed to delete campaign.",
       })
     }
+  }
+
+  const handleDeleteDraft = (draftId: string) => {
+    if (!userId) return
+
+    deleteDraft(userId, draftId)
+    setDrafts((prev) => prev.filter((d) => d.draftId !== draftId))
+    toast({
+      title: "Draft deleted",
+      description: "Your draft campaign has been removed.",
+    })
+  }
+
+  const handleEditDraft = (draft: DraftCampaign) => {
+    router.push(`/campaigns/smart-campaign?draftId=${draft.draftId}`)
   }
 
   const handleEdit = (campaign: any) => {
@@ -273,11 +307,11 @@ export default function CampaignsPage() {
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                       <p className="mt-4 text-muted-foreground">Loading campaigns...</p>
                     </div>
-                  ) : filteredCampaigns.length === 0 ? (
+                  ) : filteredCampaigns.length === 0 && drafts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12">
                       <p className="text-muted-foreground mb-4">No campaigns found</p>
                       <Button asChild>
-                        <Link href="/campaigns/new">
+                        <Link href="/campaigns/smart-campaign">
                           <Plus className="mr-2 h-4 w-4" />
                           Create Campaign
                         </Link>
@@ -285,56 +319,128 @@ export default function CampaignsPage() {
                     </div>
                   ) : (
                     <div className="divide-y">
-                      {filteredCampaigns.map((campaign) => {
-                        const status = getCampaignStatus(campaign)
-                        const isLatest = latestCampaign && campaign.id === latestCampaign.id
-                        return (
-                          <Card
-                            key={campaign.id}
-                            className="rounded-lg border bg-card shadow-sm hover:scale-[1.01] transition-all group cursor-pointer"
-                            onClick={() => router.push(`/campaigns/${campaign.id}`)}
-                          >
-                            <CardHeader className="flex flex-row items-start justify-between p-3 sm:p-6 pb-2 sm:pb-2">
-                              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 flex-1 min-w-0">
-                                <CardTitle className="text-sm sm:text-base truncate" title={campaign.name}>{campaign.name}</CardTitle>
-                                {isLatest && <Badge variant="default" className="text-xs w-fit">Latest</Badge>}
-                                {campaign.is_sequence && <Badge className="text-xs w-fit bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 border-green-300">Sequence</Badge>}
-                                {campaign.recipient_type && (
-                                  <Badge className={`text-xs w-fit ${getRecipientTypeBadge(campaign.recipient_type).className}`}>
-                                    {getRecipientTypeBadge(campaign.recipient_type).label}
+                      {/* Render Draft Campaigns First */}
+                      {drafts.length > 0 && (
+                        <>
+                          <div className="px-3 sm:px-6 py-3 bg-amber-50 dark:bg-amber-950/20 border-b border-amber-200 dark:border-amber-800">
+                            <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                              Draft Campaigns ({drafts.length})
+                            </h3>
+                            <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                              Not yet submitted to the backend
+                            </p>
+                          </div>
+                          {drafts.map((draft) => (
+                            <Card
+                              key={draft.draftId}
+                              className="rounded-none border-b-0 border-l-4 border-l-amber-400 bg-card shadow-none hover:bg-accent transition-colors group"
+                            >
+                              <CardHeader className="flex flex-row items-start justify-between p-3 sm:p-6 pb-2 sm:pb-2">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 flex-1 min-w-0">
+                                  <CardTitle className="text-sm sm:text-base truncate" title={draft.campaignName}>
+                                    {draft.campaignName || "Untitled Draft"}
+                                  </CardTitle>
+                                  <Badge variant="outline" className="text-xs w-fit bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300 border-amber-300">
+                                    Draft
                                   </Badge>
-                                )}
-                              </div>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="opacity-70 group-hover:opacity-100 h-8 w-8 sm:h-10 sm:w-10" onClick={(e) => e.stopPropagation()}>
-                                    <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => router.push(`/campaigns/${campaign.id}`)}>
-                                    <Eye className="mr-2 h-4 w-4" /> View
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEdit(campaign); }}>
-                                    <Edit className="mr-2 h-4 w-4" /> Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteSingle(campaign.id); }} className="text-destructive">
-                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </CardHeader>
-                            <CardContent className="p-3 sm:p-6 pt-0">
-                              <div className="text-muted-foreground text-xs sm:text-sm truncate max-w-full mb-1" title={campaign.description}>
-                                {campaign.description || "No description"}
-                              </div>
-                              <div className="text-muted-foreground text-xs truncate max-w-full" title={campaign.created_at}>
-                                Created: {campaign.created_at ? format(new Date(campaign.created_at), "MMM d, yyyy") : "-"}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )
-                      })}
+                                  {draft.recipientType === "company" && (
+                                    <Badge className="text-xs w-fit bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300">
+                                      Company
+                                    </Badge>
+                                  )}
+                                </div>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="opacity-70 group-hover:opacity-100 h-8 w-8 sm:h-10 sm:w-10" onClick={(e) => e.stopPropagation()}>
+                                      <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleEditDraft(draft)}>
+                                      <Edit className="mr-2 h-4 w-4" /> Continue Editing
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleDeleteDraft(draft.draftId)} className="text-destructive">
+                                      <Trash2 className="mr-2 h-4 w-4" /> Delete Draft
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </CardHeader>
+                              <CardContent className="p-3 sm:p-6 pt-0">
+                                <div className="text-muted-foreground text-xs sm:text-sm truncate max-w-full mb-1 line-clamp-2" title={draft.campaignType}>
+                                  {draft.campaignType || "No description provided"}
+                                </div>
+                                <div className="text-muted-foreground text-xs truncate max-w-full">
+                                  Started: {format(new Date(draft.createdAt), "MMM d, yyyy")} • Expires in{" "}
+                                  {Math.ceil((draft.expiresAt - Date.now()) / (1000 * 60 * 60))} hours
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </>
+                      )}
+
+                      {/* Render Backend Campaigns */}
+                      {filteredCampaigns.length > 0 && (
+                        <>
+                          {drafts.length > 0 && (
+                            <div className="px-3 sm:px-6 py-3 bg-gray-50 dark:bg-gray-950/20 border-b border-gray-200 dark:border-gray-800">
+                              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-200">
+                                Submitted Campaigns ({filteredCampaigns.length})
+                              </h3>
+                            </div>
+                          )}
+                          {filteredCampaigns.map((campaign) => {
+                            const status = getCampaignStatus(campaign)
+                            const isLatest = latestCampaign && campaign.id === latestCampaign.id
+                            return (
+                              <Card
+                                key={campaign.id}
+                                className="rounded-lg border bg-card shadow-sm hover:scale-[1.01] transition-all group cursor-pointer"
+                                onClick={() => router.push(`/campaigns/${campaign.id}`)}
+                              >
+                                <CardHeader className="flex flex-row items-start justify-between p-3 sm:p-6 pb-2 sm:pb-2">
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 flex-1 min-w-0">
+                                    <CardTitle className="text-sm sm:text-base truncate" title={campaign.name}>{campaign.name}</CardTitle>
+                                    {isLatest && <Badge variant="default" className="text-xs w-fit">Latest</Badge>}
+                                    {campaign.is_sequence && <Badge className="text-xs w-fit bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 border-green-300">Sequence</Badge>}
+                                    {campaign.recipient_type && (
+                                      <Badge className={`text-xs w-fit ${getRecipientTypeBadge(campaign.recipient_type).className}`}>
+                                        {getRecipientTypeBadge(campaign.recipient_type).label}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="opacity-70 group-hover:opacity-100 h-8 w-8 sm:h-10 sm:w-10" onClick={(e) => e.stopPropagation()}>
+                                        <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => router.push(`/campaigns/${campaign.id}`)}>
+                                        <Eye className="mr-2 h-4 w-4" /> View
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEdit(campaign); }}>
+                                        <Edit className="mr-2 h-4 w-4" /> Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteSingle(campaign.id); }} className="text-destructive">
+                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </CardHeader>
+                                <CardContent className="p-3 sm:p-6 pt-0">
+                                  <div className="text-muted-foreground text-xs sm:text-sm truncate max-w-full mb-1" title={campaign.description}>
+                                    {campaign.description || "No description"}
+                                  </div>
+                                  <div className="text-muted-foreground text-xs truncate max-w-full" title={campaign.created_at}>
+                                    Created: {campaign.created_at ? format(new Date(campaign.created_at), "MMM d, yyyy") : "-"}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            )
+                          })}
+                        </>
+                      )}
                     </div>
                   )}
                 </div>

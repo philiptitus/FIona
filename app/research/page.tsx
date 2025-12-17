@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react"
 import { useDispatch, useSelector } from "react-redux"
+import { useRouter } from "next/navigation"
 import MainLayout from "@/components/layout/main-layout"
 import type { AppDispatch, RootState } from "@/store/store"
 import { handleFetchResearchList } from "@/store/actions/researchActions"
@@ -33,6 +34,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 const PAGE_SIZE = 10
 
 export default function ResearchPage() {
+  const router = useRouter()
   const dispatch = useDispatch<AppDispatch>()
   const { toast } = useToast()
   const { researchResults, isLoading, pagination } = useSelector(
@@ -99,6 +101,20 @@ export default function ResearchPage() {
       hour: "2-digit",
       minute: "2-digit",
     })
+  }
+
+  const getDetailPageUrl = (contactType: string, contactId: number) => {
+    if (contactType === "emaillist") {
+      return `/emails/${contactId}`
+    } else if (contactType === "company") {
+      return `/companies/${contactId}`
+    }
+    return "#"
+  }
+
+  const handleContactNameClick = (contactType: string, contactId: number) => {
+    const url = getDetailPageUrl(contactType, contactId)
+    router.push(url)
   }
 
   return (
@@ -181,7 +197,14 @@ export default function ResearchPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             {getStatusIcon(research.status)}
-                            <h3 className="text-lg font-semibold">{research.contact_name}</h3>
+                            <h3
+                              className="text-lg font-semibold cursor-pointer hover:text-blue-600 hover:underline transition-colors"
+                              onClick={() =>
+                                handleContactNameClick(research.contact_type, research.contact_id)
+                              }
+                            >
+                              {research.contact_name}
+                            </h3>
                             {getStatusBadge(research.status)}
                           </div>
                           <p className="text-sm text-muted-foreground">{research.contact_email}</p>

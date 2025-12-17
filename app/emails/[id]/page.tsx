@@ -1,6 +1,7 @@
 "use client"
 
 import { useParams, useRouter } from "next/navigation"
+import Link from "next/link"
 import { useSelector, useDispatch } from "react-redux"
 import MainLayout from "@/components/layout/main-layout"
 import { Button } from "@/components/ui/button"
@@ -18,6 +19,7 @@ import { Mail, Phone, Building2, Globe, Linkedin, Facebook, Twitter, User, MapPi
 import EditEmailDialog from "@/components/emails/EditEmailDialog"
 import ResearchConfirmationModal from "@/components/research/ResearchConfirmationModal"
 import { useToast } from "@/components/ui/use-toast"
+import { addProcessingResearch } from "@/store/slices/processingResearchesSlice"
 
 export default function EmailDetailPage() {
   const params = useParams()
@@ -129,6 +131,13 @@ export default function EmailDetailPage() {
                   <div><b>Technologies:</b> {email?.technologies}</div>
                   <div><b>Apollo Contact Id:</b> {email?.apollo_contact_id}</div>
                   <div><b>Apollo Account Id:</b> {email?.apollo_account_id}</div>
+                  {email?.campaign && (
+                    <div>
+                      <Link href={`/campaigns/${email.campaign}`}>
+                        <b className="text-primary hover:underline cursor-pointer">📋 Campaign {email.campaign}</b>
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
               <TabsContent value="other">
@@ -171,22 +180,50 @@ export default function EmailDetailPage() {
               contactName={email?.first_name ? `${email.first_name} ${email.last_name || ""}` : email?.organization_name || "Contact"}
               contactType="emaillist"
               isLoading={researchLoading}
-              onConfirm={async () => {
+              onConfirm={async (createCampaign) => {
                 setResearchLoading(true)
                 try {
                   const result = await dispatch(
                     handleStartResearch({
                       contact_id: emailId,
                       contact_type: "emaillist",
+                      create_campaign: createCampaign,
                     })
                   )
-                  if (result.success) {
+                  
+                  // Check if this is an async response (202 Accepted)
+                  if (result?.payload?.status === "processing" && result?.payload?.token && result?.payload?.research_id) {
+                    const researchId = result.payload.research_id
+                    const token = result.payload.token
+                    const contactName = email?.first_name ? `${email.first_name} ${email.last_name || ""}` : email?.organization_name || "Contact"
+                    
+                    // Add to processing researches tracker
+                    dispatch(addProcessingResearch({
+                      researchId,
+                      contactId: emailId,
+                      contactType: "emaillist",
+                      contactName,
+                      token,
+                      status: "processing",
+                      startedAt: Date.now(),
+                      lastPolled: Date.now(),
+                      retryCount: 0,
+                    }))
+                    
                     setShowResearchModal(false)
                     toast({
                       title: "✨ Research Started!",
-                      description: `AI is researching ${email?.first_name || "this contact"}. You'll be notified when ready.`,
+                      description: `AI is researching ${contactName}. You'll be notified when ready.`,
                     })
                     router.push("/dashboard")
+                  } else if (result.success) {
+                    // Synchronous response (legacy)
+                    setShowResearchModal(false)
+                    toast({
+                      title: "✨ Research Complete!",
+                      description: `AI research generated for ${email?.first_name || "this contact"}.`,
+                    })
+                    router.push("/research")
                   } else {
                     toast({
                       title: "Error",

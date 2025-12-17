@@ -2,14 +2,17 @@
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import { AlertCircle, Sparkles } from "lucide-react"
+import { useState } from "react"
 
 interface ResearchConfirmationModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   contactName: string
   contactType: "emaillist" | "company"
-  onConfirm: () => void
+  onConfirm: (createCampaign: boolean) => void
   isLoading?: boolean
 }
 
@@ -21,6 +24,12 @@ export default function ResearchConfirmationModal({
   onConfirm,
   isLoading = false,
 }: ResearchConfirmationModalProps) {
+  const [createCampaign, setCreateCampaign] = useState(false)
+
+  const handleConfirm = () => {
+    onConfirm(createCampaign)
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -48,13 +57,25 @@ export default function ResearchConfirmationModal({
               </ul>
             </div>
           </div>
+
+          <div className="flex items-center space-x-2 mt-4">
+            <Checkbox
+              id="create-campaign"
+              checked={createCampaign}
+              onCheckedChange={(checked) => setCreateCampaign(checked as boolean)}
+              disabled={isLoading}
+            />
+            <Label htmlFor="create-campaign" className="cursor-pointer">
+              Automatically create a campaign for this {contactType === "emaillist" ? "contact" : "company"}
+            </Label>
+          </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={onConfirm} disabled={isLoading}>
+          <Button onClick={handleConfirm} disabled={isLoading}>
             {isLoading ? "Starting Research..." : "Generate Research & Email"}
           </Button>
         </DialogFooter>

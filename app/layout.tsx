@@ -11,8 +11,8 @@ import { Analytics } from "@vercel/analytics/react"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "FionaAI - Email Campaign Management",
-  description: "Powerful email campaign management platform",
+  title: "Fiona",
+  description: "AI-powered email campaign management platform",
   generator: 'v0.dev',
   icons: {
     icon: "/favicon.ico",

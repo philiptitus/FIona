@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { useRouter, useParams } from "next/navigation"
+import Link from "next/link"
 import MainLayout from "@/components/layout/main-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,6 +19,7 @@ import { ArrowLeft, Building2, CheckCircle2, AlertCircle, Loader2, XCircle, Spar
 import type { RootState, AppDispatch } from "@/store/store"
 import { handleFetchCompanyById, handleUpdateCompany, handleDeleteCompany } from "@/store/actions/companyActions"
 import { handleStartResearch } from "@/store/actions/researchActions"
+import { addProcessingResearch } from "@/store/slices/processingResearchesSlice"
 import { useToast } from "@/components/ui/use-toast"
 import ResearchConfirmationModal from "@/components/research/ResearchConfirmationModal"
 
@@ -287,6 +289,11 @@ export default function CompanyDetailPage() {
           {currentCompany.replied && <Badge className="bg-purple-100 text-purple-800">💬 Replied</Badge>}
           {currentCompany.account_stage && <Badge variant="outline">{currentCompany.account_stage}</Badge>}
           {currentCompany.industry && <Badge variant="secondary">{currentCompany.industry}</Badge>}
+          {currentCompany.campaign && (
+            <Link href={`/campaigns/${currentCompany.campaign}`}>
+              <Badge variant="default" className="cursor-pointer hover:opacity-80 transition-opacity">📋 Campaign {currentCompany.campaign}</Badge>
+            </Link>
+          )}
         </div>
 
         {/* Main Content */}
@@ -791,22 +798,49 @@ export default function CompanyDetailPage() {
           contactName={currentCompany.company_name}
           contactType="company"
           isLoading={researchLoading}
-          onConfirm={async () => {
+          onConfirm={async (createCampaign) => {
             setResearchLoading(true)
             try {
               const result = await dispatch(
                 handleStartResearch({
                   contact_id: companyId,
                   contact_type: "company",
+                  create_campaign: createCampaign,
                 })
               )
-              if (result.success) {
+              
+              // Check if this is an async response (202 Accepted)
+              if (result?.payload?.status === "processing" && result?.payload?.token && result?.payload?.research_id) {
+                const researchId = result.payload.research_id
+                const token = result.payload.token
+                
+                // Add to processing researches tracker
+                dispatch(addProcessingResearch({
+                  researchId,
+                  contactId: companyId,
+                  contactType: "company",
+                  contactName: currentCompany.company_name,
+                  token,
+                  status: "processing",
+                  startedAt: Date.now(),
+                  lastPolled: Date.now(),
+                  retryCount: 0,
+                }))
+                
                 setShowResearchModal(false)
                 toast({
                   title: "✨ Research Started!",
                   description: `AI is researching ${currentCompany.company_name}. You'll be notified when ready.`,
                 })
                 router.push("/dashboard")
+              } else if (result.success) {
+                // Synchronous response (legacy)
+                setShowResearchModal(false)
+                toast({
+                  title: "✨ Research Complete!",
+                  description: `AI research generated for ${currentCompany.company_name}.`,
+                })
+                router.push("/research")
               } else {
                 toast({
                   title: "Error",
