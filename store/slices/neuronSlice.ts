@@ -24,6 +24,9 @@ export interface Neuron {
   selected_links: string[]
   scheduled_time: string
   max_daily_campaigns: number
+  send_email_notification: boolean
+  notification_mailbox: number | null
+  notification_mailbox_email?: string
   is_active: boolean
   last_run_date: string | null
   daily_campaign_count: number

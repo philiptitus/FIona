@@ -15,6 +15,7 @@ import { useDispatch, useSelector } from "react-redux"
 import { handleFetchWorkflows } from "@/store/actions/workflowActions"
 import { handleFetchLinks } from "@/store/actions/linksActions"
 import { handleFetchNeuron, handleCreateNeuron, handleUpdateNeuron, handleToggleNeuron, handleDeleteNeuron, handleFetchExecutions } from "@/store/actions/neuronActions"
+import { fetchMailboxes } from "@/store/actions/mailboxActions"
 import type { AppDispatch, RootState } from "@/store/store"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -37,6 +38,8 @@ export default function NeuronPage() {
     selected_links: [] as string[],
     scheduled_time: "09:00",
     max_daily_campaigns: 3,
+    send_email_notification: false,
+    notification_mailbox: null as number | null,
   })
 
   const { toast } = useToast()
@@ -46,6 +49,7 @@ export default function NeuronPage() {
   const { neuron, executions, isLoading } = useSelector((state: RootState) => state.neuron)
   const { workflows } = useSelector((state: RootState) => state.workflows)
   const { links } = useSelector((state: RootState) => state.links)
+  const { mailboxes } = useSelector((state: RootState) => state.mailbox)
 
   const AVAILABLE_DYNAMIC_VARIABLES = [
     { value: 'organization_name', label: 'Organization Name' },
@@ -90,6 +94,7 @@ export default function NeuronPage() {
     dispatch(handleFetchWorkflows() as any)
     dispatch(handleFetchLinks() as any)
     dispatch(handleFetchExecutions() as any)
+    dispatch(fetchMailboxes() as any)
   }, [dispatch])
 
   useEffect(() => {
@@ -106,6 +111,8 @@ export default function NeuronPage() {
         selected_links: neuron.selected_links,
         scheduled_time: neuron.scheduled_time,
         max_daily_campaigns: neuron.max_daily_campaigns,
+        send_email_notification: neuron.send_email_notification || false,
+        notification_mailbox: neuron.notification_mailbox || null,
       })
     }
   }, [neuron])
@@ -390,6 +397,50 @@ export default function NeuronPage() {
                     required
                   />
                 </div>
+              </div>
+
+              <div className="border rounded-lg p-4 bg-card space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label className="text-base font-semibold">Email Notifications</Label>
+                    <p className="text-sm text-muted-foreground">Receive email updates when campaigns are created</p>
+                  </div>
+                  <Switch
+                    id="send_email_notification"
+                    checked={formData.send_email_notification}
+                    onCheckedChange={(checked) => setFormData({ ...formData, send_email_notification: checked })}
+                  />
+                </div>
+                
+                {formData.send_email_notification && (
+                  <div className="space-y-2 pl-4 border-l-2 border-primary">
+                    <Label htmlFor="notification_mailbox">Send notifications from *</Label>
+                    <Select
+                      value={formData.notification_mailbox?.toString() || ""}
+                      onValueChange={(value) => setFormData({ ...formData, notification_mailbox: parseInt(value) })}
+                    >
+                      <SelectTrigger id="notification_mailbox">
+                        <SelectValue placeholder="Select a mailbox..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {mailboxes && mailboxes.length > 0 ? (
+                          mailboxes.map((mailbox) => (
+                            <SelectItem key={mailbox.id} value={mailbox.id.toString()}>
+                              {mailbox.email}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="" disabled>
+                            No mailboxes available
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Notifications will be sent to your account email address when campaigns are created or fail.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <Collapsible>

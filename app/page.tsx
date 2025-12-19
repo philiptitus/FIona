@@ -144,8 +144,18 @@ export default function LandingPage() {
           const email = auth.user.profile.email;
           // --- End background sync ---
           
-          // Redirect to dashboard
-          router.replace('/dashboard')
+          // Get redirect URL from sessionStorage, default to /dashboard
+          const redirectUrl = typeof window !== 'undefined' 
+            ? sessionStorage.getItem('authRedirect') || '/dashboard'
+            : '/dashboard'
+          
+          // Clear the stored redirect
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('authRedirect')
+          }
+          
+          // Redirect to intended destination or dashboard
+          router.replace(redirectUrl)
           setIsAuthorizing(false)
         }
       }

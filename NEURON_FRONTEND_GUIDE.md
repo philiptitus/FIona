@@ -19,7 +19,9 @@ Content-Type: application/json
   "selected_dynamic_variables": ["first_name", "company_name"],
   "selected_links": ["linkedin", "personal_website"],
   "scheduled_time": "09:00:00",
-  "max_daily_campaigns": 3
+  "max_daily_campaigns": 3,
+  "send_email_notification": true,
+  "notification_mailbox": 2
 }
 ```
 
@@ -39,6 +41,9 @@ Content-Type: application/json
   "selected_links": ["linkedin", "personal_website"],
   "scheduled_time": "09:00:00",
   "max_daily_campaigns": 3,
+  "send_email_notification": true,
+  "notification_mailbox": 2,
+  "notification_mailbox_email": "user@example.com",
   "is_active": true,
   "last_run_date": null,
   "daily_campaign_count": 0,
@@ -50,7 +55,8 @@ Content-Type: application/json
 **Error Response (400 Bad Request):**
 ```json
 {
-  "workflow": ["Selected workflow contains placeholders {{}}. Please choose a workflow without placeholders."]
+  "workflow": ["Selected workflow contains placeholders {{}}. Please choose a workflow without placeholders."],
+  "notification_mailbox": ["Notification mailbox is required when email notifications are enabled."]
 }
 ```
 
@@ -76,6 +82,9 @@ Authorization: Bearer <token>
   "selected_links": ["linkedin", "personal_website"],
   "scheduled_time": "09:00:00",
   "max_daily_campaigns": 3,
+  "send_email_notification": true,
+  "notification_mailbox": 2,
+  "notification_mailbox_email": "user@example.com",
   "is_active": true,
   "last_run_date": "2024-01-15",
   "daily_campaign_count": 2,
@@ -94,6 +103,7 @@ Content-Type: application/json
   "workflow": 2,
   "scheduled_time": "14:00:00",
   "max_daily_campaigns": 5,
+  "send_email_notification": false,
   "is_active": true
 }
 ```
@@ -259,4 +269,63 @@ Schedule: Every minute (* * * * *)
     "failure_count": 1
   }
 }
+```
+
+
+## Email Notifications
+
+### Configuration
+When `send_email_notification` is enabled:
+- **Required**: `notification_mailbox` (ID of user's mailbox)
+- **Recipient**: Automatically uses the user's email address (from their account)
+- **Sender**: Uses the selected mailbox to send the notification
+
+### Notification Content
+**Success Email:**
+- Subject: "Neuron Success: [Workflow Name] - Campaign Created"
+- Contains: Campaign name, creation time, status, and link to neuron page
+
+**Failure Email:**
+- Subject: "Neuron Failed: [Workflow Name]"
+- Contains: Error message, timestamp, and link to neuron page
+
+### Example Form Implementation
+```jsx
+const NeuronNotificationSettings = ({ mailboxes, formData, setFormData }) => {
+  return (
+    <div className="notification-settings">
+      <label>
+        <input
+          type="checkbox"
+          checked={formData.send_email_notification}
+          onChange={(e) => setFormData({
+            ...formData,
+            send_email_notification: e.target.checked
+          })}
+        />
+        Send email notifications
+      </label>
+      
+      {formData.send_email_notification && (
+        <select
+          value={formData.notification_mailbox || ''}
+          onChange={(e) => setFormData({
+            ...formData,
+            notification_mailbox: parseInt(e.target.value)
+          })}
+          required
+        >
+          <option value="">Select mailbox to send from</option>
+          {mailboxes.map(mb => (
+            <option key={mb.id} value={mb.id}>{mb.email}</option>
+          ))}
+        </select>
+      )}
+      
+      <p className="help-text">
+        Notifications will be sent to your account email address
+      </p>
+    </div>
+  );
+};
 ```

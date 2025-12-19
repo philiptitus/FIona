@@ -36,6 +36,8 @@ interface CreateNeuronData {
   selected_links: string[]
   scheduled_time: string
   max_daily_campaigns: number
+  send_email_notification?: boolean
+  notification_mailbox?: number | null
 }
 
 interface UpdateNeuronData {
@@ -50,6 +52,8 @@ interface UpdateNeuronData {
   selected_links?: string[]
   scheduled_time?: string
   max_daily_campaigns?: number
+  send_email_notification?: boolean
+  notification_mailbox?: number | null
   is_active?: boolean
 }
 

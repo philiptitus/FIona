@@ -49,6 +49,14 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, redirectTo, router, toast])
 
+  const handleCognitoLogin = () => {
+    // Store the redirect URL in sessionStorage before Cognito redirect
+    if (typeof window !== "undefined" && redirectTo) {
+      sessionStorage.setItem("authRedirect", redirectTo)
+    }
+    auth.signinRedirect()
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     // Validate inputs
@@ -94,7 +102,7 @@ export default function LoginPage() {
               type="button"
               className="w-full flex items-center justify-center gap-2 text-base sm:text-lg py-4 sm:py-6 min-h-[48px] sm:min-h-[56px]"
               variant="outline"
-              onClick={() => auth.signinRedirect()}
+              onClick={handleCognitoLogin}
               disabled={auth.isLoading}
             >
               <span role="img" aria-label="lock" className="text-base sm:text-lg">🔒</span>

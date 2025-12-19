@@ -2,10 +2,29 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
 // Paths that require authentication
-const protectedPaths = ["/dashboard", "/campaigns", "/profile"]
+const protectedPaths = [
+  "/analytics",
+  "/campaigns",
+  "/companies",
+  "/content",
+  "/dashboard",
+  "/dispatches",
+  "/email-lists",
+  "/email-sending",
+  "/emails",
+  "/inbox",
+  "/neuron",
+  "/profile",
+  "/research",
+  "/sent-emails",
+  "/settings",
+  "/templates",
+  "/test-searchparams",
+  "/workflows",
+]
 
 // Paths that should redirect to dashboard if already authenticated
-const authPaths = ["/auth/login", "/auth/login", "/auth/password-reset"]
+const authPaths = ["/auth/login", "/auth/register", "/auth/password-reset"]
 
 export function middleware(request: NextRequest) {
   const token = request.cookies.get("token")?.value
