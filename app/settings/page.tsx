@@ -14,8 +14,13 @@ import {
   setNotifications,
 } from "@/store/settingsSlice"
 import { handleFetchLinks, handleCreateLinks, handleUpdateLinks } from "@/store/actions/linksActions"
+import { handleFetchCleanupSettings, handleUpdateCleanupSettings } from "@/store/actions/mailboxCleanupActions"
 import MailLoader from "@/components/MailLoader"
 import { ChangeEvent, useEffect, useState } from "react"
+import { Switch } from "@/components/ui/switch"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Trash2, Clock } from "lucide-react"
 
 
 
@@ -32,6 +37,7 @@ const notificationOptions = [
 export default function SettingsPage() {
   const settings = useSelector((state: RootState) => state.settings)
   const { links, isLoading, error } = useSelector((state: RootState) => state.links)
+  const { settings: cleanupSettings, isLoading: cleanupLoading, error: cleanupError } = useSelector((state: RootState) => state.mailboxCleanup)
   const dispatch = useDispatch()
   const [linksData, setLinksData] = useState({
     personal_website: '',
@@ -49,9 +55,11 @@ export default function SettingsPage() {
     angel_list: ''
   })
   const [successMessage, setSuccessMessage] = useState('')
+  const [cleanupSuccessMessage, setCleanupSuccessMessage] = useState('')
 
   useEffect(() => {
     dispatch(handleFetchLinks() as any)
+    dispatch(handleFetchCleanupSettings() as any)
   }, [])
 
   useEffect(() => {
@@ -93,6 +101,30 @@ export default function SettingsPage() {
     if (result) {
       setSuccessMessage('Links saved successfully!')
       setTimeout(() => setSuccessMessage(''), 3000)
+    }
+  }
+
+  const handleCleanupToggle = async (enabled: boolean) => {
+    const payload: any = { enable_mailbox_cleanup: enabled }
+    
+    if (enabled && !cleanupSettings?.cleanup_scheduled_time) {
+      payload.cleanup_scheduled_time = "02:00:00"
+    }
+
+    const result = await dispatch(handleUpdateCleanupSettings(payload) as any)
+    if (result.success) {
+      setCleanupSuccessMessage('Cleanup settings updated successfully!')
+      setTimeout(() => setCleanupSuccessMessage(''), 3000)
+    }
+  }
+
+  const handleCleanupTimeChange = async (time: string) => {
+    const result = await dispatch(handleUpdateCleanupSettings({ 
+      cleanup_scheduled_time: time + ":00" 
+    }) as any)
+    if (result.success) {
+      setCleanupSuccessMessage('Cleanup time updated successfully!')
+      setTimeout(() => setCleanupSuccessMessage(''), 3000)
     }
   }
 
@@ -262,6 +294,68 @@ export default function SettingsPage() {
               </div>
             )}
           </section>
+          {/* Mailbox Cleanup Section */}
+          <section>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Trash2 className="h-5 w-5" />
+              Mailbox Cleanup Automation
+            </h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              Automatically detect and remove bounced email addresses from your database to maintain list hygiene and improve delivery rates.
+            </p>
+            
+            {cleanupLoading ? (
+              <MailLoader />
+            ) : (
+              <div className="space-y-4">
+                {cleanupError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                    {cleanupError}
+                  </div>
+                )}
+                {cleanupSuccessMessage && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm">
+                    {cleanupSuccessMessage}
+                  </div>
+                )}
+                
+                <div className="border rounded-lg p-4 bg-card space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label className="text-base font-semibold">Enable Automatic Cleanup</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Automatically remove bounced email addresses daily
+                      </p>
+                    </div>
+                    <Switch
+                      checked={cleanupSettings?.enable_mailbox_cleanup || false}
+                      onCheckedChange={handleCleanupToggle}
+                    />
+                  </div>
+                  
+                  {cleanupSettings?.enable_mailbox_cleanup && (
+                    <div className="space-y-2 pl-4 border-l-2 border-primary">
+                      <Label htmlFor="cleanup_time" className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Cleanup Time (UTC)
+                      </Label>
+                      <Input
+                        id="cleanup_time"
+                        type="time"
+                        value={cleanupSettings.cleanup_scheduled_time?.slice(0, 5) || "02:00"}
+                        onChange={(e) => handleCleanupTimeChange(e.target.value)}
+                        className="w-32"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Daily cleanup will run at this time (UTC). All your connected mailboxes will be processed to detect and remove bounced addresses.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+          
           {/* Language Section */}
           <section>
             <h2 className="text-xl font-semibold mb-4">Language</h2>

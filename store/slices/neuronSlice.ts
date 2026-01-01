@@ -23,13 +23,13 @@ export interface Neuron {
   selected_dynamic_variables: string[]
   selected_links: string[]
   scheduled_time: string
-  max_daily_campaigns: number
+  max_total_campaigns: number
   send_email_notification: boolean
   notification_mailbox: number | null
   notification_mailbox_email?: string
   is_active: boolean
   last_run_date: string | null
-  daily_campaign_count: number
+  total_campaign_count: number
   created_at: string
   updated_at: string
 }

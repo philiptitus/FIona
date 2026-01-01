@@ -37,7 +37,7 @@ export default function NeuronPage() {
     selected_dynamic_variables: [] as string[],
     selected_links: [] as string[],
     scheduled_time: "09:00",
-    max_daily_campaigns: 3,
+    max_total_campaigns: 3,
     send_email_notification: false,
     notification_mailbox: null as number | null,
   })
@@ -110,7 +110,7 @@ export default function NeuronPage() {
         selected_dynamic_variables: neuron.selected_dynamic_variables,
         selected_links: neuron.selected_links,
         scheduled_time: neuron.scheduled_time,
-        max_daily_campaigns: neuron.max_daily_campaigns,
+        max_total_campaigns: neuron.max_total_campaigns,
         send_email_notification: neuron.send_email_notification || false,
         notification_mailbox: neuron.notification_mailbox || null,
       })
@@ -181,8 +181,8 @@ export default function NeuronPage() {
       return <Badge variant="secondary">Inactive</Badge>
     }
     
-    if (neuron.daily_campaign_count >= neuron.max_daily_campaigns) {
-      return <Badge variant="outline">Daily Limit Reached</Badge>
+    if (neuron.total_campaign_count >= neuron.max_total_campaigns) {
+      return <Badge variant="outline">Total Limit Reached</Badge>
     }
     
     return <Badge variant="default">Active</Badge>
@@ -274,9 +274,9 @@ export default function NeuronPage() {
                     </p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium">Daily Limit</Label>
+                    <Label className="text-sm font-medium">Total Limit</Label>
                     <p className="text-sm text-muted-foreground">
-                      {neuron.daily_campaign_count}/{neuron.max_daily_campaigns}
+                      {neuron.total_campaign_count}/{neuron.max_total_campaigns}
                     </p>
                   </div>
                 </div>
@@ -386,14 +386,14 @@ export default function NeuronPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="max_daily_campaigns">Max Daily Campaigns *</Label>
+                  <Label htmlFor="max_total_campaigns">Maximum number of Campaigns *</Label>
                   <Input
-                    id="max_daily_campaigns"
+                    id="max_total_campaigns"
                     type="number"
                     min="1"
                     max="10"
-                    value={formData.max_daily_campaigns}
-                    onChange={(e) => setFormData({ ...formData, max_daily_campaigns: parseInt(e.target.value) })}
+                    value={formData.max_total_campaigns}
+                    onChange={(e) => setFormData({ ...formData, max_total_campaigns: parseInt(e.target.value) })}
                     required
                   />
                 </div>

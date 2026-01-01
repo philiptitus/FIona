@@ -22,6 +22,7 @@ import processingDispatchesReducer from "./slices/processingDispatchesSlice"
 import processingResearchesReducer from "./slices/processingResearchesSlice"
 import researchReducer from "./slices/researchSlice"
 import neuronReducer from "./slices/neuronSlice"
+import mailboxCleanupReducer from "./slices/mailboxCleanupSlice"
 
 // Define root state type
 type RootState = {
@@ -47,6 +48,7 @@ type RootState = {
   processingResearches: ReturnType<typeof processingResearchesReducer>
   research: ReturnType<typeof researchReducer>
   neuron: ReturnType<typeof neuronReducer>
+  mailboxCleanup: ReturnType<typeof mailboxCleanupReducer>
 }
 
 // Create root reducer with proper typing
@@ -73,6 +75,7 @@ const rootReducer: ReducersMapObject<RootState> = {
   processingResearches: processingResearchesReducer,
   research: researchReducer,
   neuron: neuronReducer,
+  mailboxCleanup: mailboxCleanupReducer,
 }
 
 // Define app dispatch type with thunk support
