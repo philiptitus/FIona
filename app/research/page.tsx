@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, useCallback } from "react"
+import React, { useEffect, useState, useCallback, useRef } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { useRouter } from "next/navigation"
 import MainLayout from "@/components/layout/main-layout"
@@ -10,9 +10,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/components/ui/use-toast"
-import MailLoader from "@/components/MailLoader"
-import { Search, CheckCircle2, Clock, AlertCircle, Eye, ExternalLink } from "lucide-react"
+import { createNotificationPoller } from "@/store/utils/notificationPolling"
+import { Search, CheckCircle2, Clock, AlertCircle, RefreshCw, Sparkles, X } from "lucide-react"
 import {
   Pagination,
   PaginationContent,
@@ -45,6 +47,11 @@ export default function ResearchPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<"all" | "processing" | "completed" | "failed">("all")
   const [contactTypeFilter, setContactTypeFilter] = useState<"all" | "emaillist" | "company">("all")
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  
+  // Polling state for pending researches
+  const [pendingTokens, setPendingTokens] = useState<Map<string, { name: string; startedAt: number }>>(new Map())
+  const pollerRef = useRef<ReturnType<typeof createNotificationPoller> | null>(null)
 
   const fetchResearch = useCallback(async () => {
     const params = {
@@ -61,6 +68,57 @@ export default function ResearchPage() {
   useEffect(() => {
     fetchResearch()
   }, [fetchResearch])
+
+  // Set up polling when there are processing items in the list
+  useEffect(() => {
+    const processingItems = researchResults.filter(r => r.status === "processing")
+    
+    if (processingItems.length > 0 && !pollerRef.current) {
+      pollerRef.current = createNotificationPoller(
+        { notificationType: "research_complete_success" },
+        {
+          interval: 4000,
+          onPoll: (notifications) => {
+            // Check if any processing research completed
+            const completedTokens = notifications
+              .filter(n => 
+                n.notification_type === "research_complete_success" ||
+                n.notification_type === "research_complete_failed"
+              )
+              .map(n => n.metadata?.token)
+              .filter(Boolean)
+
+            if (completedTokens.length > 0) {
+              // Research completed - refresh list
+              fetchResearch()
+              toast({
+                title: "✨ Research Updated",
+                description: "A research task has completed.",
+                duration: 3000,
+              })
+            }
+          },
+        }
+      )
+      pollerRef.current.start()
+    } else if (processingItems.length === 0 && pollerRef.current) {
+      pollerRef.current.stop()
+      pollerRef.current = null
+    }
+
+    return () => {
+      if (pollerRef.current) {
+        pollerRef.current.stop()
+        pollerRef.current = null
+      }
+    }
+  }, [researchResults, fetchResearch, toast])
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true)
+    await fetchResearch()
+    setIsRefreshing(false)
+  }
 
   const handleSearch = (query: string) => {
     setSearchQuery(query)
@@ -121,11 +179,22 @@ export default function ResearchPage() {
     <MainLayout>
       <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold">Research Results</h1>
-          <p className="text-muted-foreground">
-            View personalized research and generated emails for contacts and companies
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Research Results</h1>
+            <p className="text-muted-foreground">
+              View personalized research for contacts and companies
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleManualRefresh}
+            disabled={isRefreshing || isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
         </div>
 
         {/* Search and Filters */}
@@ -182,8 +251,29 @@ export default function ResearchPage() {
 
         {/* Results List */}
         {isLoading ? (
-          <div className="flex items-center justify-center p-12">
-            <MailLoader />
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i}>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-5 w-5 rounded-full" />
+                      <Skeleton className="h-6 w-48" />
+                      <Skeleton className="h-5 w-20 rounded-full" />
+                    </div>
+                    <Skeleton className="h-4 w-64" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-4/5" />
+                    </div>
+                    <div className="flex gap-4 pt-4 border-t">
+                      <Skeleton className="h-3 w-32" />
+                      <Skeleton className="h-3 w-36" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : researchResults.length > 0 ? (
           <>
@@ -235,9 +325,8 @@ export default function ResearchPage() {
                       {/* Research Summary - if completed */}
                       {research.status === "completed" && research.research_summary && (
                         <Tabs defaultValue="summary" className="w-full">
-                          <TabsList className="grid w-full grid-cols-2">
+                          <TabsList className="grid w-full grid-cols-1">
                             <TabsTrigger value="summary">Summary</TabsTrigger>
-                            <TabsTrigger value="email">Generated Email</TabsTrigger>
                           </TabsList>
 
                           <TabsContent value="summary" className="space-y-3">
@@ -279,22 +368,7 @@ export default function ResearchPage() {
                             )}
                           </TabsContent>
 
-                          <TabsContent value="email" className="space-y-3">
-                            {research.generated_email && (
-                              <>
-                                <div>
-                                  <p className="text-xs font-semibold text-muted-foreground">SUBJECT</p>
-                                  <p className="text-sm mt-1">{research.generated_email.subject}</p>
-                                </div>
-                                <div>
-                                  <p className="text-xs font-semibold text-muted-foreground">BODY</p>
-                                  <p className="text-sm mt-1 whitespace-pre-wrap">
-                                    {research.generated_email.body}
-                                  </p>
-                                </div>
-                              </>
-                            )}
-                          </TabsContent>
+                     
                         </Tabs>
                       )}
 

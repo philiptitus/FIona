@@ -13,9 +13,20 @@ export interface Notification {
   is_archived: boolean;
   created_at: string;
   metadata?: {
+    token?: string;
+    status?: string;
+    error?: string;
+    source?: string;
+    contact_id?: number;
+    contact_name?: string;
+    contact_type?: string;
+    research_id?: number;
+    campaign_id?: number;
+    campaign_name?: string;
     subject?: string;
     recipient?: string;
     sent_email_id?: string;
+    [key: string]: string | number | boolean | undefined;
   };
 }
 

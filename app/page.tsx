@@ -131,11 +131,12 @@ export default function LandingPage() {
           // Set user in localStorage
           localStorage.setItem('user', JSON.stringify(user))
           
-          // Dispatch to Redux store
+          // Dispatch to Redux store with Cognito's token expiry
           dispatch(loginSuccess({ 
             user, 
             token: auth.user.id_token, 
-            refreshToken: auth.user.refresh_token 
+            refreshToken: auth.user.refresh_token,
+            expiresAt: auth.user.expires_at
           }))
 
           // --- Background sync with backend profile ---

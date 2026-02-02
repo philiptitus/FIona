@@ -36,7 +36,7 @@ api.interceptors.request.use(
   },
 )
 
-// Response interceptor for handling token refresh
+// Response interceptor for handling token refresh using Cognito signinSilent
 api.interceptors.response.use(
   (response) => {
     return response
@@ -49,24 +49,32 @@ api.interceptors.response.use(
       originalRequest._retry = true
 
       try {
-        // Attempt to refresh the token
-        const refreshToken = localStorage.getItem("refreshToken")
-        const response = await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/access/token/refresh/`,
-          {
-            refresh: refreshToken,
-          },
-        )
+        // Attempt to refresh the token using Cognito's signinSilent
+        const { authManager } = await import("@/lib/authManager")
+        const newToken = await authManager.refreshToken()
 
-        // If successful, update the token and retry the original request
-        const { access } = response.data
-        localStorage.setItem("token", access)
-        api.defaults.headers.common["Authorization"] = `Bearer ${access}`
-        return api(originalRequest)
+        if (newToken) {
+          // If successful, update the header and retry the original request
+          api.defaults.headers.common["Authorization"] = `Bearer ${newToken}`
+          originalRequest.headers["Authorization"] = `Bearer ${newToken}`
+          return api(originalRequest)
+        } else {
+          // If refresh fails, clear tokens and redirect to login
+          throw new Error("Token refresh failed")
+        }
       } catch (refreshError) {
-        // If refresh fails, clear tokens and reject error
+        // If refresh fails, clear tokens and redirect to login
         localStorage.removeItem("token")
         localStorage.removeItem("refreshToken")
+        localStorage.removeItem("tokenExpiry")
+        localStorage.removeItem("user")
+        
+        // Clear cookies
+        document.cookie.split(";").forEach(function(c) { 
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+        });
+        
+        window.location.href = "/auth/login"
         return Promise.reject(refreshError)
       }
     }
@@ -91,7 +99,6 @@ api.interceptors.response.use(
         // Redirect to login page after showing toast
         window.location.href = "/auth/login";
       })
-      // Note: Removed automatic redirect - let the app handle navigation
     }
 
     return Promise.reject(error)

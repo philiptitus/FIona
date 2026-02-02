@@ -49,7 +49,7 @@ const authSlice = createSlice({
       state.isLoading = true
       state.error = null
     },
-    loginSuccess: (state, action: PayloadAction<{ user: User; token: string; refreshToken: string }>) => {
+    loginSuccess: (state, action: PayloadAction<{ user: User; token: string; refreshToken: string; expiresAt?: number }>) => {
       state.isLoading = false
       state.isAuthenticated = true
       state.user = action.payload.user
