@@ -49,6 +49,12 @@ export default function ResearchPage() {
   const [contactTypeFilter, setContactTypeFilter] = useState<"all" | "emaillist" | "company">("all")
   const [isRefreshing, setIsRefreshing] = useState(false)
   
+  // Track if this is the initial load (no data yet)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
+  
+  // Progress tracking for processing items (based on elapsed time)
+  const [progressMap, setProgressMap] = useState<Map<number, number>>(new Map())
+  
   // Polling state for pending researches
   const [pendingTokens, setPendingTokens] = useState<Map<string, { name: string; startedAt: number }>>(new Map())
   const pollerRef = useRef<ReturnType<typeof createNotificationPoller> | null>(null)
@@ -63,6 +69,7 @@ export default function ResearchPage() {
       ordering: "-created_at",
     }
     await dispatch(handleFetchResearchList(params) as any)
+    setHasLoadedOnce(true)
   }, [dispatch, currentPage, searchQuery, statusFilter, contactTypeFilter])
 
   useEffect(() => {
@@ -114,6 +121,38 @@ export default function ResearchPage() {
     }
   }, [researchResults, fetchResearch, toast])
 
+  // Update progress for processing items every 500ms
+  useEffect(() => {
+    const processingItems = researchResults.filter(r => r.status === "processing")
+    
+    if (processingItems.length === 0) {
+      setProgressMap(new Map())
+      return
+    }
+
+    const updateProgress = () => {
+      const newMap = new Map<number, number>()
+      const now = Date.now()
+      const EXPECTED_DURATION = 10000 // 10 seconds
+
+      processingItems.forEach(item => {
+        const createdAt = new Date(item.created_at).getTime()
+        const elapsed = now - createdAt
+        // Progress curve: fast at start, slows down approaching 95%
+        // Never hits 100% until actually complete
+        const progress = Math.min(95, (1 - Math.exp(-elapsed / (EXPECTED_DURATION * 0.5))) * 100)
+        newMap.set(item.id, Math.round(progress))
+      })
+      
+      setProgressMap(newMap)
+    }
+
+    updateProgress()
+    const interval = setInterval(updateProgress, 500)
+    
+    return () => clearInterval(interval)
+  }, [researchResults])
+
   const handleManualRefresh = async () => {
     setIsRefreshing(true)
     await fetchResearch()
@@ -130,7 +169,11 @@ export default function ResearchPage() {
       case "completed":
         return <CheckCircle2 className="w-5 h-5 text-green-600" />
       case "processing":
-        return <Clock className="w-5 h-5 text-blue-600 animate-spin" />
+        return (
+          <div className="relative">
+            <Sparkles className="w-5 h-5 text-blue-600 animate-pulse" />
+          </div>
+        )
       case "failed":
         return <AlertCircle className="w-5 h-5 text-red-600" />
       default:
@@ -250,7 +293,7 @@ export default function ResearchPage() {
         </div>
 
         {/* Results List */}
-        {isLoading ? (
+        {isLoading && !hasLoadedOnce ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
               <Card key={i}>
@@ -279,7 +322,14 @@ export default function ResearchPage() {
           <>
             <div className="space-y-4">
               {researchResults.map((research) => (
-                <Card key={research.id} className="hover:shadow-md transition-shadow">
+                <Card 
+                  key={research.id} 
+                  className={`hover:shadow-md transition-shadow ${
+                    research.status === "processing" 
+                      ? "border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20" 
+                      : ""
+                  }`}
+                >
                   <CardContent className="pt-6">
                     <div className="space-y-4">
                       {/* Header */}
@@ -305,6 +355,22 @@ export default function ResearchPage() {
                           </Badge>
                         </div>
                       </div>
+
+                      {/* Processing indicator */}
+                      {research.status === "processing" && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                              <Sparkles className="h-4 w-4 animate-pulse" />
+                              <span>AI is researching and generating personalized content...</span>
+                            </div>
+                            <span className="text-xs text-blue-600 dark:text-blue-400 tabular-nums">
+                              {progressMap.get(research.id) || 0}%
+                            </span>
+                          </div>
+                          <Progress value={progressMap.get(research.id) || 0} className="h-1.5" />
+                        </div>
+                      )}
 
                       {/* Career Field */}
                       {research.career_field && (
