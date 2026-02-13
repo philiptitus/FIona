@@ -51,6 +51,15 @@ export interface FetchResearchListResponse {
   results: ResearchResult[]
 }
 
+export interface DeleteResearchResponse {
+  success: boolean
+  message?: string
+  deleted_count?: number
+  not_found_ids?: number[]
+  not_found_message?: string
+  error?: string
+}
+
 export interface PaginationInfo {
   count: number
   next: string | null
@@ -63,17 +72,22 @@ interface ResearchState {
   researchResults: ResearchResult[]
   currentResearch: ResearchResult | null
   isLoading: boolean
+  isDeleting: boolean
   error: string | null
+  deleteError: string | null
   pagination: PaginationInfo
   activeResearchToken: string | null
   activeResearchId: number | null
+  lastDeleteResponse: DeleteResearchResponse | null
 }
 
 const initialState: ResearchState = {
   researchResults: [],
   currentResearch: null,
   isLoading: false,
+  isDeleting: false,
   error: null,
+  deleteError: null,
   pagination: {
     count: 0,
     next: null,
@@ -83,6 +97,7 @@ const initialState: ResearchState = {
   },
   activeResearchToken: null,
   activeResearchId: null,
+  lastDeleteResponse: null,
 }
 
 const researchSlice = createSlice({
@@ -149,6 +164,60 @@ const researchSlice = createSlice({
       state.error = action.payload
     },
 
+    // Delete Research Results
+    deleteResearchStart: (state) => {
+      state.isDeleting = true
+      state.deleteError = null
+      state.lastDeleteResponse = null
+    },
+    deleteResearchSuccess: (state, action: PayloadAction<{ response: DeleteResearchResponse; requestParams: any }>) => {
+      state.isDeleting = false
+      state.lastDeleteResponse = action.payload.response
+      state.deleteError = null
+      
+      // Remove successfully deleted items from state
+      const { requestParams, response } = action.payload
+      
+      if (requestParams.delete_all && response.success) {
+        // Clear all research results
+        state.researchResults = []
+        state.currentResearch = null
+      } else {
+        // Remove specific items
+        const idsToRemove: number[] = []
+        
+        if (requestParams.research_id) {
+          idsToRemove.push(requestParams.research_id)
+        }
+        
+        if (requestParams.research_ids) {
+          idsToRemove.push(...requestParams.research_ids)
+        }
+        
+        // Only remove items that were actually deleted (not in not_found_ids)
+        const actuallyDeleted = idsToRemove.filter(
+          (id) => !response.not_found_ids?.includes(id)
+        )
+        
+        state.researchResults = state.researchResults.filter(
+          (result) => !actuallyDeleted.includes(result.id)
+        )
+        
+        // Clear current research if it was deleted
+        if (state.currentResearch && actuallyDeleted.includes(state.currentResearch.id)) {
+          state.currentResearch = null
+        }
+        
+        // Update pagination count
+        state.pagination.count = Math.max(0, state.pagination.count - (response.deleted_count || 0))
+        state.pagination.totalPages = Math.ceil(state.pagination.count / 10)
+      }
+    },
+    deleteResearchFailure: (state, action: PayloadAction<string>) => {
+      state.isDeleting = false
+      state.deleteError = action.payload
+    },
+
     // Update research result (useful when polling for completion)
     updateResearchResult: (state, action: PayloadAction<ResearchResult>) => {
       const index = state.researchResults.findIndex((r) => r.id === action.payload.id)
@@ -175,6 +244,12 @@ const researchSlice = createSlice({
     clearError: (state) => {
       state.error = null
     },
+
+    // Clear delete error
+    clearDeleteError: (state) => {
+      state.deleteError = null
+      state.lastDeleteResponse = null
+    },
   },
 })
 
@@ -188,10 +263,14 @@ export const {
   fetchResearchResultStart,
   fetchResearchResultSuccess,
   fetchResearchResultFailure,
+  deleteResearchStart,
+  deleteResearchSuccess,
+  deleteResearchFailure,
   updateResearchResult,
   clearActiveResearch,
   clearCurrentResearch,
   clearError,
+  clearDeleteError,
 } = researchSlice.actions
 
 export default researchSlice.reducer

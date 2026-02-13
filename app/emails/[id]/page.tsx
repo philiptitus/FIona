@@ -20,6 +20,8 @@ import EditEmailDialog from "@/components/emails/EditEmailDialog"
 import ResearchConfirmationModal from "@/components/research/ResearchConfirmationModal"
 import { useToast } from "@/components/ui/use-toast"
 import { addProcessingResearch } from "@/store/slices/processingResearchesSlice"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
 
 export default function EmailDetailPage() {
   const params = useParams()
@@ -32,6 +34,7 @@ export default function EmailDetailPage() {
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showResearchModal, setShowResearchModal] = useState(false)
   const [researchLoading, setResearchLoading] = useState(false)
+  const [researchError, setResearchError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!email) {
@@ -134,7 +137,7 @@ export default function EmailDetailPage() {
                   {email?.campaign && (
                     <div>
                       <Link href={`/campaigns/${email.campaign}`}>
-                        <b className="text-primary hover:underline cursor-pointer">📋 Campaign {email.campaign}</b>
+                        <b className="text-primary hover:underline cursor-pointer"> View Campaign </b>
                       </Link>
                     </div>
                   )}
@@ -174,9 +177,23 @@ export default function EmailDetailPage() {
             </div>
             <EditEmailDialog open={showEditDialog} onOpenChange={setShowEditDialog} email={email} onSuccess={() => dispatch(handleFetchEmails())} />
 
+            {/* Research Error Alert */}
+            {researchError && (
+              <Alert variant="destructive" className="mt-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Research Error</AlertTitle>
+                <AlertDescription>{researchError}</AlertDescription>
+              </Alert>
+            )}
+
             <ResearchConfirmationModal
               open={showResearchModal}
-              onOpenChange={setShowResearchModal}
+              onOpenChange={(open) => {
+                setShowResearchModal(open)
+                if (open) {
+                  setResearchError(null) // Clear error when opening modal
+                }
+              }}
               contactName={email?.first_name ? `${email.first_name} ${email.last_name || ""}` : email?.organization_name || "Contact"}
               contactType="emaillist"
               isLoading={researchLoading}
@@ -225,18 +242,15 @@ export default function EmailDetailPage() {
                     })
                     router.push("/research")
                   } else {
-                    toast({
-                      title: "Error",
-                      description: result.error || "Failed to start research",
-                      variant: "destructive",
-                    })
+                    // Check for specific error codes
+                    if (result?.payload?.code === "RESEARCH_EXISTS") {
+                      setResearchError(result.payload.message || "You have already researched this contact. View the existing research or delete it to create a new one.")
+                    } else {
+                      setResearchError(result.error || "Failed to start research")
+                    }
                   }
                 } catch (error: any) {
-                  toast({
-                    title: "Error",
-                    description: error.message || "Failed to start research",
-                    variant: "destructive",
-                  })
+                  setResearchError(error.message || "Failed to start research")
                 } finally {
                   setResearchLoading(false)
                 }

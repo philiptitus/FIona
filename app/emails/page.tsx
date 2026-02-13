@@ -20,6 +20,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import { useBulkResearch } from "@/components/research/useBulkResearch"
+import { BulkResearchFloatingBar } from "@/components/research/BulkResearchFloatingBar"
+import { BulkResearchConfirmationModal } from "@/components/research/BulkResearchConfirmationModal"
 import dynamic from 'next/dynamic';
 
 // Dynamically import the ContactListManager component with no SSR
@@ -90,6 +93,10 @@ interface EmailForm {
 export default function EmailsPage() {
   const dispatch = useDispatch<AppDispatch>()
   const router = useRouter()
+  
+  // Bulk research hook
+  const bulkResearch = useBulkResearch("emaillist")
+  
   // Use separate selectors for better performance and to ensure re-renders
   const emails = useSelector((state: RootState) => state.emails.emails)
   const isLoading = useSelector((state: RootState) => state.emails.isLoading)
@@ -387,6 +394,33 @@ export default function EmailsPage() {
       return true
     })
   }, [emails])
+
+  // Get contact names for selected emails
+  const selectedContactNames = useMemo(() => {
+    return bulkResearch.selectedIds.map(id => {
+      const email = displayedEmails.find((e: any) => e.id === id)
+      const name = email?.first_name && email?.last_name 
+        ? `${email.first_name} ${email.last_name}`
+        : email?.email || "Unknown"
+      return { id, name }
+    })
+  }, [bulkResearch.selectedIds, displayedEmails])
+
+  // Handle select all on current page
+  const handleSelectAllOnPage = (checked: boolean) => {
+    const pageIds = displayedEmails.map((e: any) => e.id)
+    if (checked) {
+      bulkResearch.handleSelectAll(pageIds)
+    } else {
+      bulkResearch.handleDeselectAll(pageIds)
+    }
+  }
+
+  // Check if all on page are selected
+  const allOnPageSelected = useMemo(() => {
+    if (displayedEmails.length === 0) return false
+    return displayedEmails.every((e: any) => bulkResearch.isSelected(e.id))
+  }, [displayedEmails, bulkResearch.selectedIds])
   
 
   useEffect(() => { setCurrentPage(1) }, [filtered])
@@ -467,6 +501,24 @@ export default function EmailsPage() {
   return (
     <MainLayout>
       <div className="flex flex-col gap-6">
+        {/* Bulk Research Floating Bar */}
+        <BulkResearchFloatingBar
+          selectedCount={bulkResearch.selectedCount}
+          maxCount={bulkResearch.maxCount}
+          onResearchClick={bulkResearch.handleResearchClick}
+          onClearClick={bulkResearch.handleClearSelection}
+        />
+
+        {/* Bulk Research Confirmation Modal */}
+        <BulkResearchConfirmationModal
+          open={bulkResearch.showConfirmModal}
+          onOpenChange={bulkResearch.setShowConfirmModal}
+          contactCount={bulkResearch.selectedCount}
+          contactNames={selectedContactNames.map(c => c.name)}
+          onConfirm={(createCampaign) => bulkResearch.handleConfirmResearch(createCampaign, selectedContactNames)}
+          isLoading={bulkResearch.isSubmitting}
+        />
+
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
@@ -625,9 +677,37 @@ export default function EmailsPage() {
             </div>
                     </div>
           <TabsContent value="all" className="space-y-4">
+            {/* Select All Checkbox */}
+            {displayedEmails.length > 0 && (
+              <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                <Checkbox
+                  checked={allOnPageSelected}
+                  onCheckedChange={handleSelectAllOnPage}
+                  id="select-all"
+                />
+                <Label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
+                  Select all on this page ({displayedEmails.length})
+                </Label>
+                {bulkResearch.selectedCount > 0 && (
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {bulkResearch.selectedCount} selected
+                  </span>
+                )}
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-6 justify-center">
               {displayedEmails.map((email) => (
                 <Card key={email.id} className="w-full sm:w-[350px] md:w-[320px] lg:w-[300px] rounded-xl border bg-card shadow-lg hover:shadow-2xl transition-shadow duration-200 relative group">
+                  {/* Selection Checkbox */}
+                  <div className="absolute top-3 left-3 z-10">
+                    <Checkbox
+                      checked={bulkResearch.isSelected(email.id)}
+                      onCheckedChange={() => bulkResearch.handleToggle(email.id)}
+                      className="bg-background border-2"
+                    />
+                  </div>
+
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <div className="flex items-center gap-2">
                       <div className="rounded-full bg-primary/10 p-2">

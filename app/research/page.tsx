@@ -5,16 +5,34 @@ import { useDispatch, useSelector } from "react-redux"
 import { useRouter } from "next/navigation"
 import MainLayout from "@/components/layout/main-layout"
 import type { AppDispatch, RootState } from "@/store/store"
-import { handleFetchResearchList } from "@/store/actions/researchActions"
+import { handleFetchResearchList, handleDeleteResearch } from "@/store/actions/researchActions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Progress } from "@/components/ui/progress"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/components/ui/use-toast"
 import { createNotificationPoller } from "@/store/utils/notificationPolling"
-import { Search, CheckCircle2, Clock, AlertCircle, RefreshCw, Sparkles, X } from "lucide-react"
+import { Search, CheckCircle2, Clock, AlertCircle, RefreshCw, Sparkles, X, Trash2, MoreVertical } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Pagination,
   PaginationContent,
@@ -32,6 +50,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import ResearchSummaryRenderer from "@/components/research/ResearchSummaryRenderer"
 
 const PAGE_SIZE = 10
 
@@ -39,7 +58,7 @@ export default function ResearchPage() {
   const router = useRouter()
   const dispatch = useDispatch<AppDispatch>()
   const { toast } = useToast()
-  const { researchResults, isLoading, pagination } = useSelector(
+  const { researchResults, isLoading, isDeleting, deleteError, pagination } = useSelector(
     (state: RootState) => state.research
   )
 
@@ -48,6 +67,19 @@ export default function ResearchPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "processing" | "completed" | "failed">("all")
   const [contactTypeFilter, setContactTypeFilter] = useState<"all" | "emaillist" | "company">("all")
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isFiltering, setIsFiltering] = useState(false)
+  
+  // Selection state
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set())
+  const [selectAll, setSelectAll] = useState(false)
+  
+  // Delete confirmation state
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    isOpen: boolean
+    type: 'single' | 'bulk' | 'all'
+    itemId?: number
+    itemName?: string
+  }>({ isOpen: false, type: 'single' })
   
   // Track if this is the initial load (no data yet)
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
@@ -59,7 +91,11 @@ export default function ResearchPage() {
   const [pendingTokens, setPendingTokens] = useState<Map<string, { name: string; startedAt: number }>>(new Map())
   const pollerRef = useRef<ReturnType<typeof createNotificationPoller> | null>(null)
 
-  const fetchResearch = useCallback(async () => {
+  const fetchResearch = useCallback(async (showFilterLoading = false) => {
+    if (showFilterLoading) {
+      setIsFiltering(true)
+    }
+    
     const params = {
       page: currentPage,
       page_size: PAGE_SIZE,
@@ -68,8 +104,15 @@ export default function ResearchPage() {
       ...(contactTypeFilter !== "all" && { contact_type: contactTypeFilter }),
       ordering: "-created_at",
     }
-    await dispatch(handleFetchResearchList(params) as any)
-    setHasLoadedOnce(true)
+    
+    try {
+      await dispatch(handleFetchResearchList(params) as any)
+      setHasLoadedOnce(true)
+    } finally {
+      if (showFilterLoading) {
+        setIsFiltering(false)
+      }
+    }
   }, [dispatch, currentPage, searchQuery, statusFilter, contactTypeFilter])
 
   useEffect(() => {
@@ -162,6 +205,112 @@ export default function ResearchPage() {
   const handleSearch = (query: string) => {
     setSearchQuery(query)
     setCurrentPage(1)
+    // Trigger filter loading for search if query is not empty or we're clearing a search
+    if (query.trim() !== '' || searchQuery !== '') {
+      // Use setTimeout to allow the state to update first
+      setTimeout(() => {
+        fetchResearch(true)
+      }, 100)
+    }
+  }
+
+  // Selection management
+  const handleSelectItem = (itemId: number, checked: boolean) => {
+    const newSelection = new Set(selectedItems)
+    if (checked) {
+      newSelection.add(itemId)
+    } else {
+      newSelection.delete(itemId)
+    }
+    setSelectedItems(newSelection)
+    setSelectAll(newSelection.size === researchResults.length && researchResults.length > 0)
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedItems(new Set(researchResults.map(r => r.id)))
+    } else {
+      setSelectedItems(new Set())
+    }
+    setSelectAll(checked)
+  }
+
+  // Clear selections when data changes
+  useEffect(() => {
+    setSelectedItems(new Set())
+    setSelectAll(false)
+  }, [researchResults])
+
+  // Delete functions
+  const handleSingleDelete = (itemId: number, itemName: string) => {
+    setDeleteConfirmation({
+      isOpen: true,
+      type: 'single',
+      itemId,
+      itemName
+    })
+  }
+
+  const handleBulkDelete = () => {
+    setDeleteConfirmation({
+      isOpen: true,
+      type: 'bulk'
+    })
+  }
+
+  const handleDeleteAll = () => {
+    setDeleteConfirmation({
+      isOpen: true,
+      type: 'all'
+    })
+  }
+
+  const confirmDelete = async () => {
+    const { type, itemId } = deleteConfirmation
+    let deleteParams: any = {}
+
+    switch (type) {
+      case 'single':
+        deleteParams = { research_id: itemId }
+        break
+      case 'bulk':
+        deleteParams = { research_ids: Array.from(selectedItems) }
+        break
+      case 'all':
+        deleteParams = { delete_all: true }
+        break
+    }
+
+    const result = await dispatch(handleDeleteResearch(deleteParams) as any)
+
+    if (result.success) {
+      const response = result.data
+      let message = response.message || `Successfully deleted research result(s)`
+      
+      if (response.not_found_ids && response.not_found_ids.length > 0) {
+        message += `. Note: ${response.not_found_ids.length} item(s) were not found.`
+      }
+      
+      toast({
+        title: "Research Deleted",
+        description: message,
+      })
+      
+      // Clear selections after successful delete
+      setSelectedItems(new Set())
+      setSelectAll(false)
+      
+      // Refresh data to ensure consistency
+      await fetchResearch()
+    } else {
+      toast({
+        title: "Delete Failed",
+        description: result.error || "Failed to delete research results",
+        variant: "destructive",
+      })
+    }
+
+    setDeleteConfirmation({ isOpen: false, type: 'single' })
   }
 
   const getStatusIcon = (status: string) => {
@@ -229,16 +378,78 @@ export default function ResearchPage() {
               View personalized research for contacts and companies
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleManualRefresh}
-            disabled={isRefreshing || isLoading}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleManualRefresh}
+              disabled={isRefreshing || isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+            
+            {researchResults.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem 
+                    onClick={handleDeleteAll}
+                    disabled={isDeleting}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isDeleting ? (
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
+                    {isDeleting ? "Deleting..." : "Delete All Research"}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </div>
+
+        {/* Bulk Actions Toolbar */}
+        {selectedItems.size > 0 && (
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium">
+                  {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''} selected
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedItems(new Set())}
+                  disabled={isDeleting}
+                >
+                  Clear selection
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  {isDeleting ? "Deleting..." : "Delete Selected"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Search and Filters */}
         <div className="space-y-4">
@@ -254,12 +465,33 @@ export default function ResearchPage() {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            {researchResults.length > 0 && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="select-all"
+                  checked={selectAll}
+                  onCheckedChange={handleSelectAll}
+                  disabled={isDeleting}
+                />
+                <label
+                  htmlFor="select-all"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  Select all
+                </label>
+              </div>
+            )}
+            
             <Select
               value={statusFilter}
               onValueChange={(value: any) => {
                 setStatusFilter(value)
                 setCurrentPage(1)
+                // Trigger filter loading
+                setTimeout(() => {
+                  fetchResearch(true)
+                }, 100)
               }}
             >
               <SelectTrigger className="w-full sm:w-40">
@@ -278,6 +510,10 @@ export default function ResearchPage() {
               onValueChange={(value: any) => {
                 setContactTypeFilter(value)
                 setCurrentPage(1)
+                // Trigger filter loading
+                setTimeout(() => {
+                  fetchResearch(true)
+                }, 100)
               }}
             >
               <SelectTrigger className="w-full sm:w-40">
@@ -293,7 +529,7 @@ export default function ResearchPage() {
         </div>
 
         {/* Results List */}
-        {isLoading && !hasLoadedOnce ? (
+        {(isLoading && !hasLoadedOnce) || isFiltering ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
               <Card key={i}>
@@ -328,31 +564,68 @@ export default function ResearchPage() {
                     research.status === "processing" 
                       ? "border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20" 
                       : ""
+                  } ${
+                    selectedItems.has(research.id)
+                      ? "ring-2 ring-primary/50 border-primary/50"
+                      : ""
+                  } ${
+                    isDeleting ? "opacity-75" : ""
                   }`}
                 >
-                  <CardContent className="pt-6">
+                  {/* Delete loading overlay */}
+                  {isDeleting && (
+                    <div className="absolute inset-0 bg-white/50 dark:bg-black/50 flex items-center justify-center z-10 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        <span>Processing deletion...</span>
+                      </div>
+                    </div>
+                  )}
+                  <CardContent className="pt-6 relative">
                     <div className="space-y-4">
-                      {/* Header */}
+                      {/* Header with selection */}
                       <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            {getStatusIcon(research.status)}
-                            <h3
-                              className="text-lg font-semibold cursor-pointer hover:text-blue-600 hover:underline transition-colors"
-                              onClick={() =>
-                                handleContactNameClick(research.contact_type, research.contact_id)
-                              }
-                            >
-                              {research.contact_name}
-                            </h3>
-                            {getStatusBadge(research.status)}
+                        <div className="flex items-start gap-3 flex-1">
+                          <Checkbox
+                            checked={selectedItems.has(research.id)}
+                            onCheckedChange={(checked) => handleSelectItem(research.id, checked as boolean)}
+                            disabled={isDeleting}
+                            className="mt-1"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              {getStatusIcon(research.status)}
+                              <h3
+                                className="text-lg font-semibold cursor-pointer hover:text-blue-600 hover:underline transition-colors"
+                                onClick={() =>
+                                  handleContactNameClick(research.contact_type, research.contact_id)
+                                }
+                              >
+                                {research.contact_name}
+                              </h3>
+                              {getStatusBadge(research.status)}
+                            </div>
+                            <p className="text-sm text-muted-foreground">{research.contact_email}</p>
                           </div>
-                          <p className="text-sm text-muted-foreground">{research.contact_email}</p>
                         </div>
-                        <div className="text-right">
+                        <div className="flex items-start gap-2">
                           <Badge variant="outline" className="mb-2">
                             {research.contact_type === "emaillist" ? "Contact" : "Company"}
                           </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleSingleDelete(research.id, research.contact_name)}
+                            disabled={isDeleting}
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-red-600 hover:bg-red-50 disabled:opacity-50"
+                            title={isDeleting ? "Deleting..." : "Delete research"}
+                          >
+                            {isDeleting ? (
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
                         </div>
                       </div>
 
@@ -388,54 +661,11 @@ export default function ResearchPage() {
                         </div>
                       )}
 
-                      {/* Research Summary - if completed */}
+                      {/* Research Summary - if completed (render schema-free) */}
                       {research.status === "completed" && research.research_summary && (
-                        <Tabs defaultValue="summary" className="w-full">
-                          <TabsList className="grid w-full grid-cols-1">
-                            <TabsTrigger value="summary">Summary</TabsTrigger>
-                          </TabsList>
-
-                          <TabsContent value="summary" className="space-y-3">
-                            <div>
-                              <p className="text-xs font-semibold text-muted-foreground">BACKGROUND</p>
-                              <ul className="text-sm space-y-1 mt-1">
-                                {research.research_summary.professional_background?.map(
-                                  (item, idx) => (
-                                    <li key={idx} className="text-muted-foreground">
-                                      • {item}
-                                    </li>
-                                  )
-                                )}
-                              </ul>
-                            </div>
-
-                            {research.research_summary.recent_achievements && (
-                              <div>
-                                <p className="text-xs font-semibold text-muted-foreground">ACHIEVEMENTS</p>
-                                <ul className="text-sm space-y-1 mt-1">
-                                  {research.research_summary.recent_achievements.map(
-                                    (item, idx) => (
-                                      <li key={idx} className="text-muted-foreground">
-                                        • {item}
-                                      </li>
-                                    )
-                                  )}
-                                </ul>
-                              </div>
-                            )}
-
-                            {research.research_summary.industry_focus && (
-                              <div>
-                                <p className="text-xs font-semibold text-muted-foreground">FOCUS</p>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  {research.research_summary.industry_focus}
-                                </p>
-                              </div>
-                            )}
-                          </TabsContent>
-
-                     
-                        </Tabs>
+                        <div className="w-full">
+                          <ResearchSummaryRenderer data={research.research_summary.research || research.research_summary} />
+                        </div>
                       )}
 
                       {/* Footer - Timestamps */}
@@ -468,7 +698,13 @@ export default function ResearchPage() {
                   <PaginationContent>
                     <PaginationItem>
                       <PaginationPrevious
-                        onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                        onClick={() => {
+                          const newPage = Math.max(currentPage - 1, 1)
+                          setCurrentPage(newPage)
+                          setTimeout(() => {
+                            fetchResearch(true)
+                          }, 100)
+                        }}
                         className={
                           currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"
                         }
@@ -489,7 +725,12 @@ export default function ResearchPage() {
                       return (
                         <PaginationItem key={page}>
                           <PaginationLink
-                            onClick={() => setCurrentPage(page)}
+                            onClick={() => {
+                              setCurrentPage(page)
+                              setTimeout(() => {
+                                fetchResearch(true)
+                              }, 100)
+                            }}
                             isActive={currentPage === page}
                             className="cursor-pointer"
                           >
@@ -501,11 +742,13 @@ export default function ResearchPage() {
 
                     <PaginationItem>
                       <PaginationNext
-                        onClick={() =>
-                          setCurrentPage((prev) =>
-                            Math.min(prev + 1, pagination.totalPages)
-                          )
-                        }
+                        onClick={() => {
+                          const newPage = Math.min(currentPage + 1, pagination.totalPages)
+                          setCurrentPage(newPage)
+                          setTimeout(() => {
+                            fetchResearch(true)
+                          }, 100)
+                        }}
                         className={
                           currentPage >= pagination.totalPages
                             ? "pointer-events-none opacity-50"
@@ -529,6 +772,56 @@ export default function ResearchPage() {
           </div>
         )}
       </div>
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmation.isOpen} onOpenChange={(open) => 
+        setDeleteConfirmation(prev => ({ ...prev, isOpen: open }))
+      }>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isDeleting ? "Deleting..." : "Confirm Deletion"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isDeleting ? (
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span>Please wait while we delete your research results...</span>
+                </div>
+              ) : (
+                <>
+                  {deleteConfirmation.type === 'single' && (
+                    <>Are you sure you want to delete the research for <strong>{deleteConfirmation.itemName}</strong>? This action cannot be undone.</>
+                  )}
+                  {deleteConfirmation.type === 'bulk' && (
+                    <>Are you sure you want to delete <strong>{selectedItems.size}</strong> selected research result{selectedItems.size !== 1 ? 's' : ''}? This action cannot be undone.</>
+                  )}
+                  {deleteConfirmation.type === 'all' && (
+                    <>Are you sure you want to delete <strong>ALL</strong> research results? This will permanently remove all your research data and cannot be undone.</>
+                  )}
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600 disabled:opacity-50"
+            >
+              {isDeleting ? (
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span>Deleting...</span>
+                </div>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   )
 }

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Edit, Trash2, Plus, Search, Eye, Loader2, CheckCircle2, XCircle, Building2 } from "lucide-react"
+import { Edit, Trash2, Plus, Search, Eye, Loader2, CheckCircle2, XCircle, Building2, Sparkles } from "lucide-react"
 import type { RootState, AppDispatch } from "@/store/store"
 import { handleFetchCompanies, handleCreateCompany, handleUpdateCompany, handleDeleteCompany } from "@/store/actions/companyActions"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -19,6 +19,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import { useBulkResearch } from "@/components/research/useBulkResearch"
+import { BulkResearchFloatingBar } from "@/components/research/BulkResearchFloatingBar"
+import { BulkResearchConfirmationModal } from "@/components/research/BulkResearchConfirmationModal"
 
 interface CompanyForm {
   campaign: number
@@ -62,6 +65,9 @@ interface CompanyForm {
 export default function CompaniesPage() {
   const dispatch = useDispatch<AppDispatch>()
   const router = useRouter()
+  
+  // Bulk research hook
+  const bulkResearch = useBulkResearch("company")
   
   const companies = useSelector((state: RootState) => state.companies.companies)
   const isLoading = useSelector((state: RootState) => state.companies.isLoading)
@@ -362,9 +368,54 @@ export default function CompaniesPage() {
     })
   }, [companies])
 
+  // Get contact names for selected companies
+  const selectedContactNames = useMemo(() => {
+    return bulkResearch.selectedIds.map(id => {
+      const company = displayedCompanies.find((c: any) => c.id === id)
+      return {
+        id,
+        name: company?.company_name || "Unknown"
+      }
+    })
+  }, [bulkResearch.selectedIds, displayedCompanies])
+
+  // Handle select all on current page
+  const handleSelectAllOnPage = (checked: boolean) => {
+    const pageIds = displayedCompanies.map((c: any) => c.id)
+    if (checked) {
+      bulkResearch.handleSelectAll(pageIds)
+    } else {
+      bulkResearch.handleDeselectAll(pageIds)
+    }
+  }
+
+  // Check if all on page are selected
+  const allOnPageSelected = useMemo(() => {
+    if (displayedCompanies.length === 0) return false
+    return displayedCompanies.every((c: any) => bulkResearch.isSelected(c.id))
+  }, [displayedCompanies, bulkResearch.selectedIds])
+
   return (
     <MainLayout>
       <div className="flex flex-col gap-6">
+        {/* Bulk Research Floating Bar */}
+        <BulkResearchFloatingBar
+          selectedCount={bulkResearch.selectedCount}
+          maxCount={bulkResearch.maxCount}
+          onResearchClick={bulkResearch.handleResearchClick}
+          onClearClick={bulkResearch.handleClearSelection}
+        />
+
+        {/* Bulk Research Confirmation Modal */}
+        <BulkResearchConfirmationModal
+          open={bulkResearch.showConfirmModal}
+          onOpenChange={bulkResearch.setShowConfirmModal}
+          contactCount={bulkResearch.selectedCount}
+          contactNames={selectedContactNames.map(c => c.name)}
+          onConfirm={(createCampaign) => bulkResearch.handleConfirmResearch(createCampaign, selectedContactNames)}
+          isLoading={bulkResearch.isSubmitting}
+        />
+
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Companies</h1>
@@ -890,10 +941,39 @@ export default function CompaniesPage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="flex flex-wrap gap-6 justify-center">
-                {displayedCompanies.map((company) => (
-                  <Card key={company.id} className="w-full sm:w-[350px] md:w-[320px] lg:w-[300px] rounded-xl border bg-card shadow-lg hover:shadow-2xl transition-shadow duration-200 relative group">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <>
+                {/* Select All Checkbox */}
+                {displayedCompanies.length > 0 && (
+                  <div className="flex items-center gap-3 mb-4 p-3 bg-muted/30 rounded-lg">
+                    <Checkbox
+                      checked={allOnPageSelected}
+                      onCheckedChange={handleSelectAllOnPage}
+                      id="select-all"
+                    />
+                    <Label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
+                      Select all on this page ({displayedCompanies.length})
+                    </Label>
+                    {bulkResearch.selectedCount > 0 && (
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {bulkResearch.selectedCount} selected
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-6 justify-center">
+                  {displayedCompanies.map((company) => (
+                    <Card key={company.id} className="w-full sm:w-[350px] md:w-[320px] lg:w-[300px] rounded-xl border bg-card shadow-lg hover:shadow-2xl transition-shadow duration-200 relative group">
+                      {/* Selection Checkbox */}
+                      <div className="absolute top-3 left-3 z-10">
+                        <Checkbox
+                          checked={bulkResearch.isSelected(company.id)}
+                          onCheckedChange={() => bulkResearch.handleToggle(company.id)}
+                          className="bg-background border-2"
+                        />
+                      </div>
+
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
                       <div className="flex items-center gap-2">
                         <div className="rounded-full bg-primary/10 p-2">
                           <Building2 className="h-6 w-6 text-primary" />
@@ -969,7 +1049,8 @@ export default function CompaniesPage() {
                     </CardContent>
                   </Card>
                 ))}
-              </div>
+                </div>
+              </>
             )}
 
             <div className="flex items-center justify-between p-4">

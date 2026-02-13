@@ -12,7 +12,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ArrowLeft, Building2, CheckCircle2, AlertCircle, Loader2, XCircle, Sparkles } from "lucide-react"
@@ -20,6 +19,7 @@ import type { RootState, AppDispatch } from "@/store/store"
 import { handleFetchCompanyById, handleUpdateCompany, handleDeleteCompany } from "@/store/actions/companyActions"
 import { handleStartResearch } from "@/store/actions/researchActions"
 import { addProcessingResearch } from "@/store/slices/processingResearchesSlice"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useToast } from "@/components/ui/use-toast"
 import ResearchConfirmationModal from "@/components/research/ResearchConfirmationModal"
 
@@ -41,6 +41,7 @@ export default function CompanyDetailPage() {
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [showResearchModal, setShowResearchModal] = useState(false)
   const [researchLoading, setResearchLoading] = useState(false)
+  const [researchError, setResearchError] = useState<string | null>(null)
 
   const [form, setForm] = useState<any>({
     company_name: "",
@@ -792,9 +793,23 @@ export default function CompanyDetailPage() {
           </Tabs>
         )}
 
+        {/* Research Error Alert */}
+        {researchError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Research Error</AlertTitle>
+            <AlertDescription>{researchError}</AlertDescription>
+          </Alert>
+        )}
+
         <ResearchConfirmationModal
           open={showResearchModal}
-          onOpenChange={setShowResearchModal}
+          onOpenChange={(open) => {
+            setShowResearchModal(open)
+            if (open) {
+              setResearchError(null) // Clear error when opening modal
+            }
+          }}
           contactName={currentCompany.company_name}
           contactType="company"
           isLoading={researchLoading}
@@ -842,18 +857,15 @@ export default function CompanyDetailPage() {
                 })
                 router.push("/research")
               } else {
-                toast({
-                  title: "Error",
-                  description: result.error || "Failed to start research",
-                  variant: "destructive",
-                })
+                // Check for specific error codes
+                if (result?.payload?.code === "RESEARCH_EXISTS") {
+                  setResearchError(result.payload.message || "You have already researched this company. View the existing research or delete it to create a new one.")
+                } else {
+                  setResearchError(result.error || "Failed to start research")
+                }
               }
             } catch (error: any) {
-              toast({
-                title: "Error",
-                description: error.message || "Failed to start research",
-                variant: "destructive",
-              })
+              setResearchError(error.message || "Failed to start research")
             } finally {
               setResearchLoading(false)
             }

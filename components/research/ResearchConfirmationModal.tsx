@@ -76,7 +76,12 @@ export default function ResearchConfirmationModal({
             Cancel
           </Button>
           <Button onClick={handleConfirm} disabled={isLoading}>
-            {isLoading ? "Starting Research..." : "Generate Research & Email"}
+            {isLoading 
+              ? "Starting Research..." 
+              : createCampaign 
+                ? "Generate Research & Email" 
+                : "Generate Research"
+            }
           </Button>
         </DialogFooter>
       </DialogContent>
