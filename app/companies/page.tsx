@@ -81,6 +81,9 @@ export default function CompaniesPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null)
+  const [selectedCountry, setSelectedCountry] = useState<string>("")
+  const [countries, setCountries] = useState<string[]>([])
+  const [countriesLoading, setCountriesLoading] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   
   const [form, setForm] = useState<CompanyForm>({
@@ -137,25 +140,48 @@ export default function CompaniesPage() {
     }
   }, [dispatch, campaigns])
 
-  // Fetch companies when component mounts or page changes
+  // Fetch countries from REST Countries API
+  useEffect(() => {
+    const fetchCountries = async () => {
+      setCountriesLoading(true)
+      try {
+        const response = await fetch('https://restcountries.com/v3.1/all?fields=name')
+        const data = await response.json()
+        const countryNames = data.map((country: any) => country.name.common).sort()
+        setCountries(countryNames)
+      } catch (error) {
+        console.error('Failed to fetch countries:', error)
+      } finally {
+        setCountriesLoading(false)
+      }
+    }
+    fetchCountries()
+  }, [])
+
+  // Fetch companies when component mounts or page/filters change
   useEffect(() => {
     const fetchData = async () => {
       try {
         const campaignId = selectedCampaignId || undefined
-        await dispatch(handleFetchCompanies({ campaignId, page: currentPage }))
+        const country = selectedCountry || undefined
+        await dispatch(handleFetchCompanies({ campaignId, country, page: currentPage }))
       } catch (error) {
         console.error('Failed to fetch companies:', error)
       }
     }
     
     fetchData()
-  }, [dispatch, currentPage, selectedCampaignId])
+  }, [dispatch, currentPage, selectedCampaignId, selectedCountry])
 
   // Debounced search function
   useEffect(() => {
     const searchCompanies = async () => {
       if (!searchQuery.trim()) {
-        await dispatch(handleFetchCompanies({ campaignId: selectedCampaignId || undefined, page: 1 }))
+        await dispatch(handleFetchCompanies({ 
+          campaignId: selectedCampaignId || undefined,
+          country: selectedCountry || undefined,
+          page: 1 
+        }))
         return
       }
 
@@ -164,6 +190,7 @@ export default function CompaniesPage() {
         await dispatch(handleFetchCompanies({
           search: searchQuery,
           campaignId: selectedCampaignId || undefined,
+          country: selectedCountry || undefined,
           page: 1,
         }))
       } catch (error) {
@@ -175,7 +202,7 @@ export default function CompaniesPage() {
 
     const timerId = setTimeout(searchCompanies, 500)
     return () => clearTimeout(timerId)
-  }, [searchQuery, dispatch, selectedCampaignId])
+  }, [searchQuery, dispatch, selectedCampaignId, selectedCountry])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
@@ -426,11 +453,11 @@ export default function CompaniesPage() {
           </Button>
         </div>
 
-        {/* Campaign Filter */}
+        {/* Campaign and Country Filter */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
                 <Label htmlFor="campaign-filter">Filter by Campaign</Label>
                 <select
                   id="campaign-filter"
@@ -447,7 +474,26 @@ export default function CompaniesPage() {
                   ))}
                 </select>
               </div>
-              <div className="relative flex-1">
+              <div>
+                <Label htmlFor="country-filter">Filter by Country</Label>
+                <select
+                  id="country-filter"
+                  className="w-full border rounded px-3 py-2 mt-2"
+                  value={selectedCountry}
+                  onChange={e => {
+                    setSelectedCountry(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  disabled={countriesLoading}
+                >
+                  <option value="">All Countries</option>
+                  {countries.map((country) => (
+                    <option key={country} value={country}>{country}</option>
+                  ))}
+                </select>
+                {countriesLoading && <p className="text-xs text-muted-foreground mt-1">Loading countries...</p>}
+              </div>
+              <div className="relative">
                 <Search className={`absolute left-2.5 top-9 h-4 w-4 ${isSearching ? 'text-primary' : 'text-muted-foreground'}`} />
                 {isSearching && (
                   <Loader2 className="absolute right-2.5 top-9 h-4 w-4 animate-spin text-muted-foreground" />
