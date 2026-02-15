@@ -24,6 +24,7 @@ import processingResearchesReducer from "./slices/processingResearchesSlice"
 import selectedContactsReducer from "./slices/selectedContactsSlice"
 import researchReducer from "./slices/researchSlice"
 import neuronReducer from "./slices/neuronSlice"
+import userSettingsReducer from "./slices/userSettingsSlice"
 
 // Define root state type
 type RootState = {
@@ -51,6 +52,7 @@ type RootState = {
   selectedContacts: ReturnType<typeof selectedContactsReducer>
   research: ReturnType<typeof researchReducer>
   neuron: ReturnType<typeof neuronReducer>
+  userSettings: ReturnType<typeof userSettingsReducer>
 }
 
 // Create root reducer with proper typing
@@ -79,6 +81,7 @@ const rootReducer: ReducersMapObject<RootState> = {
   selectedContacts: selectedContactsReducer,
   research: researchReducer,
   neuron: neuronReducer,
+  userSettings: userSettingsReducer,
 }
 
 // Define app dispatch type with thunk support

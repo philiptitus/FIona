@@ -107,6 +107,9 @@ export default function EmailsPage() {
   const [isSearching, setIsSearching] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedCountry, setSelectedCountry] = useState<string>("")
+  const [countries, setCountries] = useState<string[]>([])
+  const [countriesLoading, setCountriesLoading] = useState(false)
   const [form, setForm] = useState<EmailForm>({ 
     organization_name: "", 
     email: "", 
@@ -194,24 +197,43 @@ export default function EmailsPage() {
     }
   }, [dispatch, campaigns]);
 
-  // Fetch emails when component mounts or page changes
+  // Fetch countries from REST Countries API
+  useEffect(() => {
+    const fetchCountries = async () => {
+      setCountriesLoading(true)
+      try {
+        const response = await fetch('https://restcountries.com/v3.1/all?fields=name')
+        const data = await response.json()
+        const countryNames = data.map((country: any) => country.name.common).sort()
+        setCountries(countryNames)
+      } catch (error) {
+        console.error('Failed to fetch countries:', error)
+      } finally {
+        setCountriesLoading(false)
+      }
+    }
+    fetchCountries()
+  }, [])
+
+  // Fetch emails when component mounts or page/filters change
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const result = await dispatch(handleFetchEmails({ page: currentPage }));
+        const country = selectedCountry || undefined
+        const result = await dispatch(handleFetchEmails({ page: currentPage, country }));
       } catch (error) {
       }
     };
     
     fetchData();
-  }, [dispatch, currentPage]);
+  }, [dispatch, currentPage, selectedCountry]);
 
   // Debounced search function
   useEffect(() => {
     const searchEmails = async () => {
       if (!searchQuery.trim()) {
         // If search is empty, reset to show all emails
-        dispatch(handleFetchEmails({ page: 1 }))
+        dispatch(handleFetchEmails({ page: 1, country: selectedCountry || undefined }))
         return
       }
 
@@ -220,6 +242,7 @@ export default function EmailsPage() {
         // Use the search parameter in the API call
         await dispatch(handleFetchEmails({ 
           search: searchQuery,
+          country: selectedCountry || undefined,
           page: 1 // Reset to first page when searching
         }))
       } catch (error) {
@@ -231,7 +254,7 @@ export default function EmailsPage() {
 
     const timerId = setTimeout(searchEmails, 500) // 500ms debounce
     return () => clearTimeout(timerId)
-  }, [searchQuery, dispatch])
+  }, [searchQuery, dispatch, selectedCountry])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
@@ -661,21 +684,37 @@ export default function EmailsPage() {
             <TabsList>
               <TabsTrigger value="all">All Emails</TabsTrigger>
             </TabsList>
-            <div className="relative">
-              <Search className={`absolute left-2.5 top-2.5 h-4 w-4 ${isSearching ? 'text-primary' : 'text-muted-foreground'}`} />
-              {isSearching && (
-                <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
-              )}
-              <Input
-                type="search"
-                placeholder="Search by name, email, or company..."
-                className={`pl-8 pr-8 w-[200px] md:w-[300px] ${isSearching ? 'pr-8' : ''}`}
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                disabled={isLoading}
-              />
+            <div className="flex gap-2">
+              <select
+                className="border rounded px-3 py-2 text-sm"
+                value={selectedCountry}
+                onChange={e => {
+                  setSelectedCountry(e.target.value)
+                  setCurrentPage(1)
+                }}
+                disabled={countriesLoading}
+              >
+                <option value="">All Countries</option>
+                {countries.map((country) => (
+                  <option key={country} value={country}>{country}</option>
+                ))}
+              </select>
+              <div className="relative">
+                <Search className={`absolute left-2.5 top-2.5 h-4 w-4 ${isSearching ? 'text-primary' : 'text-muted-foreground'}`} />
+                {isSearching && (
+                  <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+                <Input
+                  type="search"
+                  placeholder="Search by name, email, or company..."
+                  className={`pl-8 pr-8 w-[200px] md:w-[300px] ${isSearching ? 'pr-8' : ''}`}
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
             </div>
-                    </div>
+          </div>
           <TabsContent value="all" className="space-y-4">
             {/* Select All Checkbox */}
             {displayedEmails.length > 0 && (
