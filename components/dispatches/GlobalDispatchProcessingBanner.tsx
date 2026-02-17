@@ -1,80 +1,102 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useRef, useMemo } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { AppDispatch, RootState } from "@/store/store"
 import { selectAllDispatches, removeDispatch, updateDispatchStatus } from "@/store/slices/processingDispatchesSlice"
-import { pollDispatchStatus } from "@/store/actions/processingDispatchesActions"
 import { useRouter } from "next/navigation"
-import { CheckCircle2, Clock, AlertCircle, X } from "lucide-react"
+import { Clock, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import { createNotificationPoller } from "@/store/utils/notificationPolling"
 
 export default function GlobalDispatchProcessingBanner() {
   const dispatch = useDispatch<AppDispatch>()
   const router = useRouter()
   const allDispatches = useSelector((state: RootState) => selectAllDispatches(state))
-  const processingDispatches = allDispatches.filter((d) => d.status === "processing" || d.status === "scheduled")
+  const processingDispatches = useMemo(() => 
+    allDispatches.filter((d) => d.status === "processing" || d.status === "scheduled"),
+  [allDispatches])
   const [progress, setProgress] = useState<Record<number, number>>({})
-  const [dismissedNotifications, setDismissedNotifications] = useState<Set<string>>(new Set())
+  const pollerRef = useRef<ReturnType<typeof createNotificationPoller> | null>(null)
+  const processingDispatchesRef = useRef(processingDispatches)
 
-  // Initialize polling when dispatch is added
+  // Keep ref in sync with state for the poller callback
+  useEffect(() => {
+    processingDispatchesRef.current = processingDispatches
+  }, [processingDispatches])
+
+  // Initialize progress when dispatch is added
   useEffect(() => {
     processingDispatches.forEach((dispatchItem) => {
-      if (!progress[dispatchItem.campaignId]) {
-        // Start polling
-        dispatch(pollDispatchStatus(dispatchItem.campaignId) as any)
-
+      if (progress[dispatchItem.campaignId] === undefined) {
         // Initialize progress
         setProgress((prev) => ({
           ...prev,
-          [dispatchItem.campaignId]: Math.random() * 40 + 10, // 10-50%
+          [dispatchItem.campaignId]: 10, // Start at 10%
         }))
       }
     })
   }, [processingDispatches, dispatch, progress])
 
-  // Simulate progress
+  // Notification Polling
   useEffect(() => {
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => {
-        const updated = { ...prev }
-        processingDispatches.forEach((d) => {
-          if (updated[d.campaignId] && updated[d.campaignId] < 90) {
-            updated[d.campaignId] += Math.random() * 15
+    if (processingDispatches.length > 0) {
+      if (!pollerRef.current) {
+        pollerRef.current = createNotificationPoller(
+          { notificationType: "campaign_sent" },
+          {
+            interval: 3000,
+            onPoll: (notifications) => {
+              const currentDispatches = processingDispatchesRef.current
+              currentDispatches.forEach((dispatchItem) => {
+                // Check for matching notification
+                const match = notifications.find((n) => 
+                  n.notification_type === "campaign_sent" && 
+                  (
+                    (n.metadata?.campaign_id && Number(n.metadata.campaign_id) === dispatchItem.campaignId) || 
+                    (n.metadata?.token && n.metadata.token === dispatchItem.token)
+                  )
+                )
+
+                if (match) {
+                  dispatch(updateDispatchStatus({
+                    campaignId: dispatchItem.campaignId,
+                    status: "completed"
+                  }))
+                  // Force progress to 100%
+                  setProgress((prev) => ({
+                    ...prev,
+                    [dispatchItem.campaignId]: 100
+                  }))
+
+                  // Navigate and cleanup after a brief delay
+                  setTimeout(() => {
+                    router.push("/sent-emails")
+                    setTimeout(() => {
+                      dispatch(removeDispatch(dispatchItem.campaignId))
+                    }, 500)
+                  }, 1000)
+                }
+              })
+            }
           }
-        })
-        return updated
-      })
-    }, 2000)
-
-    return () => clearInterval(progressInterval)
-  }, [processingDispatches])
-
-  // Handle completion and scheduled status
-  useEffect(() => {
-    allDispatches.forEach((dispatchItem) => {
-      if ((dispatchItem.status === "completed" || dispatchItem.status === "failed") && !dismissedNotifications.has(dispatchItem.campaignId.toString())) {
-        // Show toast
-        const newDismissed = new Set(dismissedNotifications)
-        newDismissed.add(dispatchItem.campaignId.toString())
-        setDismissedNotifications(newDismissed)
-
-        // Redirect to sent emails after 1 second
-        setTimeout(() => {
-          router.push("/sent-emails")
-          // Clean up after redirect
-          setTimeout(() => {
-            dispatch(removeDispatch(dispatchItem.campaignId))
-            setProgress((prev) => {
-              const updated = { ...prev }
-              delete updated[dispatchItem.campaignId]
-              return updated
-            })
-          }, 500)
-        }, 1000)
+        )
+        pollerRef.current.start()
       }
-    })
-  }, [allDispatches, dismissedNotifications, dispatch, router])
+    } else {
+      if (pollerRef.current) {
+        pollerRef.current.stop()
+        pollerRef.current = null
+      }
+    }
+
+    return () => {
+      if (pollerRef.current) {
+        pollerRef.current.stop()
+        pollerRef.current = null
+      }
+    }
+  }, [processingDispatches, dispatch, router])
 
   if (processingDispatches.length === 0) return null
 
@@ -133,14 +155,9 @@ export default function GlobalDispatchProcessingBanner() {
                   <div className="mt-2 bg-blue-200 dark:bg-blue-800/40 rounded-full h-1.5 overflow-hidden">
                     <motion.div
                       className="bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-400 dark:to-blue-500 h-full rounded-full"
-                      animate={{ width: `${Math.min(progressValue, 90)}%` }}
+                      animate={{ width: `${Math.min(progressValue, 100)}%` }}
                       transition={{ type: "spring", stiffness: 50, damping: 20 }}
                     />
-                  </div>
-
-                  <div className="text-xs text-blue-600 dark:text-blue-300 mt-1 flex justify-between">
-                    <span>Processing</span>
-                    <span>{Math.min(Math.round(progressValue), 90)}%</span>
                   </div>
                 </>
               )}
