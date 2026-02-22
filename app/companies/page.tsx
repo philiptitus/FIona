@@ -78,6 +78,7 @@ export default function CompaniesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearching, setIsSearching] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [labelFilter, setLabelFilter] = useState("")
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null)
@@ -164,14 +165,14 @@ export default function CompaniesPage() {
       try {
         const campaignId = selectedCampaignId || undefined
         const country = selectedCountry || undefined
-        await dispatch(handleFetchCompanies({ campaignId, country, page: currentPage }))
+        await dispatch(handleFetchCompanies({ campaignId, country, page: currentPage, label: labelFilter || undefined }))
       } catch (error) {
         console.error('Failed to fetch companies:', error)
       }
     }
     
     fetchData()
-  }, [dispatch, currentPage, selectedCampaignId, selectedCountry])
+  }, [dispatch, currentPage, selectedCampaignId, selectedCountry, labelFilter])
 
   // Debounced search function
   useEffect(() => {
@@ -180,7 +181,8 @@ export default function CompaniesPage() {
         await dispatch(handleFetchCompanies({ 
           campaignId: selectedCampaignId || undefined,
           country: selectedCountry || undefined,
-          page: 1 
+          page: 1,
+          label: labelFilter || undefined,
         }))
         return
       }
@@ -192,6 +194,7 @@ export default function CompaniesPage() {
           campaignId: selectedCampaignId || undefined,
           country: selectedCountry || undefined,
           page: 1,
+          label: labelFilter || undefined,
         }))
       } catch (error) {
         console.error('Search failed:', error)
@@ -202,7 +205,7 @@ export default function CompaniesPage() {
 
     const timerId = setTimeout(searchCompanies, 500)
     return () => clearTimeout(timerId)
-  }, [searchQuery, dispatch, selectedCampaignId, selectedCountry])
+  }, [searchQuery, dispatch, selectedCampaignId, selectedCountry, labelFilter])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
@@ -278,7 +281,7 @@ export default function CompaniesPage() {
           setCreateSuccess(false)
           setShowCreateDialog(false)
           resetForm()
-          dispatch(handleFetchCompanies({ campaignId: selectedCampaignId, page: 1 }))
+          dispatch(handleFetchCompanies({ campaignId: selectedCampaignId, page: 1, label: labelFilter || undefined }))
         }, 2000)
       } else {
         setCreateError("Failed to create company")
@@ -353,7 +356,7 @@ export default function CompaniesPage() {
           setEditSuccess(false)
           setShowEditDialog(false)
           resetForm()
-          dispatch(handleFetchCompanies({ campaignId: selectedCampaignId || undefined, page: 1 }))
+          dispatch(handleFetchCompanies({ campaignId: selectedCampaignId || undefined, page: 1, label: labelFilter || undefined }))
         }, 2000)
       } else {
         setEditError("Failed to update company")
@@ -369,7 +372,7 @@ export default function CompaniesPage() {
     if (confirm("Are you sure you want to delete this company?")) {
       try {
         await dispatch(handleDeleteCompany(id))
-        dispatch(handleFetchCompanies({ campaignId: selectedCampaignId || undefined, page: 1 }))
+        dispatch(handleFetchCompanies({ campaignId: selectedCampaignId || undefined, page: 1, label: labelFilter || undefined }))
       } catch (error) {
         console.error("Failed to delete company:", error)
       }
@@ -508,6 +511,16 @@ export default function CompaniesPage() {
                   onChange={e => setSearchQuery(e.target.value)}
                   disabled={isLoading}
                 />
+                <div className="mt-2">
+                  <Label htmlFor="label-filter">Label</Label>
+                  <Input
+                    id="label-filter"
+                    placeholder="Label"
+                    value={labelFilter}
+                    onChange={e => { setLabelFilter(e.target.value); setCurrentPage(1) }}
+                    className="mt-1"
+                  />
+                </div>
               </div>
             </div>
           </CardContent>

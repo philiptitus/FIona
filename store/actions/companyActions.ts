@@ -48,6 +48,7 @@ export const fetchCompanies = createAsyncThunk(
       page?: number
       companyEmail?: string
       companyName?: string
+      label?: string
       industry?: string
       accountStage?: string
       country?: string
@@ -65,6 +66,7 @@ export const fetchCompanies = createAsyncThunk(
       if (industry) params.append("industry", industry)
       if (accountStage) params.append("account_stage", accountStage)
       if (country) params.append("country", country)
+      if ((arguments[0] as any)?.label) params.append("label", (arguments[0] as any).label)
       if (emailSent !== undefined) params.append("email_sent", emailSent.toString())
 
       const url = `/mail/companies/${params.toString() ? `?${params.toString()}` : ""}`
@@ -392,10 +394,18 @@ export const handleBulkCreateCompaniesJson =
   }
 
 export const handleBulkCreateCompaniesCsv =
-  (formData: FormData) =>
+  (formData: FormData, label?: string) =>
   async (dispatch: AppDispatch) => {
     dispatch(bulkCreateCompaniesStart())
     try {
+      // append optional label so backend can associate created companies/contacts
+      if (label) {
+        try {
+          formData.append('label', label)
+        } catch (e) {
+          // ignore
+        }
+      }
       const resultAction = await dispatch(bulkCreateCompaniesCsv(formData))
       if (bulkCreateCompaniesCsv.fulfilled.match(resultAction)) {
         dispatch(bulkCreateCompaniesSuccess(resultAction.payload.created))

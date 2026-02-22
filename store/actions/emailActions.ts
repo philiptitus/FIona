@@ -41,6 +41,7 @@ interface FetchEmailsParams {
   firstName?: string
   lastName?: string
   organizationName?: string
+  label?: string
   emailStatus?: string
   department?: string
   country?: string
@@ -82,6 +83,7 @@ export const fetchEmails = createAsyncThunk(
       if (department) searchParams.append('department', department)
       if (country) searchParams.append('country', country)
       if (isSent !== undefined) searchParams.append('is_sent', isSent.toString())
+      if ((params as any).label) searchParams.append('label', (params as any).label)
       
       // Add pagination parameters - page size is fixed at 10
       searchParams.append('page', page.toString())
@@ -311,9 +313,17 @@ export const handleCreateEmail =
     }
   }
 
-export const handleBulkCreateEmails = (formData: FormData) => async (dispatch: AppDispatch) => {
+export const handleBulkCreateEmails = (formData: FormData, label?: string) => async (dispatch: AppDispatch) => {
   dispatch(bulkCreateEmailsStart())
   try {
+    // If an optional label is provided, append it so backend can attach it to created contacts
+    if (label) {
+      try {
+        formData.append('label', label)
+      } catch (e) {
+        // ignore errors appending to FormData
+      }
+    }
     const resultAction = await dispatch(bulkCreateEmails(formData))
     if (bulkCreateEmails.fulfilled.match(resultAction)) {
       dispatch(bulkCreateEmailsSuccess(resultAction.payload.created))

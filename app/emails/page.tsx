@@ -107,6 +107,7 @@ export default function EmailsPage() {
   const [isSearching, setIsSearching] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [labelFilter, setLabelFilter] = useState("")
   const [selectedCountry, setSelectedCountry] = useState<string>("")
   const [countries, setCountries] = useState<string[]>([])
   const [countriesLoading, setCountriesLoading] = useState(false)
@@ -220,20 +221,20 @@ export default function EmailsPage() {
     const fetchData = async () => {
       try {
         const country = selectedCountry || undefined
-        const result = await dispatch(handleFetchEmails({ page: currentPage, country }));
+        const result = await dispatch(handleFetchEmails({ page: currentPage, country, label: labelFilter || undefined }));
       } catch (error) {
       }
     };
     
     fetchData();
-  }, [dispatch, currentPage, selectedCountry]);
+  }, [dispatch, currentPage, selectedCountry, labelFilter]);
 
   // Debounced search function
   useEffect(() => {
     const searchEmails = async () => {
       if (!searchQuery.trim()) {
         // If search is empty, reset to show all emails
-        dispatch(handleFetchEmails({ page: 1, country: selectedCountry || undefined }))
+        dispatch(handleFetchEmails({ page: 1, country: selectedCountry || undefined, label: labelFilter || undefined }))
         return
       }
 
@@ -243,7 +244,8 @@ export default function EmailsPage() {
         await dispatch(handleFetchEmails({ 
           search: searchQuery,
           country: selectedCountry || undefined,
-          page: 1 // Reset to first page when searching
+          page: 1, // Reset to first page when searching
+          label: labelFilter || undefined,
         }))
       } catch (error) {
         console.error('Search failed:', error)
@@ -254,7 +256,7 @@ export default function EmailsPage() {
 
     const timerId = setTimeout(searchEmails, 500) // 500ms debounce
     return () => clearTimeout(timerId)
-  }, [searchQuery, dispatch, selectedCountry])
+  }, [searchQuery, dispatch, selectedCountry, labelFilter])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
@@ -288,7 +290,7 @@ export default function EmailsPage() {
     setShowForm(false)
     setEditId(null)
     setForm({ organization_name: "", email: "", context: "" })
-    dispatch(handleFetchEmails())
+    dispatch(handleFetchEmails({ page: currentPage, country: selectedCountry || undefined, label: labelFilter || undefined }))
     } catch (err: any) {
       setManualError(err?.message || "Failed to create email.")
     } finally {
@@ -380,7 +382,7 @@ export default function EmailsPage() {
           setShowEditDialog(false)
           setEditId(null)
           setForm({ organization_name: "", email: "", context: "" })
-          dispatch(handleFetchEmails())
+          dispatch(handleFetchEmails({ page: currentPage, country: selectedCountry || undefined, label: labelFilter || undefined }))
         }, 2000)
       } else {
         setEditError("Failed to update email")
@@ -394,7 +396,7 @@ export default function EmailsPage() {
 
   const handleDelete = async (id: number) => {
     await dispatch(handleDeleteEmail(id))
-    dispatch(handleFetchEmails())
+    dispatch(handleFetchEmails({ page: currentPage, country: selectedCountry || undefined, label: labelFilter || undefined }))
   }
 
   const handleView = (emailId: number) => {
@@ -483,7 +485,7 @@ export default function EmailsPage() {
       setTimeout(() => setBulkSuccess(false), 2000)
       setShowCreateDialog(false)
       setBulkFile(null)
-      dispatch(handleFetchEmails())
+      dispatch(handleFetchEmails({ page: currentPage, country: selectedCountry || undefined, label: labelFilter || undefined }))
     }
     setBulkLoading(false)
   }
@@ -516,7 +518,7 @@ export default function EmailsPage() {
       setTimeout(() => setSmartSuccess(false), 2000)
       setShowCreateDialog(false)
       setSmartData({ campaign_type: "", model: "gpt-4" })
-      dispatch(handleFetchEmails())
+      dispatch(handleFetchEmails({ page: currentPage, country: selectedCountry || undefined, label: labelFilter || undefined }))
     }
     setSmartLoading(false)
   }
@@ -699,6 +701,12 @@ export default function EmailsPage() {
                   <option key={country} value={country}>{country}</option>
                 ))}
               </select>
+              <Input
+                placeholder="Label"
+                value={labelFilter}
+                onChange={e => { setLabelFilter(e.target.value); setCurrentPage(1) }}
+                className="w-[160px]"
+              />
               <div className="relative">
                 <Search className={`absolute left-2.5 top-2.5 h-4 w-4 ${isSearching ? 'text-primary' : 'text-muted-foreground'}`} />
                 {isSearching && (

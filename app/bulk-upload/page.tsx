@@ -21,6 +21,7 @@ export default function BulkUploadPage() {
   const [companySuccess, setCompanySuccess] = useState(false)
   const [companyLoading, setCompanyLoading] = useState(false)
   const [checkCompanyDuplicates, setCheckCompanyDuplicates] = useState(true)
+  const [companyLabel, setCompanyLabel] = useState("")
 
   // Emails state
   const fileRefEmails = useRef<HTMLInputElement | null>(null)
@@ -29,6 +30,7 @@ export default function BulkUploadPage() {
   const [emailSuccess, setEmailSuccess] = useState(false)
   const [emailLoading, setEmailLoading] = useState(false)
   const [checkEmailDuplicates, setCheckEmailDuplicates] = useState(true)
+  const [emailLabel, setEmailLabel] = useState("")
 
   const csvToModelField: Record<string, string> = {
     "Company Name": "company_name",
@@ -93,8 +95,9 @@ export default function BulkUploadPage() {
       const formData = new FormData()
       formData.append('csv_file', companyFile)
       formData.append('check_user_duplicates', String(checkCompanyDuplicates))
+      if (companyLabel) formData.append('label', companyLabel)
 
-      const result = await dispatch(handleBulkCreateCompaniesCsv(formData) as any)
+      const result = await dispatch(handleBulkCreateCompaniesCsv(formData, companyLabel) as any)
 
       if (!result || result === false || result?.error) {
         setCompanyError(result?.error || 'Upload failed')
@@ -134,7 +137,7 @@ export default function BulkUploadPage() {
       formData.append('csv_file', emailFile)
       formData.append('check_user_duplicates', String(checkEmailDuplicates))
 
-      const result = await dispatch(handleBulkCreateEmails(formData) as any)
+      const result = await dispatch(handleBulkCreateEmails(formData, emailLabel) as any)
 
       if (!result || result === false || result?.error) {
         setEmailError(result?.error || 'Upload failed')
@@ -204,6 +207,17 @@ export default function BulkUploadPage() {
               <p className="text-xs text-blue-700 mb-1">Required columns: Company Name, Company Email</p>
               <p className="text-xs text-blue-700">Optional: Company Phone, Company City, Company Country, Industry, Website</p>
             </div>
+            
+            <div className="space-y-2 mb-2">
+              <label className="text-sm font-medium">Label (optional)</label>
+              <input
+                type="text"
+                value={companyLabel}
+                onChange={(e) => setCompanyLabel(e.target.value)}
+                placeholder="e.g. Prospect, VIP"
+                className="w-full border rounded px-2 py-1 text-sm"
+              />
+            </div>
 
             <input ref={fileRefCompanies} type="file" accept=".csv" className="hidden" onChange={onCompanyFileChange} />
             <Button variant="outline" onClick={() => fileRefCompanies.current?.click()} type="button" className="w-full text-left">
@@ -260,7 +274,18 @@ export default function BulkUploadPage() {
               <p className="text-xs text-blue-700">JSON imports are also accepted.</p>
             </div>
 
-            <input ref={fileRefEmails} type="file" accept=".csv,.json" className="hidden" onChange={onEmailFileChange} />
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Label (optional)</label>
+                <input
+                  type="text"
+                  value={emailLabel}
+                  onChange={(e) => setEmailLabel(e.target.value)}
+                  placeholder="e.g. Prospect, VIP, Newsletter"
+                  className="w-full border rounded px-2 py-1 text-sm"
+                />
+              </div>
+
+              <input ref={fileRefEmails} type="file" accept=".csv,.json" className="hidden" onChange={onEmailFileChange} />
             <Button variant="outline" onClick={() => fileRefEmails.current?.click()} type="button" className="w-full text-left">
               <Upload className="h-4 w-4 mr-2" /> {emailFile ? emailFile.name : 'Click to upload CSV or JSON file...'}
             </Button>
