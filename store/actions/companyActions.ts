@@ -38,6 +38,7 @@ export const fetchCompanies = createAsyncThunk(
       page = 1,
       companyEmail = "",
       companyName = "",
+      label = "",
       industry = "",
       accountStage = "",
       country = "",
@@ -66,7 +67,7 @@ export const fetchCompanies = createAsyncThunk(
       if (industry) params.append("industry", industry)
       if (accountStage) params.append("account_stage", accountStage)
       if (country) params.append("country", country)
-      if ((arguments[0] as any)?.label) params.append("label", (arguments[0] as any).label)
+      if (label) params.append("label", label)
       if (emailSent !== undefined) params.append("email_sent", emailSent.toString())
 
       const url = `/mail/companies/${params.toString() ? `?${params.toString()}` : ""}`
@@ -230,6 +231,7 @@ export const handleFetchCompanies =
     page = 1,
     companyEmail = "",
     companyName = "",
+    label = "",
     industry = "",
     accountStage = "",
     country = "",
@@ -240,6 +242,7 @@ export const handleFetchCompanies =
     page?: number
     companyEmail?: string
     companyName?: string
+    label?: string
     industry?: string
     accountStage?: string
     country?: string
@@ -255,6 +258,7 @@ export const handleFetchCompanies =
           page,
           companyEmail,
           companyName,
+          label,
           industry,
           accountStage,
           country,

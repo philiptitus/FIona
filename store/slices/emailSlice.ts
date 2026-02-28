@@ -28,6 +28,7 @@ interface EmailListEntry {
   other_phone?: string
   stage?: string
   lists?: string
+  label?: string
   last_contacted?: string
   account_owner?: string
   num_employees?: number

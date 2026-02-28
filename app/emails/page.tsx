@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Edit, Trash2, MoreHorizontal, Plus, Search, Copy, Eye, Upload, Sparkles, FileText, Loader2, CheckCircle2, XCircle, Reply } from "lucide-react"
 import type { RootState, AppDispatch } from "@/store/store"
+import { handleFetchLabels } from "@/store/actions/labelsActions"
 import { handleFetchEmails, handleCreateEmail, handleUpdateEmail, handleDeleteEmail, handleBulkCreateEmails, handleSmartCreateEmails } from "@/store/actions/emailActions"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { handleFetchCampaigns } from "@/store/actions/campaignActions"
@@ -23,13 +24,6 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useBulkResearch } from "@/components/research/useBulkResearch"
 import { BulkResearchFloatingBar } from "@/components/research/BulkResearchFloatingBar"
 import { BulkResearchConfirmationModal } from "@/components/research/BulkResearchConfirmationModal"
-import dynamic from 'next/dynamic';
-
-// Dynamically import the ContactListManager component with no SSR
-const ContactListManager = dynamic(
-  () => import('@/components/contact-lists/ContactListManager'),
-  { ssr: false }
-);
 
 interface EmailForm {
   organization_name: string
@@ -108,6 +102,7 @@ export default function EmailsPage() {
   const [showForm, setShowForm] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [labelFilter, setLabelFilter] = useState("")
+  const [labelsPage, setLabelsPage] = useState(1)
   const [selectedCountry, setSelectedCountry] = useState<string>("")
   const [countries, setCountries] = useState<string[]>([])
   const [countriesLoading, setCountriesLoading] = useState(false)
@@ -228,6 +223,15 @@ export default function EmailsPage() {
     
     fetchData();
   }, [dispatch, currentPage, selectedCountry, labelFilter]);
+
+  // Fetch available labels for the label picker (paginated)
+  const labels = useSelector((state: RootState) => state.labels.labels)
+  const labelsLoading = useSelector((state: RootState) => state.labels.isLoading)
+  const labelsPagination = useSelector((state: RootState) => state.labels.pagination)
+
+  useEffect(() => {
+    dispatch(handleFetchLabels({ page: labelsPage }))
+  }, [dispatch, labelsPage])
 
   // Debounced search function
   useEffect(() => {
@@ -523,6 +527,21 @@ export default function EmailsPage() {
     setSmartLoading(false)
   }
 
+  // Generate a stable background color for a label string
+  const getLabelBg = (label: string) => {
+    let hash = 0
+    for (let i = 0; i < label.length; i++) {
+      hash = label.charCodeAt(i) + ((hash << 5) - hash)
+    }
+    const h = Math.abs(hash) % 360
+    return `hsl(${h} 70% 45%)`
+  }
+
+  // Text color for label badges (keep white for contrast)
+  const getLabelTextColor = (_label: string) => {
+    return '#ffffff'
+  }
+
   return (
     <MainLayout>
       <div className="flex flex-col gap-6">
@@ -701,12 +720,24 @@ export default function EmailsPage() {
                   <option key={country} value={country}>{country}</option>
                 ))}
               </select>
-              <Input
-                placeholder="Label"
-                value={labelFilter}
-                onChange={e => { setLabelFilter(e.target.value); setCurrentPage(1) }}
-                className="w-[160px]"
-              />
+              <div className="flex items-center gap-2">
+                <select
+                  className="border rounded px-2 py-1 w-[160px]"
+                  value={labelFilter}
+                  onChange={e => { setLabelFilter(e.target.value); setCurrentPage(1) }}
+                >
+                  <option value="">All Labels</option>
+                  {labels.map((l: any) => (
+                    <option key={l.id} value={l.name}>{l.name}</option>
+                  ))}
+                </select>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setLabelsPage(p => Math.max(1, p - 1))} disabled={labelsPage === 1 || labelsLoading}>Prev</Button>
+                  <span className="text-xs">{labelsPage} / {labelsPagination?.totalPages || 1}</span>
+                  <Button variant="outline" size="sm" onClick={() => setLabelsPage(p => Math.min(labelsPagination?.totalPages || 1, p + 1))} disabled={labelsPage >= (labelsPagination?.totalPages || 1) || labelsLoading}>Next</Button>
+                </div>
+                {labelsLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              </div>
               <div className="relative">
                 <Search className={`absolute left-2.5 top-2.5 h-4 w-4 ${isSearching ? 'text-primary' : 'text-muted-foreground'}`} />
                 {isSearching && (
@@ -777,6 +808,14 @@ export default function EmailsPage() {
                     <div className="flex flex-wrap gap-1 mb-2">
                       {email.city && <Badge variant="secondary">{email.city}</Badge>}
                       {email.country && <Badge variant="secondary">{email.country}</Badge>}
+                      {email.label && (
+                        <Badge
+                          style={{ backgroundColor: getLabelBg(email.label), color: getLabelTextColor(email.label) }}
+                          className="capitalize"
+                        >
+                          {email.label}
+                        </Badge>
+                      )}
                       {email.stage && <Badge variant="outline">{email.stage}</Badge>}
                       {email.seniority && <Badge variant="outline">{email.seniority}</Badge>}
                       {email.industry && <Badge variant="outline">{email.industry}</Badge>}
@@ -790,11 +829,7 @@ export default function EmailsPage() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
-                      {/* Contact Lists Section */}
-        <div className="mt-8">
-          <ContactListManager />
-        </div>
+                      ))}
             </div>
             <div className="flex items-center justify-between p-4">
               <div className="text-sm text-muted-foreground">

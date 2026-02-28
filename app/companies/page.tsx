@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Edit, Trash2, Plus, Search, Eye, Loader2, CheckCircle2, XCircle, Building2, Sparkles } from "lucide-react"
 import type { RootState, AppDispatch } from "@/store/store"
+import { handleFetchLabels } from "@/store/actions/labelsActions"
 import { handleFetchCompanies, handleCreateCompany, handleUpdateCompany, handleDeleteCompany } from "@/store/actions/companyActions"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { handleFetchCampaigns } from "@/store/actions/campaignActions"
@@ -79,6 +80,7 @@ export default function CompaniesPage() {
   const [isSearching, setIsSearching] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [labelFilter, setLabelFilter] = useState("")
+  const [labelsPage, setLabelsPage] = useState(1)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null)
@@ -173,6 +175,15 @@ export default function CompaniesPage() {
     
     fetchData()
   }, [dispatch, currentPage, selectedCampaignId, selectedCountry, labelFilter])
+
+  // Labels for picker
+  const labels = useSelector((state: RootState) => state.labels.labels)
+  const labelsLoading = useSelector((state: RootState) => state.labels.isLoading)
+  const labelsPagination = useSelector((state: RootState) => state.labels.pagination)
+
+  useEffect(() => {
+    dispatch(handleFetchLabels({ page: labelsPage }))
+  }, [dispatch, labelsPage])
 
   // Debounced search function
   useEffect(() => {
@@ -425,6 +436,18 @@ export default function CompaniesPage() {
     return displayedCompanies.every((c: any) => bulkResearch.isSelected(c.id))
   }, [displayedCompanies, bulkResearch.selectedIds])
 
+  // Generate a stable background color for a label string
+  const getLabelBg = (label: string) => {
+    let hash = 0
+    for (let i = 0; i < label.length; i++) {
+      hash = label.charCodeAt(i) + ((hash << 5) - hash)
+    }
+    const h = Math.abs(hash) % 360
+    return `hsl(${h} 70% 45%)`
+  }
+
+  const getLabelTextColor = (_label: string) => '#ffffff'
+
   return (
     <MainLayout>
       <div className="flex flex-col gap-6">
@@ -513,13 +536,25 @@ export default function CompaniesPage() {
                 />
                 <div className="mt-2">
                   <Label htmlFor="label-filter">Label</Label>
-                  <Input
-                    id="label-filter"
-                    placeholder="Label"
-                    value={labelFilter}
-                    onChange={e => { setLabelFilter(e.target.value); setCurrentPage(1) }}
-                    className="mt-1"
-                  />
+                  <div className="flex items-center gap-2 mt-1">
+                    <select
+                      id="label-filter"
+                      className="border rounded px-2 py-1 w-full sm:w-[200px]"
+                      value={labelFilter}
+                      onChange={e => { setLabelFilter(e.target.value); setCurrentPage(1) }}
+                    >
+                      <option value="">All Labels</option>
+                      {labels.map((l: any) => (
+                        <option key={l.id} value={l.name}>{l.name}</option>
+                      ))}
+                    </select>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setLabelsPage(p => Math.max(1, p - 1))} disabled={labelsPage === 1 || labelsLoading}>Prev</Button>
+                      <span className="text-xs">{labelsPage} / {labelsPagination?.totalPages || 1}</span>
+                      <Button variant="outline" size="sm" onClick={() => setLabelsPage(p => Math.min(labelsPagination?.totalPages || 1, p + 1))} disabled={labelsPage >= (labelsPagination?.totalPages || 1) || labelsLoading}>Next</Button>
+                    </div>
+                    {labelsLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1071,6 +1106,11 @@ export default function CompaniesPage() {
                         {company.account_stage && <Badge variant="outline">{company.account_stage}</Badge>}
                         {company.company_city && <Badge variant="secondary">{company.company_city}</Badge>}
                         {company.company_country && <Badge variant="secondary">{company.company_country}</Badge>}
+                        {company.label && (
+                          <Badge style={{ backgroundColor: getLabelBg(company.label), color: getLabelTextColor(company.label) }} className="capitalize">
+                            {company.label}
+                          </Badge>
+                        )}
                       </div>
                       <div className="text-xs text-muted-foreground truncate" title={company.short_description}>{company.short_description || "No description"}</div>
                       <div className="flex gap-2 mt-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">

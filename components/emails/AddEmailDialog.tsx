@@ -11,11 +11,13 @@ import {
 } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
-import { Loader2, CheckCircle2, XCircle, Edit, Upload, Copy, Download } from "lucide-react"
+import { Loader2, CheckCircle2, XCircle, Edit, Upload, Copy, Download, Search } from "lucide-react"
 import { handleCreateEmail, handleBulkCreateEmails, handleAddExistingEmails, handleFetchEmails } from "@/store/actions/emailActions"
+import { handleFetchLabels } from "@/store/actions/labelsActions"
 import type { RootState, AppDispatch } from "@/store/store"
 
 interface Email {
@@ -73,6 +75,8 @@ export default function AddEmailDialog({
   const [skipDuplicates, setSkipDuplicates] = useState(true)
   const [isAddingExisting, setIsAddingExisting] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [labelFilter, setLabelFilter] = useState("")
+  const [labelsPage, setLabelsPage] = useState(1)
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedEmailIds, setSelectedEmailIds] = useState<number[]>([])
   const [existingError, setExistingError] = useState("")
@@ -83,23 +87,38 @@ export default function AddEmailDialog({
   }, [])
 
   // Fetch emails when dialog opens, page changes, or search changes
+  const fetchExisting = async (pageOverride?: number) => {
+    const pageToUse = pageOverride ?? currentPage
+    return dispatch(handleFetchEmails({ page: pageToUse, search: searchQuery || undefined, label: labelFilter || undefined }) as any)
+  }
+
   useEffect(() => {
     if (!open) return
 
     const doFetch = async () => {
-      await dispatch(handleFetchEmails({ page: currentPage, search: searchQuery || undefined }) as any)
+      await fetchExisting()
     }
 
-    // Debounce search
+    // Debounce search (only for searchQuery/currentPage changes)
     const timer = setTimeout(doFetch, 500)
     return () => clearTimeout(timer)
-  }, [open, currentPage, searchQuery, dispatch])
+  }, [open, currentPage, searchQuery, labelFilter, dispatch])
 
   // Reset to first page when opening or when search changes
   useEffect(() => {
     if (!open) return
     setCurrentPage(1)
   }, [open])
+
+  // Labels for picker (paginated)
+  const labels = useSelector((state: RootState) => state.labels.labels)
+  const labelsLoading = useSelector((state: RootState) => state.labels.isLoading)
+  const labelsPagination = useSelector((state: RootState) => state.labels.pagination)
+
+  useEffect(() => {
+    if (!open) return
+    dispatch(handleFetchLabels({ page: labelsPage }))
+  }, [open, labelsPage, dispatch])
 
   const toggleEmailSelection = (emailId: number) => {
     setSelectedEmailIds(prev =>
@@ -273,6 +292,18 @@ export default function AddEmailDialog({
       setIsBulkLoading(false)
     }
   }
+
+  // Generate a stable background color for a label string
+  const getLabelBg = (label: string) => {
+    let hash = 0
+    for (let i = 0; i < label.length; i++) {
+      hash = label.charCodeAt(i) + ((hash << 5) - hash)
+    }
+    const h = Math.abs(hash) % 360
+    return `hsl(${h} 70% 45%)`
+  }
+
+  const getLabelTextColor = (_label: string) => '#ffffff'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -579,12 +610,34 @@ export default function AddEmailDialog({
                 Select existing emails to add to this campaign.
               </p>
 
-              <Input
-                placeholder="Search emails..."
-                value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
-                className="mb-2"
-              />
+              <div className="flex gap-2 mb-2">
+                <Input
+                  placeholder="Search emails..."
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
+                  className="flex-1"
+                />
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <select
+                      className="border rounded px-2 py-1 w-36"
+                      value={labelFilter}
+                      onChange={(e) => { setLabelFilter(e.target.value); setCurrentPage(1); fetchExisting(1) }}
+                    >
+                      <option value="">All Labels</option>
+                      {labels.map((l: any) => (
+                        <option key={l.id} value={l.name}>{l.name}</option>
+                      ))}
+                    </select>
+                    <div className="flex items-center gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => setLabelsPage(p => Math.max(1, p - 1))} disabled={labelsPage === 1 || labelsLoading}>Prev</Button>
+                      <span className="text-xs">{labelsPage} / {labelsPagination?.totalPages || 1}</span>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setLabelsPage(p => Math.min(labelsPagination?.totalPages || 1, p + 1))} disabled={labelsPage >= (labelsPagination?.totalPages || 1) || labelsLoading}>Next</Button>
+                    </div>
+                    {labelsLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  </div>
+                </div>
+              </div>
 
               {/* Select All for Current Page */}
               {(emailsFromStore?.length || 0) > 0 && (
@@ -638,15 +691,22 @@ export default function AddEmailDialog({
                           htmlFor={`email-${email.id}`}
                           className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 cursor-pointer"
                         >
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">{email.email}</span>
-                            <span className="text-xs text-gray-500">
-                              {[email.first_name, email.last_name].filter(Boolean).join(' ').trim() || 'No name'}
-                            </span>
-                          </div>
-                          {email.organization_name && (
-                            <div className="text-xs text-gray-500">{email.organization_name}</div>
-                          )}
+                                <div className="flex justify-between items-center">
+                                  <span className="font-medium">{email.email}</span>
+                                  <span className="text-xs text-gray-500">
+                                    {[email.first_name, email.last_name].filter(Boolean).join(' ').trim() || 'No name'}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {email.organization_name && (
+                                    <div className="text-xs text-gray-500">{email.organization_name}</div>
+                                  )}
+                                  {email.label && (
+                                    <Badge style={{ backgroundColor: getLabelBg(email.label), color: getLabelTextColor(email.label) }} className="text-xs capitalize">
+                                      {email.label}
+                                    </Badge>
+                                  )}
+                                </div>
                         </label>
                       </div>
                     ))

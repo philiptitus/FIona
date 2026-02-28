@@ -15,6 +15,7 @@ import { authMiddleware } from "./middleware/authMiddleware"
 import mailboxReducer from "./slices/mailboxSlice"
 import mailboxCleanupReducer from "./slices/mailboxCleanupSlice"
 import contactListReducer from "./slices/contactListSlice"
+import labelsReducer from "./slices/labelsSlice"
 import workflowReducer from "./slices/workflowSlice"
 import linksReducer from "./slices/linksSlice"
 import companyReducer from "./slices/companySlice"
@@ -43,6 +44,7 @@ type RootState = {
   mailboxCleanup: ReturnType<typeof mailboxCleanupReducer>
   sentEmail: ReturnType<typeof sentEmailReducer>
   contactList: ReturnType<typeof contactListReducer>
+  labels: ReturnType<typeof labelsReducer>
   workflows: ReturnType<typeof workflowReducer>
   links: ReturnType<typeof linksReducer>
   companies: ReturnType<typeof companyReducer>
@@ -72,6 +74,7 @@ const rootReducer: ReducersMapObject<RootState> = {
   mailboxCleanup: mailboxCleanupReducer,
   sentEmail: sentEmailReducer,
   contactList: contactListReducer,
+  labels: labelsReducer,
   workflows: workflowReducer,
   links: linksReducer,
   companies: companyReducer,

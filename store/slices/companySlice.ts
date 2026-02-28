@@ -36,6 +36,7 @@ interface Company {
   subsidiary_of?: string | null
   account_owner?: string
   apollo_account_id?: string
+  label?: string
   email_sent: boolean
   replied: boolean
   created_at: string
