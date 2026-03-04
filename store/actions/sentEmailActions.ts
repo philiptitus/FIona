@@ -25,6 +25,9 @@ export const handleFetchSentEmails = (filters: Record<string, any> = {}, pageUrl
       
       // Add all non-empty filters to params
       Object.entries(effectiveFilters).forEach(([key, value]) => {
+        // Skip page_size - backend has fixed pagination at 10 items per page
+        if (key === 'page_size') return
+        
         if (value !== undefined && value !== null && value !== "") {
           // Convert boolean values to string 'true'/'false' for the API
           const paramValue = typeof value === 'boolean' ? String(value) : value
@@ -32,9 +35,8 @@ export const handleFetchSentEmails = (filters: Record<string, any> = {}, pageUrl
         }
       })
       
-      // Ensure pagination defaults are set
+      // Ensure page parameter is set
       if (!params.has('page')) params.set('page', '1')
-      if (!params.has('page_size')) params.set('page_size', '20')
       
       url += `?${params.toString()}`
     }
@@ -55,7 +57,8 @@ export const handleFetchSentEmails = (filters: Record<string, any> = {}, pageUrl
     } else {
       // Add pagination info if not present in the response
       data.currentPage = parseInt(params.get('page') || '1', 10);
-      data.totalPages = Math.ceil(data.count / parseInt(params.get('page_size') || '20', 10));
+      // Fixed page size of 10 items per page
+      data.totalPages = Math.ceil(data.count / 10);
     }
     
     dispatch(fetchSentEmailsSuccess(data))
@@ -92,13 +95,7 @@ export const changePage = (page: number) =>
     return dispatch(handleFetchSentEmails(newFilters) as any)
   }
 
-// New action to change page size
-export const changePageSize = (pageSize: number) => 
-  async (dispatch: AppDispatch) => {
-    const newFilters = { page: 1, page_size: pageSize }
-    dispatch(setSentEmailFilters(newFilters))
-    return dispatch(handleFetchSentEmails(newFilters) as any)
-  }
+// Note: changePageSize is no longer applicable - backend has fixed 10 items per page
 
 // New action to set filters and refetch
 export const setAndApplyFilters = (filters: Record<string, any>) => 
@@ -113,7 +110,7 @@ export const resetAllFilters = () =>
   async (dispatch: AppDispatch) => {
     const defaultFilters = { 
       page: 1, 
-      page_size: 20,
+      page_size: 10,
       recipient: "",
       subject: "",
       message_id: "",

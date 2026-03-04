@@ -77,11 +77,11 @@ const initialListState: SentEmailListState = {
   error: null,
   filters: {
     page: 1,
-    page_size: 20
+    page_size: 10
   },
   pagination: {
     currentPage: 1,
-    pageSize: 20,
+    pageSize: 10,
     totalPages: 1,
     totalItems: 0
   }
@@ -158,19 +158,13 @@ const sentEmailSlice = createSlice({
       state.list.pagination.currentPage = action.payload;
     },
     
-    // New action to update page size
-    setPageSize(state, action: PayloadAction<number>) {
-      state.list.filters.page_size = action.payload;
-      state.list.pagination.pageSize = action.payload;
-      state.list.filters.page = 1; // Reset to first page
-      state.list.pagination.currentPage = 1;
-    },
+    // Note: page_size is fixed at 10 items per page by the backend
     
     // New action to reset all filters
     resetFilters(state) {
       state.list.filters = {
         page: 1,
-        page_size: state.list.pagination.pageSize
+        page_size: 10
       };
       state.list.pagination.currentPage = 1;
     },

@@ -296,7 +296,7 @@ export default function SentEmailsPage() {
               {isLoading 
                 ? "Loading..." 
                 : sentEmails.length > 0 
-                  ? `Showing ${((pagination.currentPage - 1) * pagination.pageSize) + 1}–${Math.min(pagination.currentPage * pagination.pageSize, pagination.totalItems)} of ${pagination.totalItems}` 
+                  ? `Showing ${((pagination.currentPage - 1) * 10) + 1}–${Math.min(pagination.currentPage * 10, pagination.totalItems)} of ${pagination.totalItems}` 
                   : "No results"}
             </span>
             <div className="flex gap-2">
@@ -309,57 +309,56 @@ export default function SentEmailsPage() {
                 Previous
               </Button>
               <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                  // Show pages around current page
-                  let pageNum = Math.max(1, Math.min(
-                    pagination.currentPage - 2 + i,
-                    Math.max(1, pagination.totalPages - 4)
-                  ));
+                {(() => {
+                  const pageNumbers: (number | string)[] = [];
+                  let displayStart = Math.max(1, pagination.currentPage - 2);
+                  let displayEnd = Math.min(pagination.totalPages, displayStart + 4);
                   
-                  if (i === 0 && pageNum > 1) {
-                    return (
-                      <React.Fragment key="ellipsis-start">
-                        <Button 
-                          size="sm" 
-                          variant={pagination.currentPage === 1 ? "default" : "ghost"}
-                          onClick={() => dispatch(handleFetchSentEmails({ ...filters, page: 1 }))}
-                          disabled={isLoading}
-                        >
-                          1
-                        </Button>
-                        <span className="px-1">...</span>
-                      </React.Fragment>
-                    );
+                  // Adjust to always show 5 pages when possible
+                  if (displayEnd - displayStart < 4) {
+                    displayStart = Math.max(1, displayEnd - 4);
                   }
                   
-                  if (i === 4 && pageNum < pagination.totalPages - 1) {
-                    return (
-                      <React.Fragment key="ellipsis-end">
-                        <span className="px-1">...</span>
-                        <Button 
-                          size="sm" 
-                          variant={pagination.currentPage === pagination.totalPages ? "default" : "ghost"}
-                          onClick={() => dispatch(handleFetchSentEmails({ ...filters, page: pagination.totalPages }))}
-                          disabled={isLoading}
-                        >
-                          {pagination.totalPages}
-                        </Button>
-                      </React.Fragment>
-                    );
+                  // Add page 1 if not in the display range
+                  if (displayStart > 1) {
+                    pageNumbers.push(1);
+                    if (displayStart > 2) {
+                      pageNumbers.push("...");
+                    }
                   }
                   
-                  return (
-                    <Button 
-                      key={pageNum}
-                      size="sm" 
-                      variant={pagination.currentPage === pageNum ? "default" : "ghost"}
-                      onClick={() => dispatch(handleFetchSentEmails({ ...filters, page: pageNum }))}
-                      disabled={isLoading || pagination.currentPage === pageNum}
-                    >
-                      {pageNum}
-                    </Button>
-                  );
-                })}
+                  // Add middle pages
+                  for (let p = displayStart; p <= displayEnd; p++) {
+                    pageNumbers.push(p);
+                  }
+                  
+                  // Add last page if not in the display range
+                  if (displayEnd < pagination.totalPages) {
+                    if (displayEnd < pagination.totalPages - 1) {
+                      pageNumbers.push("...");
+                    }
+                    pageNumbers.push(pagination.totalPages);
+                  }
+                  
+                  // Render the page numbers
+                  return pageNumbers.map((pageNum, idx) => {
+                    if (pageNum === "...") {
+                      return <span key={`ellipsis-${idx}`} className="px-1">...</span>;
+                    }
+                    
+                    return (
+                      <Button 
+                        key={pageNum}
+                        size="sm" 
+                        variant={pagination.currentPage === pageNum ? "default" : "ghost"}
+                        onClick={() => dispatch(handleFetchSentEmails({ ...filters, page: pageNum as number }))}
+                        disabled={isLoading || pagination.currentPage === pageNum}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  });
+                })()}
               </div>
               <Button 
                 size="sm" 
