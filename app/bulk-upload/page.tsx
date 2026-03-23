@@ -9,6 +9,7 @@ import MailLoader from "@/components/MailLoader"
 import { handleBulkCreateCompaniesCsv } from "@/store/actions/companyActions"
 import { handleBulkCreateEmails } from "@/store/actions/emailActions"
 import MainLayout from "@/components/layout/main-layout"
+import EmailMinerUpload from "@/components/bulk-upload/EmailMinerUpload"
 import type { AppDispatch } from "@/store/store"
 
 export default function BulkUploadPage() {
@@ -162,11 +163,16 @@ export default function BulkUploadPage() {
 
         <h1 className="text-2xl font-semibold mb-4">Bulk Uploads</h1>
 
-        <Tabs defaultValue="companies" className="w-full">
-        <TabsList className="grid grid-cols-2 mb-4">
-          <TabsTrigger value="companies"><Upload className="inline mr-1" /> Companies</TabsTrigger>
-          <TabsTrigger value="emails"><Upload className="inline mr-1" /> Emails</TabsTrigger>
+        <Tabs defaultValue="email-miner" className="w-full">
+        <TabsList className="grid grid-cols-3 mb-4">
+          <TabsTrigger value="email-miner"><Upload className="inline mr-1 h-4 w-4" /> Email Miner</TabsTrigger>
+          <TabsTrigger value="companies"><Upload className="inline mr-1 h-4 w-4" /> Companies</TabsTrigger>
+          <TabsTrigger value="emails"><Upload className="inline mr-1 h-4 w-4" /> Emails</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="email-miner">
+          <EmailMinerUpload />
+        </TabsContent>
 
         <TabsContent value="companies">
           <form onSubmit={submitCompanies} className="space-y-4">

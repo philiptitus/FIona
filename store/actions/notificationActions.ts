@@ -77,3 +77,16 @@ export const markAllNotificationsAsRead = createAsyncThunk<
     return rejectWithValue(error.response?.data?.message || 'Failed to mark all notifications as read');
   }
 });
+
+export const fetchNotificationById = createAsyncThunk<
+  Notification,
+  string,
+  { state: RootState }
+>('notifications/fetchById', async (notificationId, { rejectWithValue }) => {
+  try {
+    const response = await api.get<{ notification: Notification }>(`/mail/notifications/${notificationId}/`);
+    return response.data.notification;
+  } catch (error: any) {
+    return rejectWithValue(error.response?.data?.message || 'Failed to fetch notification');
+  }
+});

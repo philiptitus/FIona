@@ -2,7 +2,8 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { 
   fetchNotifications, 
   markNotificationAsRead, 
-  markAllNotificationsAsRead 
+  markAllNotificationsAsRead,
+  fetchNotificationById 
 } from "@/store/actions/notificationActions";
 
 export interface Notification {
@@ -90,6 +91,17 @@ const notificationsSlice = createSlice({
         is_read: true,
       }));
       state.totalUnread = 0;
+    });
+
+    // Fetch Notification by ID
+    builder.addCase(fetchNotificationById.fulfilled, (state, action) => {
+      // Add to notifications if not already present
+      if (!state.notifications.some(n => n.id === action.payload.id)) {
+        state.notifications.unshift(action.payload);
+      }
+    });
+    builder.addCase(fetchNotificationById.rejected, (state, action) => {
+      console.error('Failed to fetch notification:', action.payload);
     });
   },
 });

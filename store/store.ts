@@ -11,6 +11,8 @@ import analyticsReducer from "./slices/analyticsSlice"
 import notificationsReducer from "./slices/notificationsSlice"
 import tasksReducer from "./slices/tasksSlice"
 import sentEmailReducer from "./slices/sentEmailSlice"
+import firebaseAuthReducer from "./slices/firebaseAuthSlice"
+import firebaseNotificationsReducer from "./slices/firebaseNotificationsSlice"
 import { authMiddleware } from "./middleware/authMiddleware"
 import mailboxReducer from "./slices/mailboxSlice"
 import mailboxCleanupReducer from "./slices/mailboxCleanupSlice"
@@ -26,6 +28,7 @@ import selectedContactsReducer from "./slices/selectedContactsSlice"
 import researchReducer from "./slices/researchSlice"
 import neuronReducer from "./slices/neuronSlice"
 import userSettingsReducer from "./slices/userSettingsSlice"
+import emailMinerReducer from "./slices/emailMinerSlice"
 
 // Define root state type
 type RootState = {
@@ -55,6 +58,9 @@ type RootState = {
   research: ReturnType<typeof researchReducer>
   neuron: ReturnType<typeof neuronReducer>
   userSettings: ReturnType<typeof userSettingsReducer>
+  emailMiner: ReturnType<typeof emailMinerReducer>
+  firebaseAuth: ReturnType<typeof firebaseAuthReducer>
+  firebaseNotifications: ReturnType<typeof firebaseNotificationsReducer>
 }
 
 // Create root reducer with proper typing
@@ -85,6 +91,9 @@ const rootReducer: ReducersMapObject<RootState> = {
   research: researchReducer,
   neuron: neuronReducer,
   userSettings: userSettingsReducer,
+  emailMiner: emailMinerReducer,
+  firebaseAuth: firebaseAuthReducer,
+  firebaseNotifications: firebaseNotificationsReducer,
 }
 
 // Define app dispatch type with thunk support

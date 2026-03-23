@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { Providers } from "./providers"
 import AuthHydrator from "./authHydrator"
 import AuthBridge from "./authBridge"
+import FirebaseNotificationsProvider from "@/components/FirebaseNotificationsProvider"
 import { Analytics } from "@vercel/analytics/react"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -37,6 +38,7 @@ export default function RootLayout({
         <Providers>
           <AuthHydrator />
           <AuthBridge />
+          <FirebaseNotificationsProvider />
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             {children}
             <Toaster />
