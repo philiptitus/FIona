@@ -1,0 +1,22 @@
+-smart campaign creation
+-finished email mining
+- finished research
+- finished research and generated campaign 
+- immediate email sending
+- email scheduling
+
+
+
+
+
+MAPPING GUIDE:
+ 
+        ('email_failed', 'Email Failed'),
+        ('campaign_completed', 'metadata:campaign_id', Action: 'move to campaign detail page to view it'),
+        ('campaign_failed'/'error', 'no relevant metadata', Action: 'button to retry campaign generation taes user to smart
+campaign creation page),
+        ('campaign_sent', 'no relevant metadata',  'no relevant action'),
+	('research_complete_success', 'metadata:research_id', Action:'move to the research page and that specific research id highlight or
+have a glowing effect to the card of the research to show that it is done processing effect last 5 mins')
+
+  

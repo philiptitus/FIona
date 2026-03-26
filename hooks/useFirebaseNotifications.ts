@@ -20,11 +20,25 @@ import { fetchNotificationById } from "@/store/actions/notificationActions"
 export const useFirebaseNotifications = () => {
   const dispatch = useDispatch()
   const firebaseAuthStatus = useSelector((state: any) => state.firebaseAuth?.status)
+  const reduxUser = useSelector((state: any) => state.auth?.user)
   const unsubscribeRef = useRef<(() => void) | null>(null)
 
+
   useEffect(() => {
-    // Only initialize once
-    if (firebaseAuthStatus !== "idle") return
+    // Check if user is authenticated via Redux auth state (like landing page does)
+    const hasUser = !!reduxUser
+
+    // Skip if no user
+    if (!hasUser) {
+      console.log("[Firebase] Skipping initialization: no user in Redux auth state")
+      return
+    }
+
+    // Skip if already connected
+    if (firebaseAuthStatus === "connected") {
+      console.log("[Firebase] Already connected, skipping re-initialization")
+      return
+    }
 
     const initializeFirebase = async () => {
       try {
@@ -86,8 +100,10 @@ export const useFirebaseNotifications = () => {
                     title: fullNotification.title || "Notification",
                     message: fullNotification.message || "",
                     type: fullNotification.notification_type || "info",
+                    priority: fullNotification.priority || "medium",
                     timestamp: new Date(fullNotification.created_at).getTime(),
                     read: fullNotification.is_read || false,
+                    metadata: fullNotification.metadata || {},
                   }
                   console.log("[Firebase] Adding to firebaseNotifications store:", firebaseNotif)
                   dispatch(addFirebaseNotification(firebaseNotif))
@@ -123,5 +139,5 @@ export const useFirebaseNotifications = () => {
         unsubscribeRef.current()
       }
     }
-  }, [dispatch, firebaseAuthStatus])
+  }, [dispatch, firebaseAuthStatus, reduxUser])
 }

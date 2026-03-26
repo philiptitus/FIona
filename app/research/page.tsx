@@ -14,7 +14,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Progress } from "@/components/ui/progress"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/components/ui/use-toast"
-import { createNotificationPoller } from "@/store/utils/notificationPolling"
 import { Search, CheckCircle2, Clock, AlertCircle, RefreshCw, Sparkles, X, Trash2, MoreVertical } from "lucide-react"
 import {
   AlertDialog,
@@ -87,9 +86,8 @@ export default function ResearchPage() {
   // Progress tracking for processing items (based on elapsed time)
   const [progressMap, setProgressMap] = useState<Map<number, number>>(new Map())
   
-  // Polling state for pending researches
-  const [pendingTokens, setPendingTokens] = useState<Map<string, { name: string; startedAt: number }>>(new Map())
-  const pollerRef = useRef<ReturnType<typeof createNotificationPoller> | null>(null)
+  // Highlight tracking for a just-completed research
+  const [highlightedResearchId, setHighlightedResearchId] = useState<number | null>(null)
 
   const fetchResearch = useCallback(async (showFilterLoading = false) => {
     if (showFilterLoading) {
@@ -115,54 +113,29 @@ export default function ResearchPage() {
     }
   }, [dispatch, currentPage, searchQuery, statusFilter, contactTypeFilter])
 
+  // On mount, check for highlight_id query param and auto-refresh
   useEffect(() => {
-    fetchResearch()
-  }, [fetchResearch])
-
-  // Set up polling when there are processing items in the list
-  useEffect(() => {
-    const processingItems = researchResults.filter(r => r.status === "processing")
+    const searchParams = new URLSearchParams(window.location.search)
+    const highlightId = searchParams.get('highlight_id')
     
-    if (processingItems.length > 0 && !pollerRef.current) {
-      pollerRef.current = createNotificationPoller(
-        { notificationType: "research_complete_success" },
-        {
-          interval: 4000,
-          onPoll: (notifications) => {
-            // Check if any processing research completed
-            const completedTokens = notifications
-              .filter(n => 
-                n.notification_type === "research_complete_success" ||
-                n.notification_type === "research_complete_failed"
-              )
-              .map(n => n.metadata?.token)
-              .filter(Boolean)
-
-            if (completedTokens.length > 0) {
-              // Research completed - refresh list
-              fetchResearch()
-              toast({
-                title: "✨ Research Updated",
-                description: "A research task has completed.",
-                duration: 3000,
-              })
-            }
-          },
-        }
-      )
-      pollerRef.current.start()
-    } else if (processingItems.length === 0 && pollerRef.current) {
-      pollerRef.current.stop()
-      pollerRef.current = null
-    }
-
-    return () => {
-      if (pollerRef.current) {
-        pollerRef.current.stop()
-        pollerRef.current = null
+    if (highlightId) {
+      // Auto-refresh the list to get the latest data
+      const refreshAndHighlight = async () => {
+        await fetchResearch()
+        setHighlightedResearchId(parseInt(highlightId, 10))
+        
+        // Auto-remove highlight after 5 seconds
+        setTimeout(() => {
+          setHighlightedResearchId(null)
+        }, 5000)
       }
+      
+      refreshAndHighlight()
+    } else {
+      // Normal load without highlighting
+      fetchResearch()
     }
-  }, [researchResults, fetchResearch, toast])
+  }, [])
 
   // Update progress for processing items every 500ms
   useEffect(() => {
@@ -567,6 +540,10 @@ export default function ResearchPage() {
                   } ${
                     selectedItems.has(research.id)
                       ? "ring-2 ring-primary/50 border-primary/50"
+                      : ""
+                  } ${
+                    highlightedResearchId === research.id
+                      ? "ring-2 ring-green-400 ring-offset-2 shadow-lg shadow-green-400/50 animate-pulse"
                       : ""
                   } ${
                     isDeleting ? "opacity-75" : ""

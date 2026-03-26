@@ -7,6 +7,8 @@ export interface FirebaseNotification {
   type: string
   timestamp: number
   read?: boolean
+  priority?: string
+  metadata?: Record<string, any>
 }
 
 export interface FirebaseNotificationsState {
