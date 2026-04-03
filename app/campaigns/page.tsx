@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import MainLayout from "@/components/layout/main-layout"
 import { Button } from "@/components/ui/button"
@@ -17,10 +17,12 @@ import { CalendarIcon, Copy, Edit, Eye, MoreHorizontal, Plus, Search, Trash2 } f
 import { useDispatch, useSelector } from "react-redux"
 import { handleFetchCampaigns, handleDeleteCampaign, bulkDeleteCampaigns } from "@/store/actions/campaignActions"
 import { setCurrentPage, setSearchQuery, setRecipientTypeFilter } from "@/store/slices/campaignSlice"
+import { removeProcessingCampaign } from "@/store/slices/processingCampaignsSlice"
 import { useToast } from "@/components/ui/use-toast"
 import type { RootState, AppDispatch } from "@/store/store"
 import { useRouter } from "next/navigation"
 import { deleteExpiredDrafts, getUserDrafts, deleteDraft, type DraftCampaign } from "@/lib/draftStorage"
+import { CampaignGeneratingFloat } from "@/components/CampaignGeneratingFloat"
 
 export default function CampaignsPage() {
   const [selectedCampaigns, setSelectedCampaigns] = useState<number[]>([])
@@ -28,6 +30,9 @@ export default function CampaignsPage() {
   const [activeTab, setActiveTab] = useState("all")
   const [searchInput, setSearchInput] = useState("")
   const [drafts, setDrafts] = useState<DraftCampaign[]>([])
+  
+  // Track processed notifications to avoid duplicate refreshes
+  const processedNotificationIdsRef = useRef<Set<string>>(new Set())
 
   const dispatch = useDispatch<AppDispatch>()
   const { toast } = useToast()
@@ -36,6 +41,16 @@ export default function CampaignsPage() {
   const { campaigns, isLoading, error, pagination, searchQuery, recipientTypeFilter } = useSelector((state: RootState) => state.campaigns)
   const auth = useSelector((state: RootState) => state.auth)
   const userId = auth.user?.id?.toString()
+  
+  // Get Firebase notifications
+  const firebaseNotifications = useSelector(
+    (state: RootState) => state.firebaseNotifications?.notifications || []
+  )
+  
+  // Get processing campaigns
+  const processingCampaigns = useSelector(
+    (state: RootState) => state.processingCampaigns?.campaigns || []
+  )
 
   // Load and cleanup drafts on mount
   useEffect(() => {
@@ -67,6 +82,35 @@ export default function CampaignsPage() {
 
     return () => clearTimeout(timeoutId)
   }, [searchInput, searchQuery, dispatch])
+
+  // Listen for campaign_completed notification and auto-refresh
+  useEffect(() => {
+    if (firebaseNotifications.length === 0) return
+
+    const latestNotification = firebaseNotifications[0]
+    
+    // Check if this is a campaign completion notification and we haven't processed it yet
+    if (
+      latestNotification.type === 'campaign_completed' &&
+      !processedNotificationIdsRef.current.has(latestNotification.id)
+    ) {
+      // Mark this notification as processed
+      processedNotificationIdsRef.current.add(latestNotification.id)
+      
+      // Clear all processing campaigns to hide the float
+      processingCampaigns.forEach((campaign) => {
+        dispatch(removeProcessingCampaign(campaign.campaignId))
+      })
+      
+      // Automatically refresh the campaigns list
+      const autoRefresh = async () => {
+        console.log("[Campaigns Page] Auto-refreshing after campaign_completed notification")
+        await dispatch(handleFetchCampaigns({ search: searchQuery, page: pagination.currentPage, recipientType: recipientTypeFilter }))
+      }
+      
+      autoRefresh()
+    }
+  }, [firebaseNotifications, dispatch, searchQuery, pagination.currentPage, recipientTypeFilter, processingCampaigns])
 
   // Filter campaigns by date (client-side since backend doesn't support date filtering yet)
   const filteredCampaigns = campaigns.filter(
@@ -186,6 +230,7 @@ export default function CampaignsPage() {
 
   return (
     <MainLayout>
+      <CampaignGeneratingFloat />
       <div className="flex flex-col gap-4 sm:gap-6 px-4 sm:px-0">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div>

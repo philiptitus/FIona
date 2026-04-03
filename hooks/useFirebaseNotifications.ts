@@ -139,5 +139,5 @@ export const useFirebaseNotifications = () => {
         unsubscribeRef.current()
       }
     }
-  }, [dispatch, firebaseAuthStatus, reduxUser])
+  }, [dispatch, reduxUser])
 }

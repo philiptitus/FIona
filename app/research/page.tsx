@@ -89,6 +89,13 @@ export default function ResearchPage() {
   // Highlight tracking for a just-completed research
   const [highlightedResearchId, setHighlightedResearchId] = useState<number | null>(null)
 
+  // Track processed notifications to avoid duplicate refreshes
+  const processedNotificationIdsRef = useRef<Set<string>>(new Set())
+
+  const firebaseNotifications = useSelector(
+    (state: RootState) => state.firebaseNotifications?.notifications || []
+  )
+
   const fetchResearch = useCallback(async (showFilterLoading = false) => {
     if (showFilterLoading) {
       setIsFiltering(true)
@@ -168,6 +175,33 @@ export default function ResearchPage() {
     
     return () => clearInterval(interval)
   }, [researchResults])
+
+  // Listen for bulk_research_completed notification and auto-refresh
+  useEffect(() => {
+    if (firebaseNotifications.length === 0) return
+
+    const latestNotification = firebaseNotifications[0]
+    
+    // Check if this is a bulk research completion notification and we haven't processed it yet
+    if (
+      latestNotification.type === 'bulk_research_completed' &&
+      !processedNotificationIdsRef.current.has(latestNotification.id)
+    ) {
+      // Mark this notification as processed
+      processedNotificationIdsRef.current.add(latestNotification.id)
+      
+      // Automatically refresh the research list
+      const autoRefresh = async () => {
+        setIsRefreshing(true)
+        await fetchResearch()
+        setIsRefreshing(false)
+        
+        console.log("[Research Page] Auto-refreshed after bulk_research_completed notification")
+      }
+      
+      autoRefresh()
+    }
+  }, [firebaseNotifications, fetchResearch])
 
   const handleManualRefresh = async () => {
     setIsRefreshing(true)

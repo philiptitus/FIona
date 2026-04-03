@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell, Check, Clock, Mail as MailIcon } from "lucide-react"
+import { Bell, Check, Clock, Mail as MailIcon, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -20,12 +20,13 @@ import {
   selectIsLoading,
   type Notification
 } from "@/store/slices/notificationsSlice"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { formatDistanceToNow } from "date-fns"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export function NotificationDropdown() {
   const dispatch = useDispatch<AppDispatch>()
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const notifications = useSelector((state: RootState) => selectNotifications(state))
   const unreadCount = useSelector((state: RootState) => selectUnreadCount(state))
   const isLoading = useSelector((state: RootState) => selectIsLoading(state))
@@ -33,13 +34,6 @@ export function NotificationDropdown() {
   useEffect(() => {
     // Fetch notifications when the component mounts
     dispatch(fetchNotifications())
-    
-    // Set up auto-refresh polling every 10 seconds
-    const pollInterval = setInterval(() => {
-      dispatch(fetchNotifications())
-    }, 10000)
-    
-    return () => clearInterval(pollInterval)
   }, [dispatch])
 
   const handleMarkAsRead = async (notificationId: string, e: React.MouseEvent) => {
@@ -49,6 +43,17 @@ export function NotificationDropdown() {
       // The notification will be automatically removed from the UI by the Redux reducer
     } catch (error) {
       console.error('Failed to mark notification as read:', error)
+    }
+  }
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    try {
+      await dispatch(fetchNotifications()).unwrap()
+    } catch (error) {
+      console.error('Failed to refresh notifications:', error)
+    } finally {
+      setIsRefreshing(false)
     }
   }
 
@@ -69,11 +74,23 @@ export function NotificationDropdown() {
         <div className="px-4 pt-3 pb-2 border-b">
           <div className="flex items-center justify-between">
             <h4 className="font-medium leading-none">Notifications</h4>
-            {unreadCount > 0 && (
-              <span className="text-sm text-muted-foreground">
-                {unreadCount} unread
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <span className="text-sm text-muted-foreground">
+                  {unreadCount} unread
+                </span>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span className="sr-only">Refresh notifications</span>
+              </Button>
+            </div>
           </div>
         </div>
         

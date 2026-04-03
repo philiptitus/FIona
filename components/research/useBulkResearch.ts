@@ -7,6 +7,7 @@ import { AppDispatch, RootState } from "@/store/store"
 import { toggleContact, selectMultiple, deselectMultiple, clearSelection } from "@/store/slices/selectedContactsSlice"
 import { handleStartBulkResearch } from "@/store/actions/researchActions"
 import { addProcessingResearch } from "@/store/slices/processingResearchesSlice"
+import { addProcessingCampaign } from "@/store/slices/processingCampaignsSlice"
 import { useToast } from "@/components/ui/use-toast"
 
 const MAX_BULK_RESEARCH_CONTACTS = 10
@@ -72,6 +73,24 @@ export function useBulkResearch(contactType: "emaillist" | "company") {
           }))
         })
 
+        // If campaign creation was requested, show loading float immediately
+        if (createCampaign) {
+          // Generate campaign name from selected contact names
+          const campaignName = selectedIds.length === 1 
+            ? `Campaign for ${contactNames[0]?.name || "Unknown"}`
+            : `Campaign for ${selectedIds.length} contacts`
+
+          dispatch(addProcessingCampaign({
+            campaignId: result.data?.campaign_id || Date.now(), // Use temp ID if not available yet
+            token: result.data?.campaign_token || "",
+            name: campaignName,
+            status: "processing",
+            startedAt: Date.now(),
+            lastPolled: Date.now(),
+            retryCount: 0,
+          }))
+        }
+
         toast({
           title: "Research Started!",
           description: `Generating personalized research for ${selectedIds.length} contact${selectedIds.length > 1 ? "s" : ""}. You'll be notified when complete.`,
@@ -82,8 +101,9 @@ export function useBulkResearch(contactType: "emaillist" | "company") {
         handleClearSelection()
         setShowConfirmModal(false)
         
-        // Navigate to research page
-        router.push("/research")
+        // Navigate based on createCampaign flag
+        const destination = createCampaign ? "/campaigns" : "/research"
+        router.push(destination)
       } else {
         toast({
           title: "Research Failed",

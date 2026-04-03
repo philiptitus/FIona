@@ -25,6 +25,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
 import { addProcessingCampaign } from "@/store/slices/processingCampaignsSlice"
 import { useDraftCampaign } from "@/hooks/use-draft-campaign"
+import { CampaignGeneratingFloat } from "@/components/CampaignGeneratingFloat"
 
 export default function SmartCampaignPage() {
   const [campaignName, setCampaignName] = useState("")
@@ -259,8 +260,8 @@ export default function SmartCampaignPage() {
             description: "AI is generating your campaign content. You'll be notified when it's ready (30-60 seconds).",
           })
           
-          // Redirect to dashboard
-          router.push("/dashboard")
+          // Redirect to campaigns list
+          router.push("/campaigns")
           return
         }
         
@@ -364,6 +365,7 @@ export default function SmartCampaignPage() {
 
   return (
     <MainLayout>
+      <CampaignGeneratingFloat />
       {isLoading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/70 dark:bg-black/70">
           <MailLoader />
