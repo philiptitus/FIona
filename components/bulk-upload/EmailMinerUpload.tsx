@@ -6,12 +6,12 @@ import { useRouter } from "next/navigation"
 import { AppDispatch, RootState } from "@/store/store"
 import {
   uploadEmailMinerCSV,
-  pollEmailMinerStatus,
   removeMiningSession,
   clearCompletedSessions,
 } from "@/store/actions/emailMinerActions"
 import { fetchCampaigns, handleFetchCampaigns } from "@/store/actions/campaignActions"
 import { fetchCompanies } from "@/store/actions/companyActions"
+import { addProcessingEmailMiner } from "@/store/slices/processingEmailMinersSlice"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -135,8 +135,26 @@ export default function EmailMinerUpload({
         description: `Mining started for ${csvFile.name}`,
       })
 
-      // Start polling
-      dispatch(pollEmailMinerStatus(result.token, 120) as any) // 10 minutes max
+      // Add to processing miners for float display
+      dispatch(addProcessingEmailMiner({
+        minerId: Date.now(),
+        name: csvFile.name,
+        status: "processing",
+        startedAt: Date.now(),
+        lastPolled: Date.now(),
+        retryCount: 0,
+        campaignId: selectedCampaignId,
+        campaignName: currentCampaign?.name,
+      }))
+
+      // Navigate to campaign or companies page
+      if (selectedCampaignId) {
+        router.push(`/campaigns/${selectedCampaignId}`)
+      } else {
+        router.push('/companies')
+      }
+
+      // Firebase notifications will handle dismissal and refresh when email mining completes
 
       // Reset form
       setCSVFile(null)

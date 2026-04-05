@@ -5,7 +5,6 @@ import Sidebar from "./sidebar"
 import Header from "./header"
 import { useState } from "react"
 import { useIsMobileOrTablet } from "@/lib/useIsMobileOrTablet"
-import GlobalDispatchProcessingBanner from "@/components/dispatches/GlobalDispatchProcessingBanner"
 import { GlobalResearchNotificationsBanner } from "@/components/research/GlobalResearchNotificationsBanner"
 
 interface MainLayoutProps {
@@ -40,9 +39,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden transition-all duration-300">
         {/* Header with sidebar toggle */}
         <Header />
-        {/* Global Dispatch Processing Banner */}
-        <GlobalDispatchProcessingBanner />
-
         {/* Global Research Notifications Banner */}
         <GlobalResearchNotificationsBanner />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-muted/30">{children}</main>

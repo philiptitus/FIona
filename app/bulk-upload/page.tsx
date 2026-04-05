@@ -10,6 +10,7 @@ import { handleBulkCreateCompaniesCsv } from "@/store/actions/companyActions"
 import { handleBulkCreateEmails } from "@/store/actions/emailActions"
 import MainLayout from "@/components/layout/main-layout"
 import EmailMinerUpload from "@/components/bulk-upload/EmailMinerUpload"
+import EmailMiningFloat from "@/components/EmailMiningFloat"
 import type { AppDispatch } from "@/store/store"
 
 export default function BulkUploadPage() {
@@ -158,6 +159,7 @@ export default function BulkUploadPage() {
 
   return (
     <MainLayout>
+      <EmailMiningFloat />
       <div className="p-6">
         {(companyLoading || emailLoading) && <MailLoader />}
 

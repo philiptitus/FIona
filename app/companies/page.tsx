@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState, useMemo, useRef } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { useRouter } from "next/navigation"
 import MainLayout from "@/components/layout/main-layout"
@@ -23,6 +23,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useBulkResearch } from "@/components/research/useBulkResearch"
 import { BulkResearchFloatingBar } from "@/components/research/BulkResearchFloatingBar"
 import { BulkResearchConfirmationModal } from "@/components/research/BulkResearchConfirmationModal"
+import { removeProcessingEmailMiner } from "@/store/slices/processingEmailMinersSlice"
+import EmailMiningFloat from "@/components/EmailMiningFloat"
 
 interface CompanyForm {
   campaign: number
@@ -66,6 +68,7 @@ interface CompanyForm {
 export default function CompaniesPage() {
   const dispatch = useDispatch<AppDispatch>()
   const router = useRouter()
+  const processedNotificationIdsRef = useRef<Set<string>>(new Set())
   
   // Bulk research hook
   const bulkResearch = useBulkResearch("company")
@@ -75,6 +78,8 @@ export default function CompaniesPage() {
   const error = useSelector((state: RootState) => state.companies.error)
   const pagination = useSelector((state: RootState) => state.companies.pagination)
   const { campaigns } = useSelector((state: RootState) => state.campaigns)
+  const firebaseNotifications = useSelector((state: RootState) => state.firebaseNotifications?.notifications || [])
+  const processingEmailMiners = useSelector((state: RootState) => state.processingEmailMiners?.miners || [])
   
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearching, setIsSearching] = useState(false)
@@ -217,6 +222,32 @@ export default function CompaniesPage() {
     const timerId = setTimeout(searchCompanies, 500)
     return () => clearTimeout(timerId)
   }, [searchQuery, dispatch, selectedCampaignId, selectedCountry, labelFilter])
+
+  // Listen for email mining completion notifications
+  useEffect(() => {
+    if (firebaseNotifications.length === 0) return
+
+    const latestNotification = firebaseNotifications[0]
+    if (latestNotification.type === 'email_mining_complete' &&
+        !processedNotificationIdsRef.current.has(latestNotification.id)) {
+      
+      processedNotificationIdsRef.current.add(latestNotification.id)
+      
+      // Match by token from metadata and remove the specific miner (dismisses float)
+      const token = latestNotification.metadata?.token
+      if (token) {
+        dispatch(removeProcessingEmailMiner(token))
+      }
+      
+      // Auto-refresh companies list
+      dispatch(handleFetchCompanies({ 
+        campaignId: selectedCampaignId || undefined,
+        country: selectedCountry || undefined,
+        page: 1,
+        label: labelFilter || undefined 
+      }) as any)
+    }
+  }, [firebaseNotifications, dispatch, selectedCampaignId, selectedCountry, labelFilter])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
@@ -450,6 +481,7 @@ export default function CompaniesPage() {
 
   return (
     <MainLayout>
+      <EmailMiningFloat/>
       <div className="flex flex-col gap-6">
         {/* Bulk Research Floating Bar */}
         <BulkResearchFloatingBar

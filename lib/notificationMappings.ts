@@ -126,13 +126,20 @@ export const notificationMappings: Record<string, (metadata?: Record<string, any
 
   /**
    * Email Mining Completed
-   * Action: Navigate to email mining results page (if applicable)
-   * Note: Not wired up yet; structure ready for implementation
+   * Action: Navigate to campaign page to view the newly mined companies, or companies page if no campaign
+   * Metadata: campaign_id, campaign_name, created_count, duplicates_count, errors_count
    */
   email_mining_complete: (metadata?: Record<string, any>) => {
+    const campaignId = metadata?.campaign_id
+    const createdCount = metadata?.created_count || 0
+    
     return {
-      buttonLabel: undefined,
-      onAction: undefined, // TODO: implement when needed
+      buttonLabel: createdCount > 0 ? 'View Results' : undefined,
+      onAction: campaignId ? (router: AppRouterInstance) => {
+        router.push(`/campaigns/${campaignId}`)
+      } : (router: AppRouterInstance) => {
+        router.push('/companies')
+      },
     }
   },
 
@@ -201,6 +208,32 @@ export const notificationMappings: Record<string, (metadata?: Record<string, any
    * Note: Not wired up yet; structure ready for implementation
    */
   email_scheduled: (metadata?: Record<string, any>) => {
+    return {
+      buttonLabel: undefined,
+      onAction: undefined,
+    }
+  },
+
+  /**
+   * Sequence Scheduled Successfully
+   * Action: Navigate to sent-emails page to view scheduled sequence results
+   * Metadata: campaign_id, campaign_name, scheduled_datetime, recipients_count, token
+   */
+  sequence_scheduled: (metadata?: Record<string, any>) => {
+    return {
+      buttonLabel: 'View Sent Emails',
+      onAction: (router: AppRouterInstance) => {
+        router.push('/sent-emails')
+      },
+    }
+  },
+
+  /**
+   * Sequence Scheduling Failed
+   * Action: None (error notification only)
+   * Metadata: campaign_id, token, error message
+   */
+  sequence_schedule_failed: (metadata?: Record<string, any>) => {
     return {
       buttonLabel: undefined,
       onAction: undefined,

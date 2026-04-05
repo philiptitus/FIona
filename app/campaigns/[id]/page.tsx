@@ -6,7 +6,7 @@ import MainLayout from "@/components/layout/main-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RootState, AppDispatch } from "@/store/store"
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { handleFetchCampaignById } from "@/store/actions/campaignActions"
 import { handleFetchEmails } from "@/store/actions/emailActions"
 import { handleFetchCompanies } from "@/store/actions/companyActions"
@@ -27,12 +27,14 @@ import { handleFetchMailboxes } from "@/store/actions/mailboxActions"
 import SendCampaignDialog from "@/components/campaigns/SendCampaignDialog"
 import { handleDisassociateEmails } from "@/store/actions/emailActions"
 import { handleDisassociateCompanies } from "@/store/actions/companyActions"
-import { addDispatch } from "@/store/slices/processingDispatchesSlice"
-import { pollDispatchStatus } from "@/store/actions/processingDispatchesActions"
+import { addDispatch, removeDispatch } from "@/store/slices/processingDispatchesSlice"
 import { Checkbox } from "@/components/ui/checkbox"
 import { motion, AnimatePresence } from "framer-motion"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import MailLoader from '@/components/MailLoader'
+import { removeProcessingEmailMiner } from "@/store/slices/processingEmailMinersSlice"
+import EmailMiningFloat from "@/components/EmailMiningFloat"
+import EmailSchedulingFloat from "@/components/EmailSchedulingFloat"
 
 export default function CampaignDetailPage() {
   const params = useParams()
@@ -82,6 +84,11 @@ export default function CampaignDetailPage() {
   const [currentPage, setCurrentPage] = React.useState(1)
   const [currentCompanyPage, setCurrentCompanyPage] = React.useState(1)
   const processingDispatches = useSelector((state: RootState) => state.processingDispatches.dispatches)
+  
+  // Email mining listener setup
+  const processedNotificationIdsRef = useRef<Set<string>>(new Set())
+  const firebaseNotifications = useSelector((state: RootState) => state.firebaseNotifications?.notifications || [])
+  const processingEmailMiners = useSelector((state: RootState) => state.processingEmailMiners?.miners || [])
   
   // Filter emails that are not already in the campaign
   React.useEffect(() => {
@@ -137,6 +144,49 @@ export default function CampaignDetailPage() {
     }
     // We intentionally do not depend on `campaign` here because we always want to re-query by id
   }, [dispatch, campaignId, currentPage, currentCompanyPage])
+
+  // Listen for email mining completion and auto-refresh campaign companies
+  React.useEffect(() => {
+    if (firebaseNotifications.length === 0) return
+
+    const latestNotification = firebaseNotifications[0]
+    if (
+      latestNotification.type === 'email_mining_complete' &&
+      !processedNotificationIdsRef.current.has(latestNotification.id)
+    ) {
+      processedNotificationIdsRef.current.add(latestNotification.id)
+      
+      // Match by token from metadata and dismiss the email mining float
+      const token = latestNotification.metadata?.token
+      if (token) {
+        dispatch(removeProcessingEmailMiner(token))
+      }
+
+      // Refresh campaign companies (specific to this campaign)
+      dispatch(handleFetchCompanies({ campaignId, page: 1 }) as any)
+    }
+  }, [firebaseNotifications, dispatch, campaignId])
+
+  // Listen for dispatch completion and auto-dismiss the dispatch float
+  React.useEffect(() => {
+    if (firebaseNotifications.length === 0) return
+
+    const latestNotification = firebaseNotifications[0]
+    const dispatchNotificationTypes = ['campaign_sent', 'campaign_partial', 'campaign_failed', 'sequence_scheduled', 'sequence_schedule_failed']
+    
+    if (
+      dispatchNotificationTypes.includes(latestNotification.type) &&
+      !processedNotificationIdsRef.current.has(latestNotification.id)
+    ) {
+      processedNotificationIdsRef.current.add(latestNotification.id)
+      
+      // Match by token from metadata and dismiss the dispatch float
+      const token = latestNotification.metadata?.token
+      if (token) {
+        dispatch(removeDispatch(token))
+      }
+    }
+  }, [firebaseNotifications, dispatch])
 
   // Show notification with auto-dismiss
   const showNotification = (type: 'success' | 'error', message: string) => {
@@ -303,20 +353,18 @@ export default function CampaignDetailPage() {
     if (result && result.data && result.data.token) {
       // Async dispatch sending - add to processing queue
       const processingDispatch = {
-        id: campaign.dispatch_id,
-        campaignId: campaignId,
         token: result.data.token,
+        dispatch_id: campaign.dispatch_id,
+        campaign_id: campaignId,
+        campaign_name: campaign.name,
         status: isScheduled ? "scheduled" as const : "processing" as const,
-        startedAt: Date.now(),
-        mailboxIds: selectedMailboxIds,
-        dispatchType: selectedType as "content" | "template",
-        isScheduled,
-        scheduledDate: scheduledDate,
-        recipientsCount: result.data.recipients_count
+        type: isScheduled ? "scheduled" as const : "immediate" as const,
+        started_at: Date.now(),
+        scheduled_date: isScheduled ? scheduledDate : undefined,
+        recipients_count: result.data.recipients_count
       }
       
       dispatch(addDispatch(processingDispatch))
-      dispatch(pollDispatchStatus(campaignId) as any)
       
       // Show success toast for starting the dispatch
       const message = isScheduled 
@@ -384,6 +432,8 @@ export default function CampaignDetailPage() {
   return (
     <MainLayout>
       {/* Notification Toast */}
+      <EmailMiningFloat />
+      <EmailSchedulingFloat />
       <AnimatePresence>
         {notification.type && (
           <motion.div

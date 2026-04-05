@@ -29,6 +29,7 @@ import researchReducer from "./slices/researchSlice"
 import neuronReducer from "./slices/neuronSlice"
 import userSettingsReducer from "./slices/userSettingsSlice"
 import emailMinerReducer from "./slices/emailMinerSlice"
+import processingEmailMinersReducer from "./slices/processingEmailMinersSlice"
 
 // Define root state type
 type RootState = {
@@ -59,6 +60,7 @@ type RootState = {
   neuron: ReturnType<typeof neuronReducer>
   userSettings: ReturnType<typeof userSettingsReducer>
   emailMiner: ReturnType<typeof emailMinerReducer>
+  processingEmailMiners: ReturnType<typeof processingEmailMinersReducer>
   firebaseAuth: ReturnType<typeof firebaseAuthReducer>
   firebaseNotifications: ReturnType<typeof firebaseNotificationsReducer>
 }
@@ -92,6 +94,7 @@ const rootReducer: ReducersMapObject<RootState> = {
   neuron: neuronReducer,
   userSettings: userSettingsReducer,
   emailMiner: emailMinerReducer,
+  processingEmailMiners: processingEmailMinersReducer,
   firebaseAuth: firebaseAuthReducer,
   firebaseNotifications: firebaseNotificationsReducer,
 }
