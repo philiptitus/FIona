@@ -8,6 +8,8 @@ import { Providers } from "./providers"
 import AuthHydrator from "./authHydrator"
 import AuthBridge from "./authBridge"
 import FirebaseNotificationsProvider from "@/components/FirebaseNotificationsProvider"
+import ProcessingDispatchListener from "@/components/listeners/ProcessingDispatchListener"
+import ProcessingEmailMinerListener from "@/components/listeners/ProcessingEmailMinerListener"
 import { Analytics } from "@vercel/analytics/react"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -39,6 +41,8 @@ export default function RootLayout({
           <AuthHydrator />
           <AuthBridge />
           <FirebaseNotificationsProvider />
+          <ProcessingDispatchListener />
+          <ProcessingEmailMinerListener />
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             {children}
             <Toaster />

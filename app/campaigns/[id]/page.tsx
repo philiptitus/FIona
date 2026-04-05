@@ -27,12 +27,11 @@ import { handleFetchMailboxes } from "@/store/actions/mailboxActions"
 import SendCampaignDialog from "@/components/campaigns/SendCampaignDialog"
 import { handleDisassociateEmails } from "@/store/actions/emailActions"
 import { handleDisassociateCompanies } from "@/store/actions/companyActions"
-import { addDispatch, removeDispatch } from "@/store/slices/processingDispatchesSlice"
+import { addDispatch } from "@/store/slices/processingDispatchesSlice"
 import { Checkbox } from "@/components/ui/checkbox"
 import { motion, AnimatePresence } from "framer-motion"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import MailLoader from '@/components/MailLoader'
-import { removeProcessingEmailMiner } from "@/store/slices/processingEmailMinersSlice"
 import EmailMiningFloat from "@/components/EmailMiningFloat"
 import EmailSchedulingFloat from "@/components/EmailSchedulingFloat"
 
@@ -156,37 +155,11 @@ export default function CampaignDetailPage() {
     ) {
       processedNotificationIdsRef.current.add(latestNotification.id)
       
-      // Match by token from metadata and dismiss the email mining float
-      const token = latestNotification.metadata?.token
-      if (token) {
-        dispatch(removeProcessingEmailMiner(token))
-      }
-
       // Refresh campaign companies (specific to this campaign)
+      // Note: Email mining float dismissal is handled globally by ProcessingEmailMinerListener
       dispatch(handleFetchCompanies({ campaignId, page: 1 }) as any)
     }
   }, [firebaseNotifications, dispatch, campaignId])
-
-  // Listen for dispatch completion and auto-dismiss the dispatch float
-  React.useEffect(() => {
-    if (firebaseNotifications.length === 0) return
-
-    const latestNotification = firebaseNotifications[0]
-    const dispatchNotificationTypes = ['campaign_sent', 'campaign_partial', 'campaign_failed', 'sequence_scheduled', 'sequence_schedule_failed']
-    
-    if (
-      dispatchNotificationTypes.includes(latestNotification.type) &&
-      !processedNotificationIdsRef.current.has(latestNotification.id)
-    ) {
-      processedNotificationIdsRef.current.add(latestNotification.id)
-      
-      // Match by token from metadata and dismiss the dispatch float
-      const token = latestNotification.metadata?.token
-      if (token) {
-        dispatch(removeDispatch(token))
-      }
-    }
-  }, [firebaseNotifications, dispatch])
 
   // Show notification with auto-dismiss
   const showNotification = (type: 'success' | 'error', message: string) => {
@@ -525,7 +498,7 @@ export default function CampaignDetailPage() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold break-words">{campaign?.name || 'Campaign Details'}</h1>
                 <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
-                  {!campaign?.is_finished && campaign?.recipient_type === "email" && (
+                  {!campaign?.is_finished && !campaign?.is_scheduled && campaign?.recipient_type === "email" && (
                     <Button
                       variant="default"
                       size="sm"
@@ -536,7 +509,7 @@ export default function CampaignDetailPage() {
                       <span className="sm:hidden">Add Emails</span>
                     </Button>
                   )}
-                  {!campaign?.is_finished && campaign?.recipient_type === "company" && (
+                  {!campaign?.is_finished && !campaign?.is_scheduled && campaign?.recipient_type === "company" && (
                     <Button
                       variant="default"
                       size="sm"
@@ -548,22 +521,39 @@ export default function CampaignDetailPage() {
                       <span className="sm:hidden">Add Companies</span>
                     </Button>
                   )}
-                  {!campaign?.is_finished && (
+                  {!campaign?.is_finished && !campaign?.is_scheduled && (
                     <Button size="sm" className="w-full sm:w-auto" onClick={() => setSendModalOpen(true)}>
                       <Send className="mr-2 h-4 w-4" /> 
                       <span className="hidden sm:inline">Send Campaign</span>
                       <span className="sm:hidden">Send</span>
                     </Button>
                   )}
-                  {campaign?.is_finished && (
-                    <Badge variant="secondary" className="px-3 py-1">
+                  {(campaign?.is_finished || campaign?.is_scheduled) && (
+                    <Badge variant="secondary" className="px-3 py-1 w-full sm:w-auto justify-center">
                       <CheckCircle2 className="mr-1 h-3 w-3" />
-                      Campaign Finished
+                      {campaign?.is_scheduled ? "Campaign Scheduled" : "Campaign Finished"}
                     </Badge>
                   )}
                 </div>
               </div>
               
+              {/* Alerts for campaign status */}
+              {campaign?.is_scheduled && (
+                <Alert className="bg-blue-50 border-blue-200">
+                  <AlertTitle className="text-blue-900">📅 Campaign Scheduled</AlertTitle>
+                  <AlertDescription className="text-blue-800 mt-1">
+                    This campaign has been scheduled for sending. No new recipients can be added or changes made.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {campaign?.is_finished && (
+                <Alert className="bg-green-50 border-green-200">
+                  <AlertTitle className="text-green-900">✓ Campaign Finished</AlertTitle>
+                  <AlertDescription className="text-green-800 mt-1">
+                    All scheduled emails for this campaign have been sent successfully.
+                  </AlertDescription>
+                </Alert>
+              )}
               {/* Inline alert/banner if no recipients */}
               {!emailsLoading && !companiesLoading && campaign?.recipient_type === "email" && campaignEmails.length === 0 && (
                 <Alert variant="destructive">
@@ -578,6 +568,14 @@ export default function CampaignDetailPage() {
                   <AlertTitle>No Companies Attached</AlertTitle>
                   <AlertDescription>
                     This campaign doesn't have any companies attached yet.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {campaign?.required_dynamic_variables && campaign.required_dynamic_variables.length > 0 && (
+                <Alert className="bg-amber-50 border-amber-200">
+                  <AlertTitle className="text-amber-900">⚠️ Required Fields</AlertTitle>
+                  <AlertDescription className="text-amber-800 mt-1">
+                    When adding recipients to this campaign, make sure your data includes: <span className="font-semibold">{campaign.required_dynamic_variables.join(', ')}</span>
                   </AlertDescription>
                 </Alert>
               )}
@@ -1059,6 +1057,7 @@ export default function CampaignDetailPage() {
         companies={availableCompanies}
         isLoadingCompanies={companiesLoading}
         onSuccess={() => dispatch(handleFetchCompanies({ campaignId }) as any)}
+        requiredDynamicVariables={campaign?.required_dynamic_variables}
       />
     </MainLayout>
   );

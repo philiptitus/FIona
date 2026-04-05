@@ -42,6 +42,7 @@ interface AddCompanyDialogProps {
   companies?: Company[]
   isLoadingCompanies?: boolean
   onSuccess?: () => void
+  requiredDynamicVariables?: string[]
 }
 
 
@@ -53,6 +54,7 @@ export default function AddCompanyDialog({
   companies = [],
   isLoadingCompanies = false,
   onSuccess,
+  requiredDynamicVariables = [],
 }: AddCompanyDialogProps) {
   const dispatch = useDispatch<AppDispatch>()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -229,6 +231,22 @@ StartupAI Ltd,hello@startupaai.com,+1-555-0200,Boston,USA,AI,https://startupaai.
             return
           }
           
+          // Check for required dynamic variables from campaign
+          if (requiredDynamicVariables && requiredDynamicVariables.length > 0) {
+            const missingDynamicVars = requiredDynamicVariables.filter(variable => {
+              const formattedName = variable.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+              return !headers.includes(variable) && !headers.includes(formattedName)
+            })
+            
+            if (missingDynamicVars.length > 0) {
+              resolve({
+                valid: false,
+                error: `This campaign requires the following fields: ${requiredDynamicVariables.join(', ')}. Your CSV is missing: ${missingDynamicVars.join(', ')}`
+              })
+              return
+            }
+          }
+          
           resolve({ valid: true })
         } catch (error) {
           resolve({ valid: false, error: "Error reading CSV file" })
@@ -361,6 +379,15 @@ StartupAI Ltd,hello@startupaai.com,+1-555-0200,Boston,USA,AI,https://startupaai.
                   </Alert>
                 )}
 
+                {requiredDynamicVariables && requiredDynamicVariables.length > 0 && (
+                  <Alert className="bg-amber-50 border-amber-200">
+                    <AlertTitle className="text-amber-900">⚠️ Required Fields</AlertTitle>
+                    <AlertDescription className="text-amber-800 text-xs mt-1">
+                      This campaign requires: <span className="font-semibold">{requiredDynamicVariables.join(', ')}</span>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <p className="text-sm text-muted-foreground mb-1">
                   Add a single company entry manually. Use this for quick, one-off additions.
                 </p>
@@ -471,9 +498,19 @@ StartupAI Ltd,hello@startupaai.com,+1-555-0200,Boston,USA,AI,https://startupaai.
                   </Alert>
                 )}
 
-                <p className="text-sm text-muted-foreground mb-1">
-                  Upload a CSV file to add multiple companies at once.
-                </p>
+                {requiredDynamicVariables && requiredDynamicVariables.length > 0 && (
+                  <Alert className="bg-amber-50 border-amber-200">
+                    <AlertTitle className="text-amber-900">⚠️ Required Fields for This Campaign</AlertTitle>
+                    <AlertDescription className="text-amber-800 text-xs mt-2">
+                      <p className="font-semibold mb-1">Your CSV must include these fields:</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        {requiredDynamicVariables.map((variable) => (
+                          <li key={variable}>{variable}</li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <div className="flex justify-between items-center mb-2">
@@ -489,7 +526,7 @@ StartupAI Ltd,hello@startupaai.com,+1-555-0200,Boston,USA,AI,https://startupaai.
                       Template
                     </Button>
                   </div>
-                  <p className="text-xs text-blue-700 mb-2">Required columns: Company Name, Company Email</p>
+                  <p className="text-xs text-blue-700 mb-2">Required columns: Company Name, Company Email{requiredDynamicVariables && requiredDynamicVariables.length > 0 ? `, ${requiredDynamicVariables.join(', ')}` : ''}</p>
                   <p className="text-xs text-blue-700">Optional columns: Company Phone, Company City, Company Country, Industry, Website, and more...</p>
                   <p className="text-xs text-blue-600 mt-2 italic">Note: Field names with spaces (e.g., "Company Name") are automatically converted to underscores</p>
                 </div>

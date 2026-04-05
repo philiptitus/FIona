@@ -1,11 +1,14 @@
 "use client"
 
 import React from "react"
+import { useSelector, useDispatch } from "react-redux"
+import { RootState } from "@/store/store"
+import { handleFetchPreset } from "@/store/actions/presetActions"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
-import { Send, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react"
+import { Send, Loader2, CheckCircle2, XCircle, AlertTriangle, Zap, Link as LinkIcon } from "lucide-react"
 
 interface SendCampaignDialogProps {
   open: boolean
@@ -50,9 +53,21 @@ export default function SendCampaignDialog({
   sendDisabled,
   sendDisabledReason,
 }: SendCampaignDialogProps) {
+  const dispatch = useDispatch()
+  const { currentPreset } = useSelector((state: RootState) => state.preset)
+
   const [showMailboxSelector, setShowMailboxSelector] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
+  const [showPresetConfirm, setShowPresetConfirm] = React.useState(false)
+  const [presetError, setPresetError] = React.useState("")
   const selectorRef = React.useRef<HTMLDivElement>(null)
+
+  // Fetch preset when dialog opens
+  React.useEffect(() => {
+    if (open && !currentPreset) {
+      dispatch(handleFetchPreset() as any)
+    }
+  }, [open, dispatch, currentPreset])
 
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -64,28 +79,102 @@ export default function SendCampaignDialog({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-2xl rounded-2xl border-2 shadow-xl flex flex-col max-h-[90vh] bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-        <DialogHeader className="border-b border-slate-200 dark:border-slate-700 pb-4">
-          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Launch Campaign
-          </DialogTitle>
-        </DialogHeader>
+  // Validate and apply preset
+  const validateAndApplyPreset = () => {
+    setPresetError("")
 
-        <div className="flex-1 overflow-y-scroll px-6 py-4 space-y-6">
+    if (!currentPreset) {
+      setPresetError("Preset not loaded. Please try again.")
+      return false
+    }
+
+    const { mailbox_ids, content_type, is_scheduled, scheduled_date } = currentPreset
+
+    // Validate required fields
+    if (!mailbox_ids || mailbox_ids.length === 0) {
+      setPresetError("Preset is empty: No mailboxes configured. Please set up your preset in Settings.")
+      return false
+    }
+
+    if (!content_type) {
+      setPresetError("Preset is empty: No content type selected. Please set up your preset in Settings.")
+      return false
+    }
+
+    // Apply preset to form
+    onMailboxChange(mailbox_ids)
+    onTypeChange(content_type as "content" | "template" | "")
+    onScheduledChange(is_scheduled || false)
+    if (is_scheduled && scheduled_date) {
+      onScheduledDateChange(scheduled_date)
+    }
+
+    setShowPresetConfirm(true)
+    return true
+  }
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="w-[95vw] max-w-2xl rounded-2xl border-2 shadow-xl flex flex-col max-h-[90vh] bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+          <DialogHeader className="border-b border-slate-200 dark:border-slate-700 pb-4">
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Launch Campaign
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-scroll px-6 py-4 space-y-6">
           {!isSending && !sendSuccess && (
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border-2 border-blue-200 dark:border-blue-900">
-              <div className="flex items-start gap-3">
-                <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
-                  <Send className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-slate-900 dark:text-slate-100">Ready to send?</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Configure your send settings below and launch</p>
+            <>
+              <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border-2 border-blue-200 dark:border-blue-900">
+                <div className="flex items-start gap-3">
+                  <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
+                    <Send className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-100">Ready to send?</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Configure your send settings below and launch</p>
+                  </div>
                 </div>
               </div>
-            </div>
+
+              {/* Preset Quick Fill Section */}
+              <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-900/10 rounded-xl p-4 border-2 border-amber-300 dark:border-amber-700 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="h-10 w-10 rounded-full bg-amber-200 dark:bg-amber-900 flex items-center justify-center flex-shrink-0 flex-shrink-0">
+                    <Zap className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-amber-900 dark:text-amber-100">Quick Start with Preset</h3>
+                    <p className="text-sm text-amber-800 dark:text-amber-200">Auto-fill your saved settings and launch in seconds</p>
+                  </div>
+                </div>
+
+                {presetError && (
+                  <Alert variant="destructive" className="border-2 mt-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Preset Issue</AlertTitle>
+                    <AlertDescription>{presetError}</AlertDescription>
+                    <a
+                      href="/settings"
+                      className="inline-flex items-center gap-1 mt-2 text-sm font-semibold text-red-600 dark:text-red-400 hover:underline"
+                    >
+                      <LinkIcon className="h-3 w-3" />
+                      Go to Settings
+                    </a>
+                  </Alert>
+                )}
+
+                <Button
+                  onClick={validateAndApplyPreset}
+                  disabled={!currentPreset}
+                  className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold py-2 rounded-lg gap-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  <Zap className="h-4 w-4" />
+                  {currentPreset ? "Fill with Preset" : "Loading Preset..."}
+                </Button>
+              </div>
+            </>
           )}
 
           {isSending ? (
@@ -350,5 +439,106 @@ export default function SendCampaignDialog({
         `}</style>
       </DialogContent>
     </Dialog>
+
+    {/* Preset Confirmation Dialog */}
+    <Dialog open={showPresetConfirm} onOpenChange={setShowPresetConfirm}>
+      <DialogContent className="w-[95vw] max-w-2xl rounded-2xl border-2 shadow-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+        <DialogHeader className="border-b border-slate-200 dark:border-slate-700 pb-4">
+          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent flex items-center gap-2">
+            <CheckCircle2 className="h-6 w-6 text-green-600" />
+            Confirm Preset Settings
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-6 py-6">
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
+            <p className="text-sm text-green-800 dark:text-green-200">
+              Your saved preset settings are ready! Review the configuration below and confirm to launch your campaign with these settings.
+            </p>
+          </div>
+
+          {currentPreset && (
+            <div className="space-y-4">
+              {/* Mailboxes */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <span className="h-5 w-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">✓</span>
+                  Mailboxes ({selectedMailboxIds.length})
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {selectedMailboxIds.map(mailboxId => {
+                    const mailbox = mailboxes.find((mb: any) => mb.id === mailboxId)
+                    return mailbox ? (
+                      <Badge
+                        key={mailbox.id}
+                        className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border-0 px-3 py-1.5"
+                      >
+                        <span className="text-xs">📬</span> {mailbox.email}
+                      </Badge>
+                    ) : null
+                  })}
+                </div>
+              </div>
+
+              {/* Content Type */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <span className="h-5 w-5 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center font-bold">✓</span>
+                  Content Type
+                </h4>
+                <div className="bg-white dark:bg-slate-700 rounded-lg p-3 border border-slate-200 dark:border-slate-600">
+                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {selectedType === "content" && "📝 Plain Text - Simple & Personal"}
+                    {selectedType === "template" && "✨ HTML Template - Styled & Professional"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Scheduling */}
+              {isScheduled && scheduledDate && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <span className="h-5 w-5 rounded-full bg-amber-600 text-white text-xs flex items-center justify-center font-bold">✓</span>
+                    Schedule
+                  </h4>
+                  <div className="bg-white dark:bg-slate-700 rounded-lg p-3 border border-slate-200 dark:border-slate-600">
+                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                      📅 Scheduled for {new Date(scheduledDate).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              ⚡ Your campaign will be {isScheduled ? "scheduled" : "sent"} using these settings.
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter className="border-t border-slate-200 dark:border-slate-700 p-6 gap-3">
+          <Button
+            variant="outline"
+            onClick={() => setShowPresetConfirm(false)}
+            className="border-2"
+          >
+            Edit Settings
+          </Button>
+          <Button
+            onClick={() => {
+              setShowPresetConfirm(false)
+              onSend()
+            }}
+            className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold px-6 py-2 rounded-lg gap-2 flex items-center"
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            {isScheduled ? "Schedule Campaign" : "Send Campaign"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }

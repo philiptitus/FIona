@@ -22,6 +22,7 @@ import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Trash2, Clock } from "lucide-react"
+import EmailSendingPresetForm from "@/components/presets/EmailSendingPresetForm"
 
 
 
@@ -481,6 +482,11 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+          </section>
+
+          {/* Email Sending Preset Section */}
+          <section>
+            <EmailSendingPresetForm showSectionHeader={true} />
           </section>
           
           {/* Language Section */}

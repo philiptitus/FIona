@@ -36,6 +36,10 @@ interface CampaignState {
   }
   searchQuery: string
   recipientTypeFilter: "all" | "email" | "company"
+  pageSize: number
+  isScheduledFilter: boolean | null
+  isFinishedFilter: boolean | null
+  isResearchFilter: boolean | null
 }
 
 const initialState: CampaignState = {
@@ -52,6 +56,10 @@ const initialState: CampaignState = {
   },
   searchQuery: "",
   recipientTypeFilter: "all",
+  pageSize: 10,
+  isScheduledFilter: null,
+  isFinishedFilter: null,
+  isResearchFilter: null,
 }
 
 const campaignSlice = createSlice({
@@ -70,7 +78,7 @@ const campaignSlice = createSlice({
         next: action.payload.next,
         previous: action.payload.previous,
         currentPage: state.pagination.currentPage,
-        totalPages: Math.ceil(action.payload.count / 10),
+        totalPages: Math.ceil(action.payload.count / state.pageSize),
       }
       state.error = null
     },
@@ -161,6 +169,31 @@ const campaignSlice = createSlice({
       state.recipientTypeFilter = action.payload
       state.pagination.currentPage = 1 // Reset to first page when filtering
     },
+    setPageSize: (state, action: PayloadAction<number>) => {
+      state.pageSize = action.payload
+      state.pagination.currentPage = 1 // Reset to first page when changing page size
+    },
+    setIsScheduledFilter: (state, action: PayloadAction<boolean | null>) => {
+      state.isScheduledFilter = action.payload
+      state.pagination.currentPage = 1 // Reset to first page when filtering
+    },
+    setIsFinishedFilter: (state, action: PayloadAction<boolean | null>) => {
+      state.isFinishedFilter = action.payload
+      state.pagination.currentPage = 1 // Reset to first page when filtering
+    },
+    setIsResearchFilter: (state, action: PayloadAction<boolean | null>) => {
+      state.isResearchFilter = action.payload
+      state.pagination.currentPage = 1 // Reset to first page when filtering
+    },
+    resetFilters: (state) => {
+      state.pageSize = 10
+      state.isScheduledFilter = null
+      state.isFinishedFilter = null
+      state.isResearchFilter = null
+      state.recipientTypeFilter = "all"
+      state.searchQuery = ""
+      state.pagination.currentPage = 1
+    },
   },
 })
 
@@ -187,6 +220,11 @@ export const {
   setCurrentPage,
   setSearchQuery,
   setRecipientTypeFilter,
+  setPageSize,
+  setIsScheduledFilter,
+  setIsFinishedFilter,
+  setIsResearchFilter,
+  resetFilters,
 } = campaignSlice.actions
 
 export default campaignSlice.reducer

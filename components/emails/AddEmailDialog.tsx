@@ -212,6 +212,23 @@ export default function AddEmailDialog({
             })
             return
           }
+
+          // Check for required dynamic variables from campaign
+          if (campaign?.required_dynamic_variables && campaign.required_dynamic_variables.length > 0) {
+            const missingDynamicVars = campaign.required_dynamic_variables.filter(variable => {
+              const underscoreFormat = variable
+              const spaceFormat = variable.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+              return !headers.includes(underscoreFormat) && !headers.includes(spaceFormat)
+            })
+            
+            if (missingDynamicVars.length > 0) {
+              resolve({
+                valid: false,
+                error: `This campaign requires the following fields: ${campaign.required_dynamic_variables.join(', ')}. Your CSV is missing: ${missingDynamicVars.join(', ')}`
+              })
+              return
+            }
+          }
           
           resolve({ valid: true })
         } catch (error) {
@@ -510,7 +527,7 @@ export default function AddEmailDialog({
               <p className="text-sm text-muted-foreground mb-1">
                 Upload a CSV or JSON file to add many emails at once.
                 <span className="block mt-1">
-                  <b>Required columns:</b> <code>email</code>, <code>organization_name</code>
+                  <b>Required columns:</b> <code>email</code>, <code>organization_name</code>{campaign?.required_dynamic_variables && campaign.required_dynamic_variables.length > 0 && `, ${campaign.required_dynamic_variables.join(', ')}`}
                 </span>
               </p>
 

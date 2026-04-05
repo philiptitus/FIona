@@ -26,7 +26,7 @@ import type { AppDispatch } from "../store"
 export const fetchCampaigns = createAsyncThunk(
   "campaigns/fetchAll", 
   async (
-    { search = "", page = 1, recipientType = "" }: { search?: string; page?: number; recipientType?: string } = {},
+    { search = "", page = 1, recipientType = "", pageSize = 10, isScheduled = null, isFinished = null, isResearch = null }: { search?: string; page?: number; recipientType?: string; pageSize?: number; isScheduled?: boolean | null; isFinished?: boolean | null; isResearch?: boolean | null } = {},
     { rejectWithValue }
   ) => {
     try {
@@ -34,6 +34,10 @@ export const fetchCampaigns = createAsyncThunk(
       if (search) params.append("search", search)
       if (recipientType && recipientType !== "all") params.append("recipient_type", recipientType)
       if (page > 1) params.append("page", page.toString())
+      if (pageSize && pageSize !== 10) params.append("page_size", pageSize.toString())
+      if (isScheduled !== null && isScheduled !== undefined) params.append("is_scheduled", isScheduled ? "true" : "false")
+      if (isFinished !== null && isFinished !== undefined) params.append("is_finished", isFinished ? "true" : "false")
+      if (isResearch !== null && isResearch !== undefined) params.append("is_research", isResearch ? "true" : "false")
       
       const url = `/mail/campaigns/${params.toString() ? `?${params.toString()}` : ""}`
       const response = await api.get(url)
@@ -219,11 +223,11 @@ export const fetchCompletedCampaigns = createAsyncThunk(
 
 // Thunk action creators for dispatching regular actions
 export const handleFetchCampaigns = (
-  { search = "", page = 1, recipientType = "" }: { search?: string; page?: number; recipientType?: string } = {}
+  { search = "", page = 1, recipientType = "", pageSize = 10, isScheduled = null, isFinished = null, isResearch = null }: { search?: string; page?: number; recipientType?: string; pageSize?: number; isScheduled?: boolean | null; isFinished?: boolean | null; isResearch?: boolean | null } = {}
 ) => async (dispatch: AppDispatch) => {
   dispatch(fetchCampaignsStart())
   try {
-    const resultAction = await dispatch(fetchCampaigns({ search, page, recipientType }))
+    const resultAction = await dispatch(fetchCampaigns({ search, page, recipientType, pageSize, isScheduled, isFinished, isResearch }))
     if (fetchCampaigns.fulfilled.match(resultAction)) {
       dispatch(fetchCampaignsSuccess(resultAction.payload))
       return true
