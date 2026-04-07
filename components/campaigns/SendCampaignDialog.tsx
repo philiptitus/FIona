@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { Send, Loader2, CheckCircle2, XCircle, AlertTriangle, Zap, Link as LinkIcon } from "lucide-react"
+import { shuffleArray } from "@/lib/utils/shuffle"
 
 interface SendCampaignDialogProps {
   open: boolean
@@ -101,8 +102,8 @@ export default function SendCampaignDialog({
       return false
     }
 
-    // Apply preset to form
-    onMailboxChange(mailbox_ids)
+    // Apply preset to form with shuffled mailboxes for load-balancing
+    onMailboxChange(shuffleArray(mailbox_ids))
     onTypeChange(content_type as "content" | "template" | "")
     onScheduledChange(is_scheduled || false)
     if (is_scheduled && scheduled_date) {
@@ -312,7 +313,7 @@ export default function SendCampaignDialog({
               </div>
 
               {/* Content Type Selection */}
-              {campaign?.latest_email_content_id || campaign?.latest_email_template_id ? (
+              {campaign === null || campaign?.style_type || campaign?.latest_email_content_id || campaign?.latest_email_template_id ? (
                 <div className="space-y-3">
                   <label className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                     <span className="h-6 w-6 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center">2</span>
@@ -324,10 +325,10 @@ export default function SendCampaignDialog({
                     onChange={e => onTypeChange(e.target.value as "content" | "template" | "")}
                   >
                     <option value="">Choose content type…</option>
-                    {campaign?.latest_email_content_id && (
+                    {(campaign === null || campaign?.style_type === "content" || campaign?.latest_email_content_id) && (
                       <option value="content">📝 Plain Text (Personal)</option>
                     )}
-                    {campaign?.latest_email_template_id && (
+                    {(campaign === null || campaign?.style_type === "template" || campaign?.latest_email_template_id) && (
                       <option value="template">✨ HTML Template (Styled)</option>
                     )}
                   </select>

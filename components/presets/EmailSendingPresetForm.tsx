@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, CheckCircle2, Loader2, Calendar, Mail } from "lucide-react"
 import MailLoader from "@/components/MailLoader"
+import { shuffleArray } from "@/lib/utils/shuffle"
 
 interface EmailSendingPresetFormProps {
   showSectionHeader?: boolean
@@ -81,7 +82,7 @@ export default function EmailSendingPresetForm({ showSectionHeader = true }: Ema
 
     try {
       const presetData = {
-        mailbox_ids: selectedMailboxIds,
+        mailbox_ids: shuffleArray(selectedMailboxIds),
         content_type: contentType,
         is_scheduled: isScheduled,
         scheduled_date: isScheduled && scheduledDate ? scheduledDate : null,

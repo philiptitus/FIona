@@ -28,6 +28,7 @@ import SendCampaignDialog from "@/components/campaigns/SendCampaignDialog"
 import EmailSchedulingFloat from "@/components/EmailSchedulingFloat"
 import { handleSendDispatch } from "@/store/actions/dispatchActions"
 import { handleFetchMailboxes } from "@/store/actions/mailboxActions"
+import { shuffleArray } from "@/lib/utils/shuffle"
 
 export default function CampaignsPage() {
   const [selectedCampaigns, setSelectedCampaigns] = useState<number[]>([])
@@ -287,11 +288,11 @@ export default function CampaignsPage() {
           continue
         }
 
-        // Send dispatch - don't await, just queue
+        // Send dispatch - don't await, just queue (shuffle mailboxes for load-balancing)
         const result = await dispatch(
           handleSendDispatch(
             campaign.dispatch_id,
-            selectedMailboxIds,
+            shuffleArray(selectedMailboxIds),
             selectedType as "content" | "template",
             isScheduled,
             scheduledDate || undefined
