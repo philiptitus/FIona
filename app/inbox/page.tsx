@@ -27,13 +27,7 @@ export default function InboxPage() {
     dispatch(fetchMailboxes())
   }, [dispatch])
 
-  useEffect(() => {
-    if (mailboxes.length > 0 && !selectedMailboxId) {
-      setSelectedMailboxId(mailboxes[0].id)
-    }
-  }, [mailboxes, selectedMailboxId])
-
-  const handleMailboxChange = (mailboxId: number) => {
+  const handleMailboxChange = (mailboxId: number | null) => {
     setSelectedMailboxId(mailboxId)
     setSelectedMessageId(null)
     setSelectedThreadId(null)
@@ -120,23 +114,23 @@ export default function InboxPage() {
           </div>
         </div>
 
-        {/* Stats Section */}
-        {showStats && selectedMailboxId && (
+        {/* Stats Section - Only for single mailbox mode */}
+        {showStats && selectedMailboxId !== null && selectedMailboxId !== undefined && (
           <MailboxStats mailboxId={selectedMailboxId} />
         )}
 
         {/* Main Content Area */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          {/* Labels Sidebar - Hidden on mobile in message/thread view */}
+          {/* Labels Sidebar - Only for single mailbox mode */}
           <div className={`${viewMode !== "inbox" ? "hidden lg:block" : ""} lg:col-span-1`}>
-            {selectedMailboxId && (
+            {selectedMailboxId !== null && selectedMailboxId !== undefined && (
               <LabelsSidebar mailboxId={selectedMailboxId} />
             )}
           </div>
 
           {/* Main Content */}
           <div className="lg:col-span-3">
-            {viewMode === "inbox" && selectedMailboxId && (
+            {viewMode === "inbox" && selectedMailboxId !== undefined && (
               <InboxMessageList
                 mailboxId={selectedMailboxId}
                 onMessageSelect={handleMessageSelect}

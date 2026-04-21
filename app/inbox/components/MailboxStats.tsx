@@ -74,28 +74,28 @@ export default function MailboxStats({ mailboxId }: MailboxStatsProps) {
   const stats = [
     {
       title: "Email Address",
-      value: mailboxProfile.email,
+      value: mailboxProfile.email || "—",
       icon: Mail,
       description: "Connected mailbox",
       gradient: "from-blue-500 to-cyan-500",
     },
     {
       title: "Total Messages",
-      value: mailboxProfile.messages_total.toLocaleString(),
+      value: (mailboxProfile.messagesTotal ?? 0).toLocaleString(),
       icon: Mail,
       description: "All messages in mailbox",
       gradient: "from-purple-500 to-pink-500",
     },
     {
       title: "Total Threads",
-      value: mailboxProfile.threads_total.toLocaleString(),
+      value: (mailboxProfile.threadsTotal ?? 0).toLocaleString(),
       icon: MessagesSquare,
       description: "Conversation threads",
       gradient: "from-orange-500 to-red-500",
     },
     {
       title: "Connected Since",
-      value: formatDate(mailboxProfile.mailbox_linked_at),
+      value: mailboxProfile.mailboxLinkedAt ? formatDate(mailboxProfile.mailboxLinkedAt) : "—",
       icon: Calendar,
       description: "Mailbox linked date",
       gradient: "from-green-500 to-emerald-500",
@@ -144,19 +144,19 @@ export default function MailboxStats({ mailboxId }: MailboxStatsProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground mb-1">Email</p>
-              <p className="font-medium break-all">{mailboxProfile.email}</p>
+              <p className="font-medium break-all">{mailboxProfile.email || "—"}</p>
             </div>
             <div>
               <p className="text-muted-foreground mb-1">History ID</p>
-              <p className="font-medium">{mailboxProfile.history_id}</p>
+              <p className="font-medium">{mailboxProfile.historyId || "—"}</p>
             </div>
             <div>
               <p className="text-muted-foreground mb-1">Messages</p>
-              <p className="font-medium">{mailboxProfile.messages_total.toLocaleString()}</p>
+              <p className="font-medium">{(mailboxProfile.messagesTotal ?? 0).toLocaleString()}</p>
             </div>
             <div>
               <p className="text-muted-foreground mb-1">Threads</p>
-              <p className="font-medium">{mailboxProfile.threads_total.toLocaleString()}</p>
+              <p className="font-medium">{(mailboxProfile.threadsTotal ?? 0).toLocaleString()}</p>
             </div>
           </div>
         </CardContent>

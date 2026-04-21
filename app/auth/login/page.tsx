@@ -13,6 +13,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { useToast } from "@/components/ui/use-toast"
 import { useDispatch, useSelector } from "react-redux"
 import { handleLogin } from "@/store/actions/authActions"
+import { triggerAllMailboxesLoad } from "@/store/actions/mailboxActions"
 import type { RootState, AppDispatch } from "@/store/store"
 import { validateEmail, validatePassword } from "@/lib/utils/validation"
 import Cookies from "js-cookie"
@@ -45,9 +46,11 @@ export default function LoginPage() {
         title: "Login successful",
         description: "Welcome back to Fiona AI!",
       })
+      // Trigger all-mailboxes cache load on login
+      dispatch(triggerAllMailboxesLoad())
       router.replace(redirectTo)
     }
-  }, [isAuthenticated, redirectTo, router, toast])
+  }, [isAuthenticated, redirectTo, router, toast, dispatch])
 
   const handleCognitoLogin = () => {
     // Store the redirect URL in sessionStorage before Cognito redirect

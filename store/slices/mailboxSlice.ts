@@ -11,7 +11,14 @@ import {
   fetchMailboxLabels,
   fetchMessageDetails,
   fetchThreadDetails,
-  fetchMailboxProfile
+  fetchMailboxProfile,
+  triggerAllMailboxesLoad,
+  fetchAllMailboxesFromCache,
+  type AllMailboxesMessage,
+  type AllMailboxesCacheResponse,
+  type AsyncLoadResponse,
+  type MailboxSummary,
+  type FailedMailbox
 } from "../actions/mailboxActions"
 
 interface Mailbox {
@@ -49,9 +56,13 @@ interface GmailLabel {
 
 interface MailboxInbox {
   messages: GmailMessage[]
-  nextPageToken?: string
+  nextPageToken?: string | null
   total: number
   mailbox: string
+  bounceSummary?: {
+    bounceEmailsDetected: number
+    invalidAddressesDeleted: number
+  }
 }
 
 interface MailboxLabels {
@@ -77,16 +88,17 @@ interface ThreadDetails {
 
 interface MailboxProfile {
   email: string
-  messages_total: number
-  threads_total: number
-  history_id: string
-  mailbox_linked_at: string
+  messagesTotal: number
+  threadsTotal: number
+  historyId: string
+  mailboxLinkedAt: string
 }
 
 interface MailboxState {
   mailboxes: Mailbox[]
   selectedMailboxes: number[]
   isLoading: boolean
+  isLoadingLabels: boolean
   error: string | null
   gmailAuthUrl: string | null
   sendResult?: any
@@ -121,12 +133,19 @@ interface MailboxState {
   currentMessage?: MessageDetails
   currentThread?: ThreadDetails
   mailboxProfile?: MailboxProfile
+  // All Mailboxes API state
+  allMailboxesLoadToken?: string
+  allMailboxesLoadStatus?: "idle" | "loading" | "completed" | "failed"
+  isLoadingAllMailboxes: boolean
+  allMailboxesData?: AllMailboxesCacheResponse
+  allMailboxesError?: string
 }
 
 const initialState: MailboxState = {
   mailboxes: [],
   selectedMailboxes: [],
   isLoading: false,
+  isLoadingLabels: false,
   error: null,
   gmailAuthUrl: null,
   sendResult: null,
@@ -137,6 +156,12 @@ const initialState: MailboxState = {
   currentMessage: undefined,
   currentThread: undefined,
   mailboxProfile: undefined,
+  // All Mailboxes API initial state
+  allMailboxesLoadToken: undefined,
+  allMailboxesLoadStatus: "idle",
+  isLoadingAllMailboxes: false,
+  allMailboxesData: undefined,
+  allMailboxesError: undefined,
 }
 
 const mailboxSlice = createSlice({
@@ -287,16 +312,16 @@ const mailboxSlice = createSlice({
       })
       // fetchMailboxLabels
       .addCase(fetchMailboxLabels.pending, (state) => {
-        state.isLoading = true
+        state.isLoadingLabels = true
         state.error = null
       })
       .addCase(fetchMailboxLabels.fulfilled, (state, action) => {
-        state.isLoading = false
+        state.isLoadingLabels = false
         state.error = null
         state.labels = action.payload
       })
       .addCase(fetchMailboxLabels.rejected, (state, action) => {
-        state.isLoading = false
+        state.isLoadingLabels = false
         state.error = action.payload as string
         state.labels = undefined
       })
@@ -344,6 +369,34 @@ const mailboxSlice = createSlice({
         state.isLoading = false
         state.error = action.payload as string
         state.mailboxProfile = undefined
+      })
+      // triggerAllMailboxesLoad - Trigger async load
+      .addCase(triggerAllMailboxesLoad.pending, (state) => {
+        state.allMailboxesLoadStatus = "loading"
+        state.allMailboxesError = undefined
+      })
+      .addCase(triggerAllMailboxesLoad.fulfilled, (state, action) => {
+        state.allMailboxesLoadStatus = "completed"
+        state.allMailboxesLoadToken = action.payload.token
+        state.allMailboxesError = undefined
+      })
+      .addCase(triggerAllMailboxesLoad.rejected, (state, action) => {
+        state.allMailboxesLoadStatus = "failed"
+        state.allMailboxesError = action.payload as string
+      })
+      // fetchAllMailboxesFromCache - Fetch cached data with filters
+      .addCase(fetchAllMailboxesFromCache.pending, (state) => {
+        state.isLoadingAllMailboxes = true
+        state.allMailboxesError = undefined
+      })
+      .addCase(fetchAllMailboxesFromCache.fulfilled, (state, action) => {
+        state.isLoadingAllMailboxes = false
+        state.allMailboxesData = action.payload
+        state.allMailboxesError = undefined
+      })
+      .addCase(fetchAllMailboxesFromCache.rejected, (state, action) => {
+        state.isLoadingAllMailboxes = false
+        state.allMailboxesError = action.payload as string
       })
   },
 })

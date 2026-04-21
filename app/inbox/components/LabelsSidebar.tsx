@@ -16,7 +16,7 @@ interface LabelsSidebarProps {
 
 export default function LabelsSidebar({ mailboxId }: LabelsSidebarProps) {
   const dispatch = useAppDispatch()
-  const { labels, isLoading, error } = useAppSelector((state) => state.mailbox)
+  const { labels, isLoadingLabels, error } = useAppSelector((state) => state.mailbox)
 
   useEffect(() => {
     if (mailboxId) {
@@ -70,7 +70,7 @@ export default function LabelsSidebar({ mailboxId }: LabelsSidebarProps) {
       </CardHeader>
 
       <CardContent className="p-0">
-        {isLoading ? (
+        {isLoadingLabels ? (
           <div className="space-y-3 p-4">
             <div className="text-center py-4">
               <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">

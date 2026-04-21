@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useDispatch } from "react-redux"
 import { loginSuccess,  } from "@/store/slices/authSlice"
+import { triggerAllMailboxesLoad } from "@/store/actions/mailboxActions"
 import Cookies from "js-cookie"
 import { handleUpdateProfile } from "@/store/actions/authActions"
 import { useToast } from "@/components/ui/use-toast"
@@ -138,6 +139,9 @@ export default function LandingPage() {
             refreshToken: auth.user.refresh_token,
             expiresAt: auth.user.expires_at
           }))
+
+          // Trigger all-mailboxes cache load on login
+          dispatch(triggerAllMailboxesLoad())
 
           // --- Background sync with backend profile ---
           // Only send name and email as per backend expectations
