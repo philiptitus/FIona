@@ -74,6 +74,7 @@ interface PaginationInfo {
   previous: string | null
   currentPage: number
   totalPages: number
+  pageSize: number
 }
 
 interface EmailState {
@@ -96,7 +97,8 @@ const initialState: EmailState = {
     next: null,
     previous: null,
     currentPage: 1,
-    totalPages: 1
+    totalPages: 1,
+    pageSize: 10
   },
   isLegacyMode: false
 }
@@ -109,7 +111,7 @@ const emailSlice = createSlice({
       state.isLoading = true
       state.error = null
     },
-    fetchEmailsSuccess: (state, action: PayloadAction<{ results?: EmailListEntry[], emails?: EmailListEntry[], count?: number, next?: string | null, previous?: string | null, currentPage?: number, totalPages?: number }>) => {
+    fetchEmailsSuccess: (state, action: PayloadAction<{ results?: EmailListEntry[], emails?: EmailListEntry[], count?: number, next?: string | null, previous?: string | null, currentPage?: number, totalPages?: number, pageSize?: number }>) => {
       state.isLoading = false
       state.error = null
       
@@ -122,7 +124,8 @@ const emailSlice = createSlice({
           next: action.payload.next || null,
           previous: action.payload.previous || null,
           currentPage: action.payload.currentPage || 1,
-          totalPages: action.payload.totalPages || 1
+          totalPages: action.payload.totalPages || 1,
+          pageSize: action.payload.pageSize || 10
         }
         state.isLegacyMode = false
       } else if (Array.isArray(action.payload.emails)) {

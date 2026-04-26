@@ -48,6 +48,7 @@ interface PaginatedResponse {
   next: string | null
   previous: string | null
   results: Company[]
+  pageSize?: number
 }
 
 interface CompanyState {
@@ -61,6 +62,7 @@ interface CompanyState {
     previous: string | null
     currentPage: number
     totalPages: number
+    pageSize: number
   }
   searchQuery: string
   selectedCampaignId: number | null
@@ -77,6 +79,7 @@ const initialState: CompanyState = {
     previous: null,
     currentPage: 1,
     totalPages: 0,
+    pageSize: 10,
   },
   searchQuery: "",
   selectedCampaignId: null,
@@ -93,12 +96,14 @@ const companySlice = createSlice({
     fetchCompaniesSuccess: (state, action: PayloadAction<PaginatedResponse>) => {
       state.isLoading = false
       state.companies = action.payload.results
+      const pageSize = action.payload.pageSize || 10
       state.pagination = {
         count: action.payload.count,
         next: action.payload.next,
         previous: action.payload.previous,
         currentPage: state.pagination.currentPage,
-        totalPages: Math.ceil(action.payload.count / 10),
+        totalPages: Math.ceil(action.payload.count / pageSize),
+        pageSize: pageSize,
       }
       state.error = null
     },

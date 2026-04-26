@@ -101,6 +101,7 @@ export default function EmailsPage() {
   const [isSearching, setIsSearching] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [labelFilter, setLabelFilter] = useState("")
   const [labelsPage, setLabelsPage] = useState(1)
   const [selectedCountry, setSelectedCountry] = useState<string>("")
@@ -186,6 +187,19 @@ export default function EmailsPage() {
   const [smartSuccess, setSmartSuccess] = useState(false)
   const [checkUserDuplicates, setCheckUserDuplicates] = useState(true)
 
+  // Load page size from localStorage on mount
+  useEffect(() => {
+    const savedPageSize = localStorage.getItem('emails_page_size')
+    if (savedPageSize) {
+      setPageSize(Number(savedPageSize))
+    }
+  }, [])
+
+  // Save page size to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('emails_page_size', pageSize.toString())
+  }, [pageSize])
+
   // Fetch campaigns on component mount if not already loaded
   useEffect(() => {
     if (!campaigns || campaigns.length === 0) {
@@ -211,18 +225,18 @@ export default function EmailsPage() {
     fetchCountries()
   }, [])
 
-  // Fetch emails when component mounts or page/filters change
+  // Fetch emails when component mounts or page/filters/pageSize change
   useEffect(() => {
     const fetchData = async () => {
       try {
         const country = selectedCountry || undefined
-        const result = await dispatch(handleFetchEmails({ page: currentPage, country, label: labelFilter || undefined }));
+        const result = await dispatch(handleFetchEmails({ page: currentPage, pageSize, country, label: labelFilter || undefined }));
       } catch (error) {
       }
     };
     
     fetchData();
-  }, [dispatch, currentPage, selectedCountry, labelFilter]);
+  }, [dispatch, currentPage, pageSize, selectedCountry, labelFilter]);
 
   // Fetch available labels for the label picker (paginated)
   const labels = useSelector((state: RootState) => state.labels.labels)
@@ -238,7 +252,7 @@ export default function EmailsPage() {
     const searchEmails = async () => {
       if (!searchQuery.trim()) {
         // If search is empty, reset to show all emails
-        dispatch(handleFetchEmails({ page: 1, country: selectedCountry || undefined, label: labelFilter || undefined }))
+        dispatch(handleFetchEmails({ page: 1, pageSize, country: selectedCountry || undefined, label: labelFilter || undefined }))
         return
       }
 
@@ -249,6 +263,7 @@ export default function EmailsPage() {
           search: searchQuery,
           country: selectedCountry || undefined,
           page: 1, // Reset to first page when searching
+          pageSize,
           label: labelFilter || undefined,
         }))
       } catch (error) {
@@ -260,7 +275,7 @@ export default function EmailsPage() {
 
     const timerId = setTimeout(searchEmails, 500) // 500ms debounce
     return () => clearTimeout(timerId)
-  }, [searchQuery, dispatch, selectedCountry, labelFilter])
+  }, [searchQuery, dispatch, pageSize, selectedCountry, labelFilter])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
@@ -294,7 +309,7 @@ export default function EmailsPage() {
     setShowForm(false)
     setEditId(null)
     setForm({ organization_name: "", email: "", context: "" })
-    dispatch(handleFetchEmails({ page: currentPage, country: selectedCountry || undefined, label: labelFilter || undefined }))
+    dispatch(handleFetchEmails({ page: currentPage, pageSize, country: selectedCountry || undefined, label: labelFilter || undefined }))
     } catch (err: any) {
       setManualError(err?.message || "Failed to create email.")
     } finally {
@@ -371,7 +386,7 @@ export default function EmailsPage() {
     setEditError("")
     setEditSuccess(false)
     
-    if (!editId) {
+    if (!editId) {pageSize, 
       setEditError("No email selected for editing")
       setEditLoading(false)
       return
@@ -382,11 +397,10 @@ export default function EmailsPage() {
       if (result) {
         setEditSuccess(true)
         setTimeout(() => {
-          setEditSuccess(false)
-          setShowEditDialog(false)
-          setEditId(null)
-          setForm({ organization_name: "", email: "", context: "" })
-          dispatch(handleFetchEmails({ page: currentPage, country: selectedCountry || undefined, label: labelFilter || undefined }))
+      setShowForm(false)
+    setEditId(null)
+    setForm({ organization_name: "", email: "", context: "" })
+    dispatch(handleFetchEmails({ page: currentPage, pageSize, country: selectedCountry || undefined, label: labelFilter || undefined }))
         }, 2000)
       } else {
         setEditError("Failed to update email")
@@ -400,7 +414,7 @@ export default function EmailsPage() {
 
   const handleDelete = async (id: number) => {
     await dispatch(handleDeleteEmail(id))
-    dispatch(handleFetchEmails({ page: currentPage, country: selectedCountry || undefined, label: labelFilter || undefined }))
+    dispatch(handleFetchEmails({ page: currentPage, pageSize, country: selectedCountry || undefined, label: labelFilter || undefined }))
   }
 
   const handleView = (emailId: number) => {
@@ -408,7 +422,7 @@ export default function EmailsPage() {
   }
 
   // Pagination state
-  const itemsPerPage = 10; // Fixed page size
+  const itemsPerPage = pageSize;
   const totalPages = pagination?.totalPages || 1;
   const totalItems = pagination?.count || 0;
   
@@ -489,7 +503,7 @@ export default function EmailsPage() {
       setTimeout(() => setBulkSuccess(false), 2000)
       setShowCreateDialog(false)
       setBulkFile(null)
-      dispatch(handleFetchEmails({ page: currentPage, country: selectedCountry || undefined, label: labelFilter || undefined }))
+      dispatch(handleFetchEmails({ page: currentPage, pageSize, country: selectedCountry || undefined, label: labelFilter || undefined }))
     }
     setBulkLoading(false)
   }
@@ -522,7 +536,7 @@ export default function EmailsPage() {
       setTimeout(() => setSmartSuccess(false), 2000)
       setShowCreateDialog(false)
       setSmartData({ campaign_type: "", model: "gpt-4" })
-      dispatch(handleFetchEmails({ page: currentPage, country: selectedCountry || undefined, label: labelFilter || undefined }))
+      dispatch(handleFetchEmails({ page: currentPage, pageSize, country: selectedCountry || undefined, label: labelFilter || undefined }))
     }
     setSmartLoading(false)
   }
@@ -705,7 +719,28 @@ export default function EmailsPage() {
             <TabsList>
               <TabsTrigger value="all">All Emails</TabsTrigger>
             </TabsList>
-            <div className="flex gap-2">
+            </div>
+            <div className="flex gap-2 items-center">
+              <div className="flex items-center gap-2">
+                <label htmlFor="page-size" className="text-sm font-medium text-muted-foreground">Items per page:</label>
+                <select
+                  id="page-size"
+                  className="border rounded px-3 py-2 text-sm w-20"
+                  value={pageSize}
+                  onChange={e => {
+                    const newPageSize = Number(e.target.value)
+                    setPageSize(newPageSize)
+                    setCurrentPage(1) // Reset to first page when changing page size
+                  }}
+                  disabled={isLoading}
+                >
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </select>
+              </div>
               <select
                 className="border rounded px-3 py-2 text-sm"
                 value={selectedCountry}
@@ -737,7 +772,6 @@ export default function EmailsPage() {
                   <Button variant="outline" size="sm" onClick={() => setLabelsPage(p => Math.min(labelsPagination?.totalPages || 1, p + 1))} disabled={labelsPage >= (labelsPagination?.totalPages || 1) || labelsLoading}>Next</Button>
                 </div>
                 {labelsLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-              </div>
               <div className="relative">
                 <Search className={`absolute left-2.5 top-2.5 h-4 w-4 ${isSearching ? 'text-primary' : 'text-muted-foreground'}`} />
                 {isSearching && (
@@ -774,7 +808,15 @@ export default function EmailsPage() {
               </div>
             )}
 
-            <div className="flex flex-wrap gap-6 justify-center">
+            {isLoading && displayedEmails.length > 0 && (
+              <div className="fixed inset-0 bg-black/5 backdrop-blur-sm flex items-center justify-center z-40 pointer-events-none">
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm font-medium text-muted-foreground">Loading...</p>
+                </div>
+              </div>
+            )}
+            <div className={`flex flex-wrap gap-6 justify-center ${isLoading && displayedEmails.length > 0 ? 'opacity-50 pointer-events-none' : ''}`}>
               {displayedEmails.map((email) => (
                 <Card key={email.id} className="w-full sm:w-[350px] md:w-[320px] lg:w-[300px] rounded-xl border bg-card shadow-lg hover:shadow-2xl transition-shadow duration-200 relative group">
                   {/* Selection Checkbox */}
@@ -833,7 +875,7 @@ export default function EmailsPage() {
             </div>
             <div className="flex items-center justify-between p-4">
               <div className="text-sm text-muted-foreground">
-                Showing {displayedEmails.length} of {pagination?.count || emails.length} emails
+                Showing {Math.min(displayedEmails.length, pageSize)} of {pagination?.count || emails.length} emails (Page size: {pageSize})
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>Previous</Button>

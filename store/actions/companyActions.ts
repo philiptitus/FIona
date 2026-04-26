@@ -36,6 +36,7 @@ export const fetchCompanies = createAsyncThunk(
       campaignId,
       search = "",
       page = 1,
+      pageSize = 10,
       companyEmail = "",
       companyName = "",
       label = "",
@@ -47,6 +48,7 @@ export const fetchCompanies = createAsyncThunk(
       campaignId?: number
       search?: string
       page?: number
+      pageSize?: number
       companyEmail?: string
       companyName?: string
       label?: string
@@ -69,6 +71,7 @@ export const fetchCompanies = createAsyncThunk(
       if (country) params.append("country", country)
       if (label) params.append("label", label)
       if (emailSent !== undefined) params.append("email_sent", emailSent.toString())
+      params.append("page_size", pageSize.toString())
 
       const url = `/mail/companies/${params.toString() ? `?${params.toString()}` : ""}`
       const response = await api.get(url)
@@ -229,6 +232,7 @@ export const handleFetchCompanies =
     campaignId,
     search = "",
     page = 1,
+    pageSize = 10,
     companyEmail = "",
     companyName = "",
     label = "",
@@ -240,6 +244,7 @@ export const handleFetchCompanies =
     campaignId?: number
     search?: string
     page?: number
+    pageSize?: number
     companyEmail?: string
     companyName?: string
     label?: string
@@ -256,6 +261,7 @@ export const handleFetchCompanies =
           campaignId,
           search,
           page,
+          pageSize,
           companyEmail,
           companyName,
           label,

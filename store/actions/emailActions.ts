@@ -47,7 +47,7 @@ interface FetchEmailsParams {
   country?: string
   isSent?: boolean
   page?: number
-  // Page size is fixed at 10 to match the backend
+  pageSize?: number  // Customizable page size (default: 10, max: 100)
 }
 
 // Fetch emails for a campaign with optional search parameters
@@ -66,7 +66,8 @@ export const fetchEmails = createAsyncThunk(
         department,
         country,
         isSent,
-        page = 1
+        page = 1,
+        pageSize = 10
       } = params
 
       const url = new URL('/mail/emails/', window.location.origin)
@@ -85,9 +86,9 @@ export const fetchEmails = createAsyncThunk(
       if (isSent !== undefined) searchParams.append('is_sent', isSent.toString())
       if ((params as any).label) searchParams.append('label', (params as any).label)
       
-      // Add pagination parameters - page size is fixed at 10
+      // Add pagination parameters
       searchParams.append('page', page.toString())
-      searchParams.append('page_size', '10')
+      searchParams.append('page_size', pageSize.toString())
 
       const response = await api.get(`${url.pathname}?${searchParams.toString()}`)
       
@@ -100,7 +101,7 @@ export const fetchEmails = createAsyncThunk(
           next: response.data.next,
           previous: response.data.previous,
           currentPage: page,
-          totalPages: Math.ceil(response.data.count / 10) // Fixed page size of 10
+          totalPages: Math.ceil(response.data.count / pageSize)
         }
       } else if (Array.isArray(response.data)) {
         // Legacy response format for backward compatibility
@@ -116,7 +117,7 @@ export const fetchEmails = createAsyncThunk(
 export const fetchSentEmails = createAsyncThunk(
   "emails/fetchSent",
   async (
-    { campaignId, search, page = 1 }: { campaignId?: number; search?: string; page?: number },
+    { campaignId, search, page = 1, pageSize = 10 }: { campaignId?: number; search?: string; page?: number; pageSize?: number },
     { rejectWithValue },
   ) => {
     try {
@@ -128,8 +129,7 @@ export const fetchSentEmails = createAsyncThunk(
       if (campaignId) params.append("campaign_id", campaignId.toString())
       if (search) params.append("search", search)
       params.append("page", page.toString())
-      // Fixed page size of 10 to match the backend
-      params.append("page_size", "10")
+      params.append("page_size", pageSize.toString())
 
       // Build the full URL with search params
       const queryString = params.toString()
@@ -276,7 +276,8 @@ export const handleFetchSentEmails =
     campaignId,
     search,
     page,
-  }: { campaignId?: number; search?: string; page?: number }) =>
+    pageSize,
+  }: { campaignId?: number; search?: string; page?: number; pageSize?: number }) =>
   async (dispatch: AppDispatch) => {
     dispatch(fetchSentEmailsStart())
     try {

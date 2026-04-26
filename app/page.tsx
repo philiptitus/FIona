@@ -141,7 +141,7 @@ export default function LandingPage() {
           }))
 
           // Trigger all-mailboxes cache load on login
-          dispatch(triggerAllMailboxesLoad())
+          // dispatch(triggerAllMailboxesLoad())
 
           // --- Background sync with backend profile ---
           // Only send name and email as per backend expectations

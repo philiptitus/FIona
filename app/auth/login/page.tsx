@@ -47,7 +47,7 @@ export default function LoginPage() {
         description: "Welcome back to Fiona AI!",
       })
       // Trigger all-mailboxes cache load on login
-      dispatch(triggerAllMailboxesLoad())
+      // dispatch(triggerAllMailboxesLoad())
       router.replace(redirectTo)
     }
   }, [isAuthenticated, redirectTo, router, toast, dispatch])
