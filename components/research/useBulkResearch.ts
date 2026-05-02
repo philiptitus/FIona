@@ -10,7 +10,7 @@ import { addProcessingResearch } from "@/store/slices/processingResearchesSlice"
 import { addProcessingCampaign } from "@/store/slices/processingCampaignsSlice"
 import { useToast } from "@/components/ui/use-toast"
 
-const MAX_BULK_RESEARCH_CONTACTS = 10
+const MAX_BULK_RESEARCH_CONTACTS = 50
 
 export function useBulkResearch(contactType: "emaillist" | "company") {
   const dispatch = useDispatch<AppDispatch>()

@@ -1,0 +1,368 @@
+[
+  {
+    "category": "Food & Beverage",
+    "businesses": [
+      { "name": "Restaurant", "keywords": ["restaurant", "eatery", "diner", "bistro", "brasserie"] },
+      { "name": "Cafe", "keywords": ["cafe", "coffee shop", "coffeehouse", "espresso bar"] },
+      { "name": "Bar & Pub", "keywords": ["bar", "pub", "tavern", "lounge", "nightclub", "cocktail bar"] },
+      { "name": "Fast Food", "keywords": ["fast food", "burger joint", "takeaway", "drive-through"] },
+      { "name": "Pizza Shop", "keywords": ["pizza", "pizzeria", "pizza shop", "pizza delivery"] },
+      { "name": "Bakery", "keywords": ["bakery", "bread shop", "pastry shop", "patisserie"] },
+      { "name": "Butcher", "keywords": ["butcher", "meat shop", "butchery", "deli"] },
+      { "name": "Grocery Store", "keywords": ["grocery", "supermarket", "food store", "minimart", "convenience store"] },
+      { "name": "Food Truck", "keywords": ["food truck", "mobile kitchen", "street food"] },
+      { "name": "Juice Bar", "keywords": ["juice bar", "smoothie bar", "health drinks"] },
+      { "name": "Ice Cream Shop", "keywords": ["ice cream", "gelato", "frozen yogurt", "creamery"] },
+      { "name": "Catering", "keywords": ["catering", "catering service", "event catering", "food catering"] },
+      { "name": "Winery", "keywords": ["winery", "wine bar", "wine shop", "vineyard"] },
+      { "name": "Brewery", "keywords": ["brewery", "craft beer", "microbrewery", "brewpub"] },
+      { "name": "Sushi Restaurant", "keywords": ["sushi", "sushi bar", "japanese restaurant", "sashimi"] },
+      { "name": "Chinese Restaurant", "keywords": ["chinese restaurant", "dim sum", "chinese food"] },
+      { "name": "Indian Restaurant", "keywords": ["indian restaurant", "curry house", "indian food", "tandoori"] },
+      { "name": "Mexican Restaurant", "keywords": ["mexican restaurant", "taqueria", "tex-mex", "mexican food"] },
+      { "name": "BBQ Restaurant", "keywords": ["bbq", "barbecue restaurant", "smokehouse", "grill"] },
+      { "name": "Seafood Restaurant", "keywords": ["seafood restaurant", "fish restaurant", "oyster bar"] },
+      { "name": "Vegan Restaurant", "keywords": ["vegan restaurant", "plant-based restaurant", "vegetarian restaurant"] },
+      { "name": "Food Market", "keywords": ["food market", "farmers market", "wet market", "fresh market"] }
+    ]
+  },
+  {
+    "category": "Health & Medical",
+    "businesses": [
+      { "name": "Hospital", "keywords": ["hospital", "medical center", "clinic", "healthcare center"] },
+      { "name": "Dental Clinic", "keywords": ["dentist", "dental clinic", "orthodontist", "dental office"] },
+      { "name": "Pharmacy", "keywords": ["pharmacy", "chemist", "drugstore", "dispensary"] },
+      { "name": "Physiotherapy", "keywords": ["physiotherapy", "physical therapy", "rehab clinic", "physio"] },
+      { "name": "Optician", "keywords": ["optician", "eye clinic", "optometrist", "eyewear store"] },
+      { "name": "Veterinary", "keywords": ["vet", "veterinary", "animal clinic", "pet hospital"] },
+      { "name": "Mental Health", "keywords": ["therapist", "psychologist", "counseling", "mental health clinic"] },
+      { "name": "Chiropractic", "keywords": ["chiropractor", "chiropractic clinic", "spine specialist"] },
+      { "name": "Dermatology", "keywords": ["dermatologist", "skin clinic", "dermatology center"] },
+      { "name": "Pediatrics", "keywords": ["pediatrician", "children's clinic", "child doctor"] },
+      { "name": "Gynecology", "keywords": ["gynecologist", "women's clinic", "obstetrician"] },
+      { "name": "Cardiology", "keywords": ["cardiologist", "heart clinic", "cardiac center"] },
+      { "name": "Orthopedics", "keywords": ["orthopedic", "bone specialist", "sports medicine clinic"] },
+      { "name": "Lab & Diagnostics", "keywords": ["diagnostic lab", "medical laboratory", "blood test center", "pathology lab"] },
+      { "name": "Nursing Home", "keywords": ["nursing home", "care home", "assisted living", "elderly care"] },
+      { "name": "Acupuncture", "keywords": ["acupuncture", "acupuncturist", "traditional medicine"] },
+      { "name": "Nutritionist", "keywords": ["nutritionist", "dietitian", "nutrition consultant"] },
+      { "name": "Hearing Center", "keywords": ["audiologist", "hearing clinic", "hearing aid center"] }
+    ]
+  },
+  {
+    "category": "Beauty & Personal Care",
+    "businesses": [
+      { "name": "Hair Salon", "keywords": ["hair salon", "hairdresser", "barber", "barbershop", "hair studio"] },
+      { "name": "Nail Salon", "keywords": ["nail salon", "nail bar", "manicure", "pedicure", "nail studio"] },
+      { "name": "Spa", "keywords": ["spa", "day spa", "wellness spa", "massage spa", "beauty spa"] },
+      { "name": "Massage Therapy", "keywords": ["massage", "massage therapist", "massage clinic", "deep tissue massage"] },
+      { "name": "Tattoo & Piercing", "keywords": ["tattoo shop", "tattoo studio", "piercing studio", "body art"] },
+      { "name": "Beauty Supply", "keywords": ["beauty supply", "cosmetics store", "beauty products", "makeup store"] },
+      { "name": "Tanning Salon", "keywords": ["tanning salon", "spray tan", "tanning studio"] },
+      { "name": "Eyebrow Threading", "keywords": ["eyebrow threading", "brow bar", "eyebrow waxing", "brow studio"] },
+      { "name": "Laser Clinic", "keywords": ["laser clinic", "laser hair removal", "skin laser", "laser treatment"] },
+      { "name": "Plastic Surgery", "keywords": ["plastic surgeon", "cosmetic surgery", "aesthetic clinic"] },
+      { "name": "Waxing Salon", "keywords": ["waxing salon", "wax studio", "body waxing"] },
+      { "name": "Perfume Store", "keywords": ["perfume store", "fragrance shop", "cologne shop"] }
+    ]
+  },
+  {
+    "category": "Fitness & Sports",
+    "businesses": [
+      { "name": "Gym", "keywords": ["gym", "fitness center", "health club", "workout gym", "fitness gym"] },
+      { "name": "Yoga Studio", "keywords": ["yoga studio", "yoga class", "yoga center", "hot yoga"] },
+      { "name": "CrossFit", "keywords": ["crossfit", "crossfit box", "functional fitness"] },
+      { "name": "Martial Arts", "keywords": ["martial arts", "karate", "taekwondo", "judo", "mma gym", "boxing gym"] },
+      { "name": "Swimming Pool", "keywords": ["swimming pool", "swim club", "aquatic center", "pool gym"] },
+      { "name": "Tennis Club", "keywords": ["tennis club", "tennis court", "tennis academy"] },
+      { "name": "Golf Course", "keywords": ["golf course", "golf club", "driving range", "mini golf"] },
+      { "name": "Sports Shop", "keywords": ["sports shop", "sporting goods", "sports equipment", "sports store"] },
+      { "name": "Cycling Studio", "keywords": ["cycling studio", "spin class", "indoor cycling", "bike studio"] },
+      { "name": "Dance Studio", "keywords": ["dance studio", "dance school", "ballet school", "salsa class"] },
+      { "name": "Personal Trainer", "keywords": ["personal trainer", "fitness coach", "personal training"] },
+      { "name": "Pilates Studio", "keywords": ["pilates studio", "pilates class", "reformer pilates"] },
+      { "name": "Rock Climbing", "keywords": ["rock climbing gym", "climbing wall", "bouldering gym"] },
+      { "name": "Football Club", "keywords": ["football club", "soccer club", "football academy"] },
+      { "name": "Basketball Court", "keywords": ["basketball court", "basketball club", "basketball training"] }
+    ]
+  },
+  {
+    "category": "Education & Training",
+    "businesses": [
+      { "name": "School", "keywords": ["school", "primary school", "secondary school", "high school", "academy"] },
+      { "name": "University", "keywords": ["university", "college", "higher education", "campus"] },
+      { "name": "Tutoring", "keywords": ["tutoring", "tutor", "private tutor", "tutoring center"] },
+      { "name": "Language School", "keywords": ["language school", "english school", "language institute", "esl school"] },
+      { "name": "Driving School", "keywords": ["driving school", "driving instructor", "driving lessons"] },
+      { "name": "Music School", "keywords": ["music school", "music lessons", "piano lessons", "guitar lessons"] },
+      { "name": "Vocational Training", "keywords": ["vocational training", "skills training", "trade school", "technical college"] },
+      { "name": "Coding Bootcamp", "keywords": ["coding bootcamp", "programming school", "software training"] },
+      { "name": "Nursery & Daycare", "keywords": ["nursery", "daycare", "childcare", "preschool", "kindergarten"] },
+      { "name": "Art School", "keywords": ["art school", "art classes", "drawing classes", "painting school"] },
+      { "name": "Test Prep", "keywords": ["test prep", "exam coaching", "sat prep", "ielts coaching"] },
+      { "name": "Corporate Training", "keywords": ["corporate training", "professional development", "business training"] },
+      { "name": "Online Education", "keywords": ["online school", "e-learning", "online courses"] }
+    ]
+  },
+  {
+    "category": "Retail & Shopping",
+    "businesses": [
+      { "name": "Clothing Store", "keywords": ["clothing store", "fashion boutique", "apparel shop", "clothes shop"] },
+      { "name": "Shoe Store", "keywords": ["shoe store", "footwear shop", "shoe shop", "sneaker store"] },
+      { "name": "Electronics Store", "keywords": ["electronics store", "tech shop", "gadget store", "computer shop"] },
+      { "name": "Furniture Store", "keywords": ["furniture store", "home furnishings", "furniture shop"] },
+      { "name": "Bookstore", "keywords": ["bookstore", "book shop", "library shop", "used bookstore"] },
+      { "name": "Toy Store", "keywords": ["toy store", "toy shop", "children's toy store"] },
+      { "name": "Gift Shop", "keywords": ["gift shop", "souvenir shop", "gift store"] },
+      { "name": "Jewelry Store", "keywords": ["jewelry store", "jeweller", "gold shop", "diamond shop"] },
+      { "name": "Hardware Store", "keywords": ["hardware store", "tool shop", "diy store", "building supplies"] },
+      { "name": "Pet Store", "keywords": ["pet store", "pet shop", "pet supplies", "aquarium shop"] },
+      { "name": "Stationery Store", "keywords": ["stationery store", "office supplies", "paper shop"] },
+      { "name": "Phone Shop", "keywords": ["phone shop", "mobile store", "smartphone shop", "phone repair"] },
+      { "name": "Optical Store", "keywords": ["optical store", "glasses shop", "eyewear shop", "spectacles store"] },
+      { "name": "Home Decor", "keywords": ["home decor", "interior shop", "home accessories", "decor store"] },
+      { "name": "Fabric Store", "keywords": ["fabric store", "textile shop", "cloth shop", "tailor supplies"] },
+      { "name": "Florist", "keywords": ["florist", "flower shop", "flower delivery", "flower store"] },
+      { "name": "Thrift Store", "keywords": ["thrift store", "second hand shop", "charity shop", "consignment store"] },
+      { "name": "Pharmacy Retail", "keywords": ["health store", "vitamin shop", "supplement store", "health food store"] },
+      { "name": "Baby Shop", "keywords": ["baby shop", "baby store", "infant clothing", "baby products"] },
+      { "name": "Sports Wear", "keywords": ["sportswear", "athletic wear", "gym wear shop", "activewear store"] }
+    ]
+  },
+  {
+    "category": "Professional Services",
+    "businesses": [
+      { "name": "Law Firm", "keywords": ["law firm", "lawyer", "attorney", "legal services", "solicitor"] },
+      { "name": "Accounting", "keywords": ["accounting firm", "accountant", "cpa", "bookkeeping", "tax consultant"] },
+      { "name": "Insurance", "keywords": ["insurance agency", "insurance broker", "insurance company"] },
+      { "name": "Financial Advisor", "keywords": ["financial advisor", "wealth management", "investment advisor", "financial planner"] },
+      { "name": "Consulting", "keywords": ["consulting firm", "business consultant", "management consultant", "strategy consultant"] },
+      { "name": "HR & Recruitment", "keywords": ["recruitment agency", "staffing agency", "hr consulting", "headhunter"] },
+      { "name": "Marketing Agency", "keywords": ["marketing agency", "digital marketing", "advertising agency", "branding agency"] },
+      { "name": "PR Agency", "keywords": ["pr agency", "public relations", "communications firm", "media relations"] },
+      { "name": "IT Services", "keywords": ["it company", "it services", "tech support", "managed it", "software company"] },
+      { "name": "Web Design", "keywords": ["web design", "web developer", "website design", "web agency"] },
+      { "name": "Graphic Design", "keywords": ["graphic design", "design studio", "graphic designer", "creative agency"] },
+      { "name": "Architecture", "keywords": ["architect", "architecture firm", "architectural design", "building design"] },
+      { "name": "Engineering", "keywords": ["engineering firm", "civil engineering", "structural engineering", "consultancy"] },
+      { "name": "Audit Firm", "keywords": ["audit firm", "external auditor", "risk advisory", "assurance firm"] },
+      { "name": "Notary", "keywords": ["notary", "notary public", "notarial services"] },
+      { "name": "Translation", "keywords": ["translation agency", "translator", "interpreter", "language services"] },
+      { "name": "Photography", "keywords": ["photography studio", "photographer", "photo studio", "commercial photography"] },
+      { "name": "Videography", "keywords": ["videographer", "video production", "video studio", "film production"] },
+      { "name": "Event Management", "keywords": ["event planner", "event management", "event company", "event organizer"] },
+      { "name": "Security Firm", "keywords": ["security company", "security firm", "private security", "security services"] }
+    ]
+  },
+  {
+    "category": "Real Estate",
+    "businesses": [
+      { "name": "Real Estate Agency", "keywords": ["real estate agency", "property agent", "realtor", "estate agent"] },
+      { "name": "Property Management", "keywords": ["property management", "property manager", "landlord services"] },
+      { "name": "Mortgage Broker", "keywords": ["mortgage broker", "home loan", "mortgage advisor", "mortgage lender"] },
+      { "name": "Construction Company", "keywords": ["construction company", "building contractor", "construction firm", "general contractor"] },
+      { "name": "Interior Design", "keywords": ["interior designer", "interior design firm", "interior decorator"] },
+      { "name": "Land Surveyor", "keywords": ["land surveyor", "surveying company", "property surveyor"] },
+      { "name": "Property Developer", "keywords": ["property developer", "real estate developer", "housing developer"] },
+      { "name": "Valuation", "keywords": ["property valuation", "valuator", "appraisal company"] }
+    ]
+  },
+  {
+    "category": "Automotive",
+    "businesses": [
+      { "name": "Car Dealership", "keywords": ["car dealership", "car dealer", "auto sales", "used car dealer"] },
+      { "name": "Auto Repair", "keywords": ["auto repair", "car repair", "mechanic", "garage", "auto workshop"] },
+      { "name": "Car Wash", "keywords": ["car wash", "auto detailing", "car detailing", "mobile car wash"] },
+      { "name": "Tire Shop", "keywords": ["tire shop", "tyre shop", "wheel alignment", "tire fitting"] },
+      { "name": "Auto Parts", "keywords": ["auto parts", "car parts", "spare parts shop", "auto accessories"] },
+      { "name": "Driving School", "keywords": ["driving school", "auto school", "driving lessons"] },
+      { "name": "Car Rental", "keywords": ["car rental", "car hire", "vehicle rental", "rent a car"] },
+      { "name": "Towing Service", "keywords": ["towing service", "roadside assistance", "breakdown service"] },
+      { "name": "Vehicle Inspection", "keywords": ["vehicle inspection", "mot test", "vehicle testing center"] },
+      { "name": "Motorcycle Shop", "keywords": ["motorcycle shop", "motorbike dealer", "motorcycle repair", "bike shop"] },
+      { "name": "Electric Vehicle", "keywords": ["electric car dealer", "ev charging station", "electric vehicle service"] },
+      { "name": "Car Insurance", "keywords": ["car insurance", "auto insurance", "vehicle insurance"] }
+    ]
+  },
+  {
+    "category": "Home Services",
+    "businesses": [
+      { "name": "Plumber", "keywords": ["plumber", "plumbing services", "plumbing company", "pipe repair"] },
+      { "name": "Electrician", "keywords": ["electrician", "electrical services", "electrical contractor", "wiring services"] },
+      { "name": "Cleaning Service", "keywords": ["cleaning company", "home cleaning", "cleaning service", "maid service"] },
+      { "name": "Pest Control", "keywords": ["pest control", "exterminator", "fumigation", "termite control"] },
+      { "name": "Landscaping", "keywords": ["landscaping", "lawn care", "gardening service", "lawn mowing"] },
+      { "name": "Moving Company", "keywords": ["moving company", "movers", "removal company", "relocation service"] },
+      { "name": "Locksmith", "keywords": ["locksmith", "lock repair", "key cutting", "security locksmith"] },
+      { "name": "Roofing", "keywords": ["roofing company", "roofer", "roof repair", "roofing contractor"] },
+      { "name": "Painting", "keywords": ["painting company", "house painter", "interior painter", "exterior painting"] },
+      { "name": "Carpentry", "keywords": ["carpenter", "carpentry services", "woodwork", "furniture maker"] },
+      { "name": "AC & HVAC", "keywords": ["ac repair", "hvac", "air conditioning service", "cooling system"] },
+      { "name": "Solar Installation", "keywords": ["solar installer", "solar panels", "solar company", "renewable energy"] },
+      { "name": "Home Security", "keywords": ["home security", "alarm installation", "cctv installation", "security systems"] },
+      { "name": "Pool Service", "keywords": ["pool service", "pool cleaning", "pool maintenance", "swimming pool service"] },
+      { "name": "Appliance Repair", "keywords": ["appliance repair", "washing machine repair", "fridge repair", "oven repair"] },
+      { "name": "Window Cleaning", "keywords": ["window cleaning", "window washer", "glass cleaning service"] },
+      { "name": "Waste Removal", "keywords": ["waste removal", "junk removal", "rubbish collection", "skip hire"] }
+    ]
+  },
+  {
+    "category": "Hospitality & Tourism",
+    "businesses": [
+      { "name": "Hotel", "keywords": ["hotel", "resort", "inn", "lodge", "boutique hotel", "guesthouse"] },
+      { "name": "Hostel", "keywords": ["hostel", "backpacker hostel", "budget hotel"] },
+      { "name": "Airbnb / Short Stay", "keywords": ["airbnb", "short term rental", "vacation rental", "holiday let"] },
+      { "name": "Travel Agency", "keywords": ["travel agency", "tour operator", "travel agent", "holiday planner"] },
+      { "name": "Tour Guide", "keywords": ["tour guide", "city tours", "guided tours", "safari tours"] },
+      { "name": "Car Hire (Tourism)", "keywords": ["tourist car hire", "safari vehicle", "tour transport"] },
+      { "name": "Conference Center", "keywords": ["conference center", "event venue", "meeting room", "banquet hall"] },
+      { "name": "Camping", "keywords": ["campsite", "camping ground", "glamping", "rv park"] },
+      { "name": "Airline", "keywords": ["airline", "flight booking", "aviation company"] },
+      { "name": "Cruise", "keywords": ["cruise operator", "boat tours", "river cruise", "yacht charter"] }
+    ]
+  },
+  {
+    "category": "Finance & Banking",
+    "businesses": [
+      { "name": "Bank", "keywords": ["bank", "commercial bank", "retail bank", "banking services"] },
+      { "name": "Microfinance", "keywords": ["microfinance", "microloan", "sacco", "cooperative"] },
+      { "name": "Forex Bureau", "keywords": ["forex bureau", "currency exchange", "money changer", "foreign exchange"] },
+      { "name": "Investment Firm", "keywords": ["investment firm", "asset management", "fund manager", "investment company"] },
+      { "name": "Mobile Money", "keywords": ["mobile money", "mpesa agent", "money transfer", "remittance"] },
+      { "name": "Stock Broker", "keywords": ["stockbroker", "securities firm", "stock exchange agent"] },
+      { "name": "Credit Union", "keywords": ["credit union", "savings society", "chama", "cooperative society"] },
+      { "name": "Mortgage Company", "keywords": ["mortgage company", "home finance", "mortgage lender"] },
+      { "name": "Payroll Services", "keywords": ["payroll services", "payroll company", "salary processing"] }
+    ]
+  },
+  {
+    "category": "Technology & IT",
+    "businesses": [
+      { "name": "Software Company", "keywords": ["software company", "software development", "tech startup", "software house"] },
+      { "name": "IT Support", "keywords": ["it support", "computer repair", "tech support", "it helpdesk"] },
+      { "name": "Cybersecurity", "keywords": ["cybersecurity", "network security", "it security firm"] },
+      { "name": "Cloud Services", "keywords": ["cloud services", "cloud hosting", "cloud provider", "data center"] },
+      { "name": "App Development", "keywords": ["app developer", "mobile app company", "app development agency"] },
+      { "name": "Data Analytics", "keywords": ["data analytics", "business intelligence", "data company"] },
+      { "name": "E-commerce", "keywords": ["ecommerce company", "online store builder", "digital commerce"] },
+      { "name": "Telecom", "keywords": ["telecom", "telecommunications", "internet provider", "isp"] },
+      { "name": "Electronics Repair", "keywords": ["electronics repair", "laptop repair", "phone repair", "device repair"] },
+      { "name": "Printing & Copying", "keywords": ["printing shop", "copy center", "print services", "digital printing"] },
+      { "name": "CCTV & Surveillance", "keywords": ["cctv installation", "surveillance company", "security camera"] },
+      { "name": "AI & Machine Learning", "keywords": ["ai company", "machine learning firm", "ai solutions"] }
+    ]
+  },
+  {
+    "category": "Transport & Logistics",
+    "businesses": [
+      { "name": "Courier Service", "keywords": ["courier service", "delivery company", "parcel delivery", "courier company"] },
+      { "name": "Freight & Logistics", "keywords": ["freight company", "logistics company", "cargo service", "shipping company"] },
+      { "name": "Taxi & Ride Hailing", "keywords": ["taxi company", "ride hailing", "cab service", "chauffeur service"] },
+      { "name": "Bus Company", "keywords": ["bus company", "bus service", "coach hire", "shuttle service"] },
+      { "name": "Truck Hire", "keywords": ["truck hire", "lorry hire", "haulage company", "freight trucks"] },
+      { "name": "Warehouse", "keywords": ["warehouse", "storage facility", "warehousing", "cold storage"] },
+      { "name": "Customs Broker", "keywords": ["customs broker", "customs clearance", "import export agent"] },
+      { "name": "Shipping Agent", "keywords": ["shipping agent", "port agent", "freight forwarder"] },
+      { "name": "Airport Transfers", "keywords": ["airport transfer", "airport taxi", "airport shuttle"] },
+      { "name": "Bicycle Delivery", "keywords": ["bicycle courier", "bike delivery", "last mile delivery"] }
+    ]
+  },
+  {
+    "category": "Manufacturing & Industry",
+    "businesses": [
+      { "name": "Factory", "keywords": ["factory", "manufacturing plant", "production facility"] },
+      { "name": "Packaging", "keywords": ["packaging company", "packaging manufacturer", "box manufacturer"] },
+      { "name": "Printing & Publishing", "keywords": ["printing company", "publisher", "print media", "magazine publisher"] },
+      { "name": "Textile Manufacturer", "keywords": ["textile manufacturer", "garment factory", "fabric manufacturer"] },
+      { "name": "Food Processing", "keywords": ["food processing", "food manufacturer", "food factory"] },
+      { "name": "Metal Fabrication", "keywords": ["metal fabrication", "steel fabricator", "welding company"] },
+      { "name": "Plastics", "keywords": ["plastics manufacturer", "plastic moulding", "plastic products"] },
+      { "name": "Chemical Company", "keywords": ["chemical company", "chemical supplier", "industrial chemicals"] },
+      { "name": "Wood & Timber", "keywords": ["timber company", "sawmill", "wood supplier", "lumber yard"] },
+      { "name": "Mining", "keywords": ["mining company", "quarry", "mineral extraction", "mining firm"] },
+      { "name": "Agricultural Supply", "keywords": ["agro supplier", "farming inputs", "seed company", "fertilizer supplier"] }
+    ]
+  },
+  {
+    "category": "Entertainment & Media",
+    "businesses": [
+      { "name": "Cinema", "keywords": ["cinema", "movie theater", "multiplex", "film house"] },
+      { "name": "Music Studio", "keywords": ["recording studio", "music studio", "sound studio", "audio production"] },
+      { "name": "TV Station", "keywords": ["tv station", "television channel", "broadcasting company"] },
+      { "name": "Radio Station", "keywords": ["radio station", "fm radio", "online radio", "broadcast studio"] },
+      { "name": "Gaming Center", "keywords": ["gaming center", "esports cafe", "gaming lounge", "console gaming"] },
+      { "name": "Amusement Park", "keywords": ["amusement park", "theme park", "fun park", "adventure park"] },
+      { "name": "Comedy Club", "keywords": ["comedy club", "stand-up comedy", "comedy bar"] },
+      { "name": "Theater", "keywords": ["theater", "theatre", "performing arts", "live performance"] },
+      { "name": "Museum", "keywords": ["museum", "art gallery", "exhibition center", "cultural center"] },
+      { "name": "Library", "keywords": ["library", "public library", "lending library"] },
+      { "name": "Zoo & Aquarium", "keywords": ["zoo", "aquarium", "wildlife park", "nature reserve"] },
+      { "name": "Escape Room", "keywords": ["escape room", "puzzle room", "mystery room", "adventure game"] },
+      { "name": "Bowling Alley", "keywords": ["bowling alley", "bowling center", "tenpin bowling"] },
+      { "name": "Karaoke", "keywords": ["karaoke bar", "karaoke lounge", "karaoke room"] }
+    ]
+  },
+  {
+    "category": "Agriculture & Farming",
+    "businesses": [
+      { "name": "Farm", "keywords": ["farm", "dairy farm", "poultry farm", "crop farm", "horticulture"] },
+      { "name": "Greenhouse", "keywords": ["greenhouse", "nursery", "plant nursery", "horticulture nursery"] },
+      { "name": "Agro-processing", "keywords": ["agro processing", "grain mill", "rice mill", "oil processing"] },
+      { "name": "Veterinary Farm", "keywords": ["livestock vet", "animal husbandry", "veterinary farm services"] },
+      { "name": "Irrigation", "keywords": ["irrigation company", "drip irrigation", "irrigation supplier"] },
+      { "name": "Organic Farming", "keywords": ["organic farm", "organic produce", "natural farming"] },
+      { "name": "Aquaculture", "keywords": ["fish farm", "aquaculture", "fish hatchery", "tilapia farm"] },
+      { "name": "Floriculture", "keywords": ["flower farm", "floriculture", "cut flowers", "rose farm"] }
+    ]
+  },
+  {
+    "category": "Government & NGO",
+    "businesses": [
+      { "name": "NGO", "keywords": ["ngo", "non-profit", "charity organization", "non-governmental organization"] },
+      { "name": "Church", "keywords": ["church", "ministry", "parish", "congregation", "religious organization"] },
+      { "name": "Mosque", "keywords": ["mosque", "islamic center", "masjid", "muslim community"] },
+      { "name": "Embassy", "keywords": ["embassy", "consulate", "diplomatic mission", "high commission"] },
+      { "name": "Government Office", "keywords": ["government office", "county office", "public office", "government agency"] },
+      { "name": "UN Agency", "keywords": ["un agency", "united nations office", "international organization"] },
+      { "name": "Foundation", "keywords": ["foundation", "charitable foundation", "philanthropic organization"] },
+      { "name": "Community Center", "keywords": ["community center", "social hall", "community hall"] }
+    ]
+  },
+  {
+    "category": "Energy & Environment",
+    "businesses": [
+      { "name": "Solar Company", "keywords": ["solar company", "solar energy", "solar power", "photovoltaic"] },
+      { "name": "Water Company", "keywords": ["water company", "water supplier", "borehole company", "water treatment"] },
+      { "name": "Waste Management", "keywords": ["waste management", "recycling company", "garbage collection"] },
+      { "name": "Environmental Consulting", "keywords": ["environmental consultant", "eia firm", "environmental services"] },
+      { "name": "Generator Sales", "keywords": ["generator sales", "generator repair", "power backup", "ups systems"] },
+      { "name": "Biogas", "keywords": ["biogas company", "biogas installation", "renewable energy"] }
+    ]
+  },
+  {
+    "category": "Pets & Animals",
+    "businesses": [
+      { "name": "Pet Grooming", "keywords": ["pet grooming", "dog grooming", "grooming salon", "mobile grooming"] },
+      { "name": "Dog Training", "keywords": ["dog training", "obedience training", "puppy training", "dog trainer"] },
+      { "name": "Pet Boarding", "keywords": ["pet boarding", "dog hotel", "cat boarding", "pet sitting"] },
+      { "name": "Aquarium Store", "keywords": ["aquarium store", "fish shop", "fish tank shop"] },
+      { "name": "Pet Photography", "keywords": ["pet photography", "animal photography", "dog photographer"] },
+      { "name": "Animal Shelter", "keywords": ["animal shelter", "rescue center", "dog rescue", "pet adoption"] }
+    ]
+  },
+  {
+    "category": "Wedding & Events",
+    "businesses": [
+      { "name": "Wedding Planner", "keywords": ["wedding planner", "wedding coordinator", "bridal planner"] },
+      { "name": "Wedding Venue", "keywords": ["wedding venue", "wedding hall", "banquet hall", "reception venue"] },
+      { "name": "Wedding Photographer", "keywords": ["wedding photographer", "bridal photography", "wedding videographer"] },
+      { "name": "Wedding Catering", "keywords": ["wedding catering", "event catering", "wedding food service"] },
+      { "name": "DJ & Entertainment", "keywords": ["dj services", "event dj", "wedding dj", "entertainment hire"] },
+      { "name": "Bridal Shop", "keywords": ["bridal shop", "wedding dress", "bridal wear", "wedding boutique"] },
+      { "name": "Florist Events", "keywords": ["event florist", "wedding flowers", "floral designer"] },
+      { "name": "Party Supplies", "keywords": ["party supplies", "balloon shop", "party store", "event decorations"] },
+      { "name": "Bounce House", "keywords": ["bounce house", "inflatable hire", "kids party hire", "jumping castle"] },
+      { "name": "Tent & Hire", "keywords": ["tent hire", "marquee hire", "event equipment hire", "tables chairs hire"] }
+    ]
+  }
+]

@@ -31,6 +31,7 @@ import userSettingsReducer from "./slices/userSettingsSlice"
 import emailMinerReducer from "./slices/emailMinerSlice"
 import processingEmailMinersReducer from "./slices/processingEmailMinersSlice"
 import presetReducer from "./slices/presetSlice"
+import googlePlacesReducer from "./slices/googlePlacesSlice"
 
 // Define root state type
 type RootState = {
@@ -63,6 +64,7 @@ type RootState = {
   emailMiner: ReturnType<typeof emailMinerReducer>
   processingEmailMiners: ReturnType<typeof processingEmailMinersReducer>
   preset: ReturnType<typeof presetReducer>
+  googlePlaces: ReturnType<typeof googlePlacesReducer>
   firebaseAuth: ReturnType<typeof firebaseAuthReducer>
   firebaseNotifications: ReturnType<typeof firebaseNotificationsReducer>
 }
@@ -98,6 +100,7 @@ const rootReducer: ReducersMapObject<RootState> = {
   emailMiner: emailMinerReducer,
   processingEmailMiners: processingEmailMinersReducer,
   preset: presetReducer,
+  googlePlaces: googlePlacesReducer,
   firebaseAuth: firebaseAuthReducer,
   firebaseNotifications: firebaseNotificationsReducer,
 }
